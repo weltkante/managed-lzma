@@ -1,0 +1,213 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace ManagedLzma.LZMA
+{
+	[TestClass]
+	public class UnitTestM2: TestBase
+	{
+<#
+	PushIndent(new string(' ', 8));
+
+	foreach(var t in SeedAndSizeGen())
+	{
+		Test("Thread4_MtBT2", new TestSettings(t) {
+			BTMode = 1,
+			NumHashBytes = 2,
+		});
+	}
+	foreach(var t in SeedAndSizeGen())
+	{
+		Test("Thread4_MtBT3", new TestSettings(t) {
+			BTMode = 1,
+			NumHashBytes = 3,
+		});
+	}
+	foreach(var t in SeedAndSizeGen())
+	{
+		Test("Thread4_MtBT4", new TestSettings(t) {
+			BTMode = 1,
+			NumHashBytes = 4,
+		});
+	}
+
+	PopIndent();
+#>
+	}
+}
+<#+
+private class TestSettings
+{
+	public int Seed;
+	public int DatLen;
+	public int RunLen;
+
+	public int Variant;
+	public bool UseV2;
+
+	public int? Level;
+	public uint? DictSize;
+	public int? LC;
+	public int? LP;
+	public int? PB;
+	public int? Algo;
+	public int? FB;
+	public int? BTMode;
+	public int? NumHashBytes;
+	public uint? MC;
+	public uint? WriteEndMark;
+	public int? NumThreads;
+
+	public int? BlockSize;
+	public int? NumBlockThreads;
+	public int? NumTotalThreads;
+
+	public TestSettings(){}
+	public TestSettings(TestSettings other)
+	{
+		this.Seed = other.Seed;
+		this.DatLen = other.DatLen;
+		this.RunLen = other.RunLen;
+
+		this.Variant = other.Variant;
+		this.UseV2 = other.UseV2;
+
+		this.Level = other.Level;
+		this.DictSize = other.DictSize;
+		this.LC = other.LC;
+		this.LP = other.LP;
+		this.PB = other.PB;
+		this.Algo = other.Algo;
+		this.FB = other.FB;
+		this.BTMode = other.BTMode;
+		this.NumHashBytes = other.NumHashBytes;
+		this.MC = other.MC;
+		this.WriteEndMark = other.WriteEndMark;
+		this.NumThreads = other.NumThreads;
+
+		this.BlockSize = other.BlockSize;
+		this.NumBlockThreads = other.NumBlockThreads;
+		this.NumTotalThreads = other.NumTotalThreads;
+	}
+}
+
+private IEnumerable<TestSettings> Root()
+{
+	yield return new TestSettings {
+		Seed = 1,
+		DatLen = 4 << 10,
+		RunLen = 5,
+		UseV2 = true,
+		WriteEndMark = 1,
+		NumThreads = 4,
+		NumTotalThreads = 4,
+		NumBlockThreads = 2,
+	};
+}
+
+private IEnumerable<TestSettings> VersionMix(IEnumerable<TestSettings> gen = null)
+{
+	foreach(var t in gen ?? Root())
+	{
+		//yield return new TestSettings(t) { UseV2 = false };
+		yield return new TestSettings(t) { UseV2 = true };
+	}
+}
+
+private IEnumerable<TestSettings> SeedAndSizeGen(IEnumerable<TestSettings> gen = null)
+{
+	foreach(var t in gen ?? Root())
+	{
+		yield return new TestSettings(t) {
+			Seed = 64,
+			DatLen = 64,
+		};
+
+		yield return new TestSettings(t) {
+			Seed = 128,
+			DatLen = 128,
+		};
+
+		yield return new TestSettings(t) {
+			Seed = 1024,
+			DatLen = 1 << 10,
+		};
+
+		yield return new TestSettings(t) {
+		    Seed = 1024,
+		    DatLen = 1 << 15,
+		    RunLen = 256
+		};
+	}
+}
+
+private void WriteProp(string name, object value)
+{
+	if(value != null)
+	{
+		Write(name);
+		Write(" = ");
+		if(value is bool)
+			Write((bool)value ? "true" : "false");
+		else
+			Write(value.ToString());
+		WriteLine(",");
+	}
+}
+
+private int mIndex;
+private void Test(string name, TestSettings t)
+{
+	WriteLine("[TestMethod]");
+	Write("public void ");
+	Write(name);
+	Write("_");
+	Write((++mIndex).ToString());
+	WriteLine("()");
+	WriteLine("{");
+	PushIndent(new string(' ', 4));
+	WriteLine("Test(new TestSettings {");
+	PushIndent(new string(' ', 4));
+
+	WriteProp("Seed", t.Seed);
+	WriteProp("DatLen", t.DatLen);
+	WriteProp("RunLen", t.RunLen);
+	WriteProp("UseV2", t.UseV2);
+
+	WriteProp("Level", t.Level);
+	WriteProp("DictSize", t.DictSize);
+	WriteProp("LC", t.LC);
+	WriteProp("LP", t.LP);
+	WriteProp("PB", t.PB);
+	WriteProp("Algo", t.Algo);
+	WriteProp("FB", t.FB);
+	WriteProp("BTMode", t.BTMode);
+	WriteProp("NumHashBytes", t.NumHashBytes);
+	WriteProp("MC", t.MC);
+	WriteProp("WriteEndMark", t.WriteEndMark);
+	WriteProp("NumThreads", t.NumThreads);
+
+	if(t.UseV2) {
+		WriteProp("BlockSize", t.BlockSize);
+		WriteProp("NumBlockThreads", t.NumBlockThreads);
+		WriteProp("NumTotalThreads", t.NumTotalThreads);
+	}
+
+	PopIndent();
+	WriteLine("});");
+	PopIndent();
+	WriteLine("}");
+	WriteLine("");
+}
+#>

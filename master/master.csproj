@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B55693B1-3A6D-44BC-92F9-1E2F7018553F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ManagedLzma</RootNamespace>
+    <AssemblyName>master</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;SHOW_STAT_;SHOW_STAT2_;PROTOTYPE_</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="7zip\ArchiveWriter.cs" />
+    <Compile Include="7zip\BitVector.cs" />
+    <Compile Include="7zip\CRC.cs" />
+    <Compile Include="7zip\Decoder\AesDecoderStream.cs" />
+    <Compile Include="7zip\Legacy\Archive.cs" />
+    <Compile Include="7zip\Decoder\Bcj2DecoderStream.cs" />
+    <Compile Include="7zip\Decoder\BcjDecoderStream.cs" />
+    <Compile Include="7zip\Utilities\UnpackSubStream.cs" />
+    <Compile Include="7zip\Utilities\CrcBuilderStream.cs" />
+    <Compile Include="7zip\Utilities\CrcCheckStream.cs" />
+    <Compile Include="7zip\Utilities\Interfaces.cs" />
+    <Compile Include="7zip\Decoder\DecoderStream.cs" />
+    <Compile Include="7zip\Legacy\Item.cs" />
+    <Compile Include="7zip\Decoder\Lzma2DecoderStream.cs" />
+    <Compile Include="7zip\Decoder\LzmaDecoderStream.cs" />
+    <Compile Include="7zip\Decoder\Registry.cs" />
+    <Compile Include="7zip\Log.cs" />
+    <Compile Include="7zip\Utilities\SyncStreamView.cs" />
+    <Compile Include="7zip\Utilities\Utils.cs" />
+    <Compile Include="core\Core.cs" />
+    <Compile Include="core\CRC.cs" />
+    <Compile Include="core\LzFindMt.cs" />
+    <Compile Include="core\LzFind.cs" />
+    <Compile Include="core\LzHash.cs" />
+    <Compile Include="core\Lzma2Dec.cs" />
+    <Compile Include="core\Lzma2Enc.cs" />
+    <Compile Include="core\LzmaDec.cs" />
+    <Compile Include="core\LzmaEnc.cs" />
+    <Compile Include="core\LzmaLib.cs" />
+    <Compile Include="core\MtCoder.cs" />
+    <Compile Include="core\Threads.cs" />
+    <Compile Include="core\Types.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="utils\Helper.cs" />
+    <Compile Include="utils\Pointer.cs" />
+    <Compile Include="utils\Trace.cs" />
+    <Compile Include="utils\Utils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\shared\shared.csproj">
+      <Project>{ff95b100-848c-4dc4-9312-767869a9767a}</Project>
+      <Name>shared</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
