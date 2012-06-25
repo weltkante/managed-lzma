@@ -32,6 +32,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -60,6 +61,7 @@
     <Compile Include="7zip\Utilities\CrcCheckStream.cs" />
     <Compile Include="7zip\Utilities\Interfaces.cs" />
     <Compile Include="7zip\Utilities\SyncStreamView.cs" />
+    <Compile Include="7zip\Utilities\UnpackSubStream.cs" />
     <Compile Include="7zip\Utilities\Utils.cs" />
     <Compile Include="core\Core.cs" />
     <Compile Include="core\CRC.cs" />
