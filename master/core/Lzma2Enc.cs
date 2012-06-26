@@ -414,7 +414,7 @@ namespace ManagedLzma.LZMA.Master
                 TR("Lzma2Enc_SetProps:numBlockThreads", props.mNumBlockThreads);
                 TR("Lzma2Enc_SetProps:numTotalThreads", props.mNumTotalThreads);
 
-                CLzmaEncProps lzmaProps = props.mLzmaProps;
+                CLzmaEncProps lzmaProps = new CLzmaEncProps(props.mLzmaProps);
                 lzmaProps.LzmaEncProps_Normalize();
                 if(lzmaProps.mLC + lzmaProps.mLP > LZMA2_LCLP_MAX)
                     return SZ_ERROR_PARAM;
