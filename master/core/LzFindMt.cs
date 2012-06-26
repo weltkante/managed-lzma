@@ -406,36 +406,47 @@ namespace ManagedLzma.LZMA.Master
 
             internal void BtGetMatches(P<uint> distances)
             {
-                CMatchFinderMt p = this;
                 uint numProcessed = 0;
                 uint curPos = 2;
-                uint limit = kMtBtBlockSize - (p.mMatchMaxLen * 2);
-                distances[1] = p.mHashNumAvail;
+                uint limit = kMtBtBlockSize - (mMatchMaxLen * 2);
+
+                distances[1] = mHashNumAvail;
+
                 while(curPos < limit)
                 {
-                    if(p.mHashBufPos == p.mHashBufPosLimit)
+                    if(mHashBufPos == mHashBufPosLimit)
                     {
-                        p.MatchFinderMt_GetNextBlock_Hash();
-                        distances[1] = numProcessed + p.mHashNumAvail;
-                        if(p.mHashNumAvail >= p.mNumHashBytes)
+                        MatchFinderMt_GetNextBlock_Hash();
+                        distances[1] = numProcessed + mHashNumAvail;
+
+                        if(mHashNumAvail >= mNumHashBytes)
                             continue;
-                        for(; p.mHashNumAvail != 0; p.mHashNumAvail--)
+
+                        while(mHashNumAvail != 0)
+                        {
                             distances[curPos++] = 0;
+                            mHashNumAvail--;
+                        }
+
                         break;
                     }
                     {
-                        uint size = p.mHashBufPosLimit - p.mHashBufPos;
-                        uint lenLimit = p.mMatchMaxLen;
-                        uint pos = p.mPos;
-                        uint cyclicBufferPos = p.mCyclicBufferPos;
-                        TR("BtGetMatches:cyclicBufferPos0", cyclicBufferPos);
-                        if(lenLimit >= p.mHashNumAvail)
-                            lenLimit = p.mHashNumAvail;
+                        TR("BtGetMatches:cyclicBufferPos0", mCyclicBufferPos);
+
+                        uint size = mHashBufPosLimit - mHashBufPos;
+                        uint lenLimit = mMatchMaxLen;
+                        uint pos = mPos;
+                        uint cyclicBufferPos = mCyclicBufferPos;
+                        
+                        if(lenLimit >= mHashNumAvail)
+                            lenLimit = mHashNumAvail;
+
                         {
-                            uint size2 = p.mHashNumAvail - lenLimit + 1;
+                            uint size2 = mHashNumAvail - lenLimit + 1;
                             if(size2 < size)
                                 size = size2;
-                            size2 = p.mCyclicBufferSize - cyclicBufferPos;
+
+                            size2 = mCyclicBufferSize - cyclicBufferPos;
                             if(size2 < size)
                                 size = size2;
                         }
@@ -443,46 +454,49 @@ namespace ManagedLzma.LZMA.Master
                         while(curPos < limit && size-- != 0)
                         {
                             P<uint> startDistances = distances + curPos;
-                            uint num = (uint)(CMatchFinder.GetMatchesSpec1(lenLimit, pos - p.mHashBuf[p.mHashBufPos++],
-                                pos, p.mBuffer, p.mSon, cyclicBufferPos, p.mCyclicBufferSize, p.mCutValue,
-                                startDistances + 1, p.mNumHashBytes - 1) - startDistances);
+                            uint num = (uint)(CMatchFinder.GetMatchesSpec1(lenLimit, pos - mHashBuf[mHashBufPos++],
+                                pos, mBuffer, mSon, cyclicBufferPos, mCyclicBufferSize, mCutValue,
+                                startDistances + 1, mNumHashBytes - 1) - startDistances);
                             TR("GetMatchesSpec1", num);
                             startDistances[0] = num - 1;
                             curPos += num;
                             cyclicBufferPos++;
                             pos++;
-                            p.mBuffer++;
+                            mBuffer++;
                         }
 
-                        numProcessed += pos - p.mPos;
-                        p.mHashNumAvail -= pos - p.mPos;
-                        p.mPos = pos;
-                        if(cyclicBufferPos == p.mCyclicBufferSize)
+                        numProcessed += pos - mPos;
+                        mHashNumAvail -= pos - mPos;
+                        mPos = pos;
+
+                        if(cyclicBufferPos == mCyclicBufferSize)
                             cyclicBufferPos = 0;
-                        TR("BtGetMatches:cyclicBufferPos1", cyclicBufferPos);
-                        p.mCyclicBufferPos = cyclicBufferPos;
+
+                        mCyclicBufferPos = cyclicBufferPos;
+
+                        TR("BtGetMatches:cyclicBufferPos1", mCyclicBufferPos);
                     }
                 }
+
                 distances[0] = curPos;
             }
 
             internal void BtFillBlock(uint globalBlockIndex)
             {
-                CMatchFinderMt p = this;
-                CMtSync sync = p.mHashSync;
+                CMtSync sync = mHashSync;
                 if(!sync.mNeedStart)
                 {
                     CriticalSection_Enter(sync.mCS);
                     sync.mCsWasEntered = true;
                 }
 
-                p.BtGetMatches(p.mBtBuf + (globalBlockIndex & kMtBtNumBlocksMask) * kMtBtBlockSize);
+                BtGetMatches(mBtBuf + (globalBlockIndex & kMtBtNumBlocksMask) * kMtBtBlockSize);
 
-                if(p.mPos > kMtMaxValForNormalize - kMtBtBlockSize)
+                if(mPos > kMtMaxValForNormalize - kMtBtBlockSize)
                 {
-                    uint subValue = p.mPos - p.mCyclicBufferSize;
-                    CMatchFinder.MatchFinder_Normalize3(subValue, p.mSon, p.mCyclicBufferSize * 2);
-                    p.mPos -= subValue;
+                    uint subValue = mPos - mCyclicBufferSize;
+                    CMatchFinder.MatchFinder_Normalize3(subValue, mSon, mCyclicBufferSize * 2);
+                    mPos -= subValue;
                 }
 
                 if(!sync.mNeedStart)
@@ -498,15 +512,18 @@ namespace ManagedLzma.LZMA.Master
                 CMtSync p = mt.mBtSync;
                 for(; ; )
                 {
-                    uint blockIndex = 0;
                     Event_Wait(p.mCanStart);
                     Event_Set(p.mWasStarted);
+
+                    uint blockIndex = 0;
                     for(; ; )
                     {
                         if(p.mExit)
                             return;
+                        
                         if(SyncTrace.Enable)
                             Trace.MatchObjectWait(p, "BtThreadFunc:stop");
+
                         if(p.mStopWriting)
                         {
                             if(SyncTrace.Enable)
@@ -516,8 +533,10 @@ namespace ManagedLzma.LZMA.Master
                             Event_Set(p.mWasStopped);
                             break;
                         }
+
                         if(SyncTrace.Enable)
                             Trace.MatchObjectWait(p, "BtThreadFunc:stop");
+
                         Semaphore_Wait(p.mFreeSemaphore);
                         mt.BtFillBlock(blockIndex++);
                         Semaphore_Release1(p.mFilledSemaphore);
@@ -540,6 +559,7 @@ namespace ManagedLzma.LZMA.Master
                     p.mHashBuf = (uint[])alloc.Alloc<uint>(alloc, kHashBufferSize + kBtBufferSize);
                     if(p.mHashBuf == null)
                         return SZ_ERROR_MEM;
+
                     p.mBtBuf = P.From(p.mHashBuf, kHashBufferSize);
                 }
 
@@ -657,9 +677,10 @@ namespace ManagedLzma.LZMA.Master
                 }
                 else
                 {
-                    /* Condition: there are matches in btBuf with length < p.numHashBytes */
+                    // Condition: there are matches in btBuf with length < p.numHashBytes
                     p.mBtNumAvailBytes--;
                     P<uint> distances2 = p.mInterface.MixMatchesFunc(p, p.mLzPos - btBuf[1], distances);
+
                     do
                     {
                         distances2[0] = btBuf[0];
@@ -669,8 +690,11 @@ namespace ManagedLzma.LZMA.Master
                         distances2[0] = btBuf[0];
                         distances2++;
                         btBuf++;
+
+                        len -= 2;
                     }
-                    while((len -= 2) != 0);
+                    while(len != 0);
+
                     len = (uint)(distances2 - distances);
                 }
 
@@ -694,7 +718,7 @@ namespace ManagedLzma.LZMA.Master
 
             public override void GetHeadsFunc(P<byte> buffer, uint pos, P<uint> hash, uint hashMask, P<uint> heads, uint numHeads)
             {
-                for(; numHeads != 0; numHeads--)
+                while(numHeads != 0)
                 {
                     uint value = buffer[0] | ((uint)buffer[1] << 8);
                     TR("GetHeads2", value);
@@ -702,6 +726,7 @@ namespace ManagedLzma.LZMA.Master
                     heads[0] = pos - hash[value];
                     heads++;
                     hash[value] = pos++;
+                    numHeads--;
                 }
             }
 
@@ -759,7 +784,7 @@ namespace ManagedLzma.LZMA.Master
 
             public override void GetHeadsFunc(P<byte> buffer, uint pos, P<uint> hash, uint hashMask, P<uint> heads, uint numHeads)
             {
-                for(; numHeads != 0; numHeads--)
+                while(numHeads != 0)
                 {
                     uint value = (buffer[0].CRC() ^ buffer[1] ^ ((uint)buffer[2] << 8)) & hashMask;
                     TR("GetHeads3", value);
@@ -767,6 +792,7 @@ namespace ManagedLzma.LZMA.Master
                     heads[0] = pos - hash[value];
                     heads++;
                     hash[value] = pos++;
+                    numHeads--;
                 }
             }
 
@@ -833,7 +859,6 @@ namespace ManagedLzma.LZMA.Master
 
             private static P<uint> MixMatches3(CMatchFinderMt p, uint matchMinPos, P<uint> distances)
             {
-                uint curMatch2, curMatch3;
                 P<uint> hash = p.mHash;
                 P<byte> cur = p.mPointerToCurPos;
                 uint lzPos = p.mLzPos;
@@ -841,8 +866,8 @@ namespace ManagedLzma.LZMA.Master
                 uint hash2Value = temp & (kHash2Size - 1);
                 uint hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);
 
-                curMatch2 = hash[hash2Value];
-                curMatch3 = hash[kFix3HashSize + hash3Value];
+                uint curMatch2 = hash[hash2Value];
+                uint curMatch3 = hash[kFix3HashSize + hash3Value];
 
                 hash[hash2Value] = lzPos;
                 hash[kFix3HashSize + hash3Value] = lzPos;
@@ -850,6 +875,7 @@ namespace ManagedLzma.LZMA.Master
                 if(curMatch2 >= matchMinPos && cur[curMatch2 - lzPos] == cur[0])
                 {
                     distances[1] = lzPos - curMatch2 - 1;
+
                     if(cur[curMatch2 - lzPos + 2] == cur[2])
                     {
                         distances[0] = 3;
@@ -902,7 +928,7 @@ namespace ManagedLzma.LZMA.Master
         {
             public override void GetHeadsFunc(P<byte> buffer, uint pos, P<uint> hash, uint hashMask, P<uint> heads, uint numHeads)
             {
-                for(; numHeads != 0; numHeads--)
+                while(numHeads != 0)
                 {
                     uint value = (buffer[0].CRC() ^ buffer[1] ^ ((uint)buffer[2] << 8) ^ (buffer[3].CRC() << 5)) & hashMask;
                     TR("GetHeads4", value);
@@ -910,6 +936,7 @@ namespace ManagedLzma.LZMA.Master
                     heads[0] = pos - hash[value];
                     heads++;
                     hash[value] = pos++;
+                    numHeads--;
                 }
             }
         }
@@ -918,7 +945,7 @@ namespace ManagedLzma.LZMA.Master
         {
             public override void GetHeadsFunc(P<byte> buffer, uint pos, P<uint> hash, uint hashMask, P<uint> heads, uint numHeads)
             {
-                for(; numHeads != 0; numHeads--)
+                while(numHeads != 0)
                 {
                     uint value = (buffer[0].CRC() ^ buffer[1] ^ ((uint)buffer[2] << 8) ^ ((uint)buffer[3] << 16)) & hashMask;
                     TR("GetHeads4b", value);
@@ -926,6 +953,7 @@ namespace ManagedLzma.LZMA.Master
                     heads[0] = pos - hash[value];
                     heads++;
                     hash[value] = pos++;
+                    numHeads--;
                 }
             }
         }

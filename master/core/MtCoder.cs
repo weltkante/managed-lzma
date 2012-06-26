@@ -361,34 +361,37 @@ namespace ManagedLzma.LZMA.Master
 
             internal SRes CMtThread_Prepare()
             {
-                CMtThread p = this;
-                if(p.mInBuf == null || p.mInBufSize != p.mMtCoder.mBlockSize)
+                if(mInBuf == null || mInBufSize != mMtCoder.mBlockSize)
                 {
-                    IAlloc_Free(p.mMtCoder.mAlloc, p.mInBuf);
-                    p.mInBufSize = p.mMtCoder.mBlockSize;
-                    p.mInBuf = (byte[])IAlloc_Alloc<byte>(p.mMtCoder.mAlloc, p.mInBufSize);
-                    if(p.mInBuf == null)
+                    IAlloc_Free(mMtCoder.mAlloc, mInBuf);
+                    mInBufSize = mMtCoder.mBlockSize;
+                    mInBuf = (byte[])IAlloc_Alloc<byte>(mMtCoder.mAlloc, mInBufSize);
+                    if(mInBuf == null)
                         return SZ_ERROR_MEM;
                 }
 
-                if(p.mOutBuf == null || p.mOutBufSize != p.mMtCoder.mDestBlockSize)
+                if(mOutBuf == null || mOutBufSize != mMtCoder.mDestBlockSize)
                 {
-                    IAlloc_Free(p.mMtCoder.mAlloc, p.mOutBuf);
-                    p.mOutBufSize = p.mMtCoder.mDestBlockSize;
-                    p.mOutBuf = (byte[])IAlloc_Alloc<byte>(p.mMtCoder.mAlloc, p.mOutBufSize);
-                    if(p.mOutBuf == null)
+                    IAlloc_Free(mMtCoder.mAlloc, mOutBuf);
+                    mOutBufSize = mMtCoder.mDestBlockSize;
+                    mOutBuf = (byte[])IAlloc_Alloc<byte>(mMtCoder.mAlloc, mOutBufSize);
+                    if(mOutBuf == null)
                         return SZ_ERROR_MEM;
                 }
 
                 if(SyncTrace.Enable)
-                    Trace.MatchObjectWait(p, "CMtThread_Prepare");
-                p.mStopReading = false;
-                p.mStopWriting = false;
+                    Trace.MatchObjectWait(this, "CMtThread_Prepare");
+                
+                mStopReading = false;
+                mStopWriting = false;
+                
                 if(SyncTrace.Enable)
-                    Trace.MatchObjectWait(p, "CMtThread_Prepare");
-                if(AutoResetEvent_CreateNotSignaled(out p.mCanRead) != SZ_OK)
+                    Trace.MatchObjectWait(this, "CMtThread_Prepare");
+                
+                if(AutoResetEvent_CreateNotSignaled(out mCanRead) != SZ_OK)
                     return SZ_ERROR_THREAD;
-                if(AutoResetEvent_CreateNotSignaled(out p.mCanWrite) != SZ_OK)
+                
+                if(AutoResetEvent_CreateNotSignaled(out mCanWrite) != SZ_OK)
                     return SZ_ERROR_THREAD;
 
                 return SZ_OK;

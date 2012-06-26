@@ -392,8 +392,8 @@ namespace ManagedLzma.LZMA.Master
 
             internal void RangeEnc_Free(ISzAlloc alloc)
             {
-                alloc.Free(alloc, this.mBufBase);
-                this.mBufBase = null;
+                alloc.Free(alloc, mBufBase);
+                mBufBase = null;
             }
 
             internal void RangeEnc_Init()
@@ -1024,10 +1024,10 @@ namespace ManagedLzma.LZMA.Master
             public SRes LzmaEnc_Encode(ISeqOutStream outStream, ISeqInStream inStream, ICompressProgress progress, ISzAlloc alloc, ISzAlloc allocBig)
             {
                 SRes res;
-                if((res = this.LzmaEnc_Prepare(outStream, inStream, alloc, allocBig)) != SZ_OK)
+                if((res = LzmaEnc_Prepare(outStream, inStream, alloc, allocBig)) != SZ_OK)
                     return res;
 
-                return this.LzmaEnc_Encode2(progress);
+                return LzmaEnc_Encode2(progress);
             }
 
             public SRes LzmaEnc_MemEncode(P<byte> dest, ref long destLen, P<byte> src, long srcLen, bool writeEndMark, ICompressProgress progress, ISzAlloc alloc, ISzAlloc allocBig)

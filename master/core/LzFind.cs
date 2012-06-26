@@ -74,10 +74,11 @@ namespace ManagedLzma.LZMA.Master
 
             internal bool MatchFinder_NeedMove()
             {
-                CMatchFinder p = this;
-                if(p.mDirectInput) return false;
+                if(mDirectInput)
+                    return false;
+
                 // if (p.streamEndWasReached) return false;
-                return (p.mBufferBase + p.mBlockSize - p.mBuffer) <= p.mKeepSizeAfter;
+                return mBufferBase + mBlockSize - mBuffer <= mKeepSizeAfter;
             }
 
             internal P<byte> MatchFinder_GetPointerToCurrentPos()
@@ -109,20 +110,22 @@ namespace ManagedLzma.LZMA.Master
             // keepSizeBefore + keepSizeAfter + keepSizeReserv must be < 4G)
             private bool LzInWindow_Create(uint keepSizeReserv, ISzAlloc alloc)
             {
-                CMatchFinder p = this;
-                uint blockSize = p.mKeepSizeBefore + p.mKeepSizeAfter + keepSizeReserv;
-                if(p.mDirectInput)
+                uint blockSize = mKeepSizeBefore + mKeepSizeAfter + keepSizeReserv;
+
+                if(mDirectInput)
                 {
-                    p.mBlockSize = blockSize;
+                    mBlockSize = blockSize;
                     return true;
                 }
-                if(p.mBufferBase == null || p.mBlockSize != blockSize)
+
+                if(mBufferBase == null || mBlockSize != blockSize)
                 {
                     LzInWindow_Free(alloc);
-                    p.mBlockSize = blockSize;
-                    p.mBufferBase = (byte[])alloc.Alloc<byte>(alloc, (long)blockSize);
+                    mBlockSize = blockSize;
+                    mBufferBase = (byte[])alloc.Alloc<byte>(alloc, (long)blockSize);
                 }
-                return (p.mBufferBase != null);
+
+                return mBufferBase != null;
             }
 
             internal byte MatchFinder_GetIndexByte(int index)
@@ -144,36 +147,42 @@ namespace ManagedLzma.LZMA.Master
 
             private void MatchFinder_ReadBlock()
             {
-                CMatchFinder p = this;
-                if(p.mStreamEndWasReached || p.mResult != SZ_OK)
+                if(mStreamEndWasReached || mResult != SZ_OK)
                     return;
-                if(p.mDirectInput)
+
+                if(mDirectInput)
                 {
-                    uint curSize = 0xFFFFFFFF - p.mStreamPos;
-                    if(curSize > p.mDirectInputRem)
-                        curSize = (uint)p.mDirectInputRem;
-                    p.mDirectInputRem -= curSize;
-                    p.mStreamPos += curSize;
-                    if(p.mDirectInputRem == 0)
-                        p.mStreamEndWasReached = true;
+                    uint curSize = 0xFFFFFFFF - mStreamPos;
+                    if(curSize > mDirectInputRem)
+                        curSize = (uint)mDirectInputRem;
+
+                    mDirectInputRem -= curSize;
+                    mStreamPos += curSize;
+                    if(mDirectInputRem == 0)
+                        mStreamEndWasReached = true;
+
                     return;
                 }
+
                 for(; ; )
                 {
-                    P<byte> dest = p.mBuffer + (p.mStreamPos - p.mPos);
-                    long size = p.mBufferBase + p.mBlockSize - dest;
+                    P<byte> dest = mBuffer + (mStreamPos - mPos);
+                    long size = mBufferBase + mBlockSize - dest;
                     if(size == 0)
                         return;
-                    p.mResult = p.mStream.Read(dest, ref size);
-                    if(p.mResult != SZ_OK)
+
+                    mResult = mStream.Read(dest, ref size);
+                    if(mResult != SZ_OK)
                         return;
+
                     if(size == 0)
                     {
-                        p.mStreamEndWasReached = true;
+                        mStreamEndWasReached = true;
                         return;
                     }
-                    p.mStreamPos += (uint)size;
-                    if(p.mStreamPos - p.mPos > p.mKeepSizeAfter)
+
+                    mStreamPos += (uint)size;
+                    if(mStreamPos - mPos > mKeepSizeAfter)
                         return;
                 }
             }
@@ -212,31 +221,35 @@ namespace ManagedLzma.LZMA.Master
             //     keepAddBufferBefore + matchMaxLen + keepAddBufferAfter < 511MB
             internal bool MatchFinder_Create(uint historySize, uint keepAddBufferBefore, uint matchMaxLen, uint keepAddBufferAfter, ISzAlloc alloc)
             {
-                CMatchFinder p = this;
-
-                uint sizeReserv;
                 if(historySize > kMaxHistorySize)
                 {
                     MatchFinder_Free(alloc);
                     return false;
                 }
-                sizeReserv = historySize >> 1;
+
+                uint sizeReserv = historySize >> 1;
                 if(historySize > ((uint)2 << 30))
                     sizeReserv = historySize >> 2;
                 sizeReserv += (keepAddBufferBefore + matchMaxLen + keepAddBufferAfter) / 2 + (1 << 19);
 
-                p.mKeepSizeBefore = historySize + keepAddBufferBefore + 1;
-                p.mKeepSizeAfter = matchMaxLen + keepAddBufferAfter;
+                mKeepSizeBefore = historySize + keepAddBufferBefore + 1;
+                mKeepSizeAfter = matchMaxLen + keepAddBufferAfter;
+
                 // we need one additional byte, since we use MoveBlock after pos++ and before dictionary using
                 if(LzInWindow_Create(sizeReserv, alloc))
                 {
                     uint newCyclicBufferSize = historySize + 1;
                     uint hs;
-                    p.mMatchMaxLen = matchMaxLen;
+
+                    mMatchMaxLen = matchMaxLen;
+
                     {
-                        p.mFixedHashSize = 0;
-                        if(p.mNumHashBytes == 2)
+                        mFixedHashSize = 0;
+
+                        if(mNumHashBytes == 2)
+                        {
                             hs = (1 << 16) - 1;
+                        }
                         else
                         {
                             hs = historySize - 1;
@@ -248,76 +261,83 @@ namespace ManagedLzma.LZMA.Master
                             hs |= 0xFFFF; // don't change it! It's required for Deflate
                             if(hs > (1 << 24))
                             {
-                                if(p.mNumHashBytes == 3)
+                                if(mNumHashBytes == 3)
                                     hs = (1 << 24) - 1;
                                 else
                                     hs >>= 1;
                             }
                         }
-                        p.mHashMask = hs;
+
+                        mHashMask = hs;
                         hs++;
-                        if(p.mNumHashBytes > 2)
-                            p.mFixedHashSize += kHash2Size;
-                        if(p.mNumHashBytes > 3)
-                            p.mFixedHashSize += kHash3Size;
-                        if(p.mNumHashBytes > 4)
-                            p.mFixedHashSize += kHash4Size;
-                        hs += p.mFixedHashSize;
+
+                        if(mNumHashBytes > 2)
+                            mFixedHashSize += kHash2Size;
+                        if(mNumHashBytes > 3)
+                            mFixedHashSize += kHash3Size;
+                        if(mNumHashBytes > 4)
+                            mFixedHashSize += kHash4Size;
+
+                        hs += mFixedHashSize;
                     }
 
                     {
-                        uint prevSize = p.mHashSizeSum + p.mNumSons;
-                        uint newSize;
-                        p.mHistorySize = historySize;
-                        p.mHashSizeSum = hs;
-                        p.mCyclicBufferSize = newCyclicBufferSize;
-                        p.mNumSons = (p.mBtMode ? newCyclicBufferSize * 2 : newCyclicBufferSize);
-                        newSize = p.mHashSizeSum + p.mNumSons;
-                        if(p.mHash != null && prevSize == newSize)
+                        uint prevSize = mHashSizeSum + mNumSons;
+
+                        mHistorySize = historySize;
+                        mHashSizeSum = hs;
+                        mCyclicBufferSize = newCyclicBufferSize;
+                        mNumSons = (mBtMode ? newCyclicBufferSize * 2 : newCyclicBufferSize);
+
+                        uint newSize = mHashSizeSum + mNumSons;
+                        if(mHash != null && prevSize == newSize)
                             return true;
+
                         MatchFinder_FreeThisClassMemory(alloc);
-                        p.mHash = AllocRefs(newSize, alloc);
-                        if(p.mHash != null)
+
+                        mHash = AllocRefs(newSize, alloc);
+                        if(mHash != null)
                         {
-                            p.mSon = P.From(p.mHash, p.mHashSizeSum);
+                            mSon = P.From(mHash, mHashSizeSum);
                             return true;
                         }
                     }
                 }
+
                 MatchFinder_Free(alloc);
                 return false;
             }
 
             private void MatchFinder_SetLimits()
             {
-                CMatchFinder p = this;
-                uint limit = kMaxValForNormalize - p.mPos;
-                uint limit2 = p.mCyclicBufferSize - p.mCyclicBufferPos;
+                uint limit = kMaxValForNormalize - mPos;
+                uint limit2 = mCyclicBufferSize - mCyclicBufferPos;
                 if(limit2 < limit)
                     limit = limit2;
-                limit2 = p.mStreamPos - p.mPos;
-                if(limit2 <= p.mKeepSizeAfter)
+                limit2 = mStreamPos - mPos;
+                if(limit2 <= mKeepSizeAfter)
                 {
                     if(limit2 > 0)
                         limit2 = 1;
                 }
                 else
-                    limit2 -= p.mKeepSizeAfter;
+                {
+                    limit2 -= mKeepSizeAfter;
+                }
                 if(limit2 < limit)
                     limit = limit2;
-                {
-                    uint lenLimit = p.mStreamPos - p.mPos;
-                    if(lenLimit > p.mMatchMaxLen)
-                        lenLimit = p.mMatchMaxLen;
-                    p.mLenLimit = lenLimit;
-                }
-                p.mPosLimit = p.mPos + limit;
+                uint lenLimit = mStreamPos - mPos;
+                if(lenLimit > mMatchMaxLen)
+                    lenLimit = mMatchMaxLen;
+                mLenLimit = lenLimit;
+                mPosLimit = mPos + limit;
             }
 
             internal void MatchFinder_Init()
             {
                 for(uint i = 0; i < mHashSizeSum; i++)
                     mHash[i] = kEmptyHashValue;
+
                 mCyclicBufferPos = 0;
                 mBuffer = mBufferBase;
                 mPos = mCyclicBufferSize;
@@ -330,8 +350,7 @@ namespace ManagedLzma.LZMA.Master
 
             private uint MatchFinder_GetSubValue()
             {
-                CMatchFinder p = this;
-                return (p.mPos - p.mHistorySize - 1) & kNormalizeMask;
+                return (mPos - mHistorySize - 1) & kNormalizeMask;
             }
 
             internal static void MatchFinder_Normalize3(uint subValue, P<uint> items, uint numItems)
@@ -349,9 +368,8 @@ namespace ManagedLzma.LZMA.Master
 
             private void MatchFinder_Normalize()
             {
-                CMatchFinder p = this;
                 uint subValue = MatchFinder_GetSubValue();
-                MatchFinder_Normalize3(subValue, p.mHash, p.mHashSizeSum + p.mNumSons);
+                MatchFinder_Normalize3(subValue, mHash, mHashSizeSum + mNumSons);
                 MatchFinder_ReduceOffsets(subValue);
             }
 
@@ -372,29 +390,30 @@ namespace ManagedLzma.LZMA.Master
             private static P<uint> Hc_GetMatchesSpec(uint lenLimit, uint curMatch, uint pos, P<byte> cur, P<uint> son, uint _cyclicBufferPos, uint _cyclicBufferSize, uint cutValue, P<uint> distances, uint maxLen)
             {
                 son[_cyclicBufferPos] = curMatch;
+
                 for(; ; )
                 {
                     uint delta = pos - curMatch;
                     if(cutValue-- == 0 || delta >= _cyclicBufferSize)
                         return distances;
+
+                    P<byte> pb = cur - delta;
+                    curMatch = son[_cyclicBufferPos - delta + ((delta > _cyclicBufferPos) ? _cyclicBufferSize : 0)];
+                    if(pb[maxLen] == cur[maxLen] && pb[0] == cur[0])
                     {
-                        P<byte> pb = cur - delta;
-                        curMatch = son[_cyclicBufferPos - delta + ((delta > _cyclicBufferPos) ? _cyclicBufferSize : 0)];
-                        if(pb[maxLen] == cur[maxLen] && pb[0] == cur[0])
+                        uint len = 0;
+                        while(++len != lenLimit)
+                            if(pb[len] != cur[len])
+                                break;
+
+                        if(maxLen < len)
                         {
-                            uint len = 0;
-                            while(++len != lenLimit)
-                                if(pb[len] != cur[len])
-                                    break;
-                            if(maxLen < len)
-                            {
-                                distances[0] = maxLen = len;
-                                distances++;
-                                distances[0] = delta - 1;
-                                distances++;
-                                if(len == lenLimit)
-                                    return distances;
-                            }
+                            distances[0] = maxLen = len;
+                            distances++;
+                            distances[0] = delta - 1;
+                            distances++;
+                            if(len == lenLimit)
+                                return distances;
                         }
                     }
                 }
@@ -404,7 +423,9 @@ namespace ManagedLzma.LZMA.Master
             {
                 P<uint> ptr0 = son + (_cyclicBufferPos << 1) + 1;
                 P<uint> ptr1 = son + (_cyclicBufferPos << 1);
-                uint len0 = 0, len1 = 0;
+                uint len0 = 0;
+                uint len1 = 0;
+
                 for(; ; )
                 {
                     uint delta = pos - curMatch;
@@ -413,44 +434,47 @@ namespace ManagedLzma.LZMA.Master
                         ptr0[0] = ptr1[0] = CMatchFinder.kEmptyHashValue;
                         return distances;
                     }
+
+                    P<uint> pair = son + ((_cyclicBufferPos - delta + ((delta > _cyclicBufferPos) ? _cyclicBufferSize : 0)) << 1);
+                    P<byte> pb = cur - delta;
+                    uint len = (len0 < len1 ? len0 : len1);
+
+                    if(pb[len] == cur[len])
                     {
-                        P<uint> pair = son + ((_cyclicBufferPos - delta + ((delta > _cyclicBufferPos) ? _cyclicBufferSize : 0)) << 1);
-                        P<byte> pb = cur - delta;
-                        uint len = (len0 < len1 ? len0 : len1);
-                        if(pb[len] == cur[len])
+                        if(++len != lenLimit && pb[len] == cur[len])
+                            while(++len != lenLimit)
+                                if(pb[len] != cur[len])
+                                    break;
+
+                        if(maxLen < len)
                         {
-                            if(++len != lenLimit && pb[len] == cur[len])
-                                while(++len != lenLimit)
-                                    if(pb[len] != cur[len])
-                                        break;
-                            if(maxLen < len)
+                            distances[0] = maxLen = len;
+                            distances++;
+                            distances[0] = delta - 1;
+                            distances++;
+
+                            if(len == lenLimit)
                             {
-                                distances[0] = maxLen = len;
-                                distances++;
-                                distances[0] = delta - 1;
-                                distances++;
-                                if(len == lenLimit)
-                                {
-                                    ptr1[0] = pair[0];
-                                    ptr0[0] = pair[1];
-                                    return distances;
-                                }
+                                ptr1[0] = pair[0];
+                                ptr0[0] = pair[1];
+                                return distances;
                             }
                         }
-                        if(pb[len] < cur[len])
-                        {
-                            ptr1[0] = curMatch;
-                            ptr1 = pair + 1;
-                            curMatch = ptr1[0];
-                            len1 = len;
-                        }
-                        else
-                        {
-                            ptr0[0] = curMatch;
-                            ptr0 = pair;
-                            curMatch = ptr0[0];
-                            len0 = len;
-                        }
+                    }
+
+                    if(pb[len] < cur[len])
+                    {
+                        ptr1[0] = curMatch;
+                        ptr1 = pair + 1;
+                        curMatch = ptr1[0];
+                        len1 = len;
+                    }
+                    else
+                    {
+                        ptr0[0] = curMatch;
+                        ptr0 = pair;
+                        curMatch = ptr0[0];
+                        len0 = len;
                     }
                 }
             }
@@ -459,7 +483,9 @@ namespace ManagedLzma.LZMA.Master
             {
                 P<uint> ptr0 = son + (_cyclicBufferPos << 1) + 1;
                 P<uint> ptr1 = son + (_cyclicBufferPos << 1);
-                uint len0 = 0, len1 = 0;
+                uint len0 = 0;
+                uint len1 = 0;
+
                 for(; ; )
                 {
                     uint delta = pos - curMatch;
@@ -468,38 +494,38 @@ namespace ManagedLzma.LZMA.Master
                         ptr0[0] = ptr1[0] = CMatchFinder.kEmptyHashValue;
                         return;
                     }
+
+                    P<uint> pair = son + ((_cyclicBufferPos - delta + ((delta > _cyclicBufferPos) ? _cyclicBufferSize : 0)) << 1);
+                    P<byte> pb = cur - delta;
+                    uint len = (len0 < len1 ? len0 : len1);
+
+                    if(pb[len] == cur[len])
                     {
-                        P<uint> pair = son + ((_cyclicBufferPos - delta + ((delta > _cyclicBufferPos) ? _cyclicBufferSize : 0)) << 1);
-                        P<byte> pb = cur - delta;
-                        uint len = (len0 < len1 ? len0 : len1);
-                        if(pb[len] == cur[len])
+                        while(++len != lenLimit)
+                            if(pb[len] != cur[len])
+                                break;
+
+                        if(len == lenLimit)
                         {
-                            while(++len != lenLimit)
-                                if(pb[len] != cur[len])
-                                    break;
-                            {
-                                if(len == lenLimit)
-                                {
-                                    ptr1[0] = pair[0];
-                                    ptr0[0] = pair[1];
-                                    return;
-                                }
-                            }
+                            ptr1[0] = pair[0];
+                            ptr0[0] = pair[1];
+                            return;
                         }
-                        if(pb[len] < cur[len])
-                        {
-                            ptr1[0] = curMatch;
-                            ptr1 = pair + 1;
-                            curMatch = ptr1[0];
-                            len1 = len;
-                        }
-                        else
-                        {
-                            ptr0[0] = curMatch;
-                            ptr0 = pair;
-                            curMatch = ptr0[0];
-                            len0 = len;
-                        }
+                    }
+
+                    if(pb[len] < cur[len])
+                    {
+                        ptr1[0] = curMatch;
+                        ptr1 = pair + 1;
+                        curMatch = ptr1[0];
+                        len1 = len;
+                    }
+                    else
+                    {
+                        ptr0[0] = curMatch;
+                        ptr0 = pair;
+                        curMatch = ptr0[0];
+                        len0 = len;
                     }
                 }
             }
@@ -516,57 +542,55 @@ namespace ManagedLzma.LZMA.Master
 
             internal uint Bt2_MatchFinder_GetMatches(P<uint> distances)
             {
-                CMatchFinder p = this;
-                uint offset;
-                uint lenLimit;
-                uint hashValue;
-                P<byte> cur;
-                uint curMatch;
-                lenLimit = p.mLenLimit;
+                uint lenLimit = mLenLimit;
                 if(lenLimit < 2)
                 {
                     MatchFinder_MovePos();
                     return 0;
                 }
-                cur = p.mBuffer;
-                hashValue = cur[0] | ((uint)cur[1] << 8);
-                curMatch = p.mHash[hashValue];
-                p.mHash[hashValue] = p.mPos;
-                offset = 0;
-                offset = (uint)(GetMatchesSpec1(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue, distances + offset, 1) - distances);
-                p.mCyclicBufferPos++;
-                p.mBuffer++;
-                if(++p.mPos == p.mPosLimit)
-                    p.MatchFinder_CheckLimits();
+
+                P<byte> cur = mBuffer;
+                uint hashValue = cur[0] | ((uint)cur[1] << 8);
+                uint curMatch = mHash[hashValue];
+                mHash[hashValue] = mPos;
+
+                uint offset = 0;
+                offset = (uint)(GetMatchesSpec1(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue, distances + offset, 1) - distances);
+
+                mCyclicBufferPos++;
+                mBuffer++;
+
+                if(++mPos == mPosLimit)
+                    MatchFinder_CheckLimits();
+
                 return offset;
             }
 
             internal uint Bt3_MatchFinder_GetMatches(P<uint> distances)
             {
-                CMatchFinder p = this;
-
-                uint lenLimit = p.mLenLimit;
+                uint lenLimit = mLenLimit;
                 if(lenLimit < 3)
                 {
                     MatchFinder_MovePos();
                     return 0;
                 }
 
-                P<byte> cur = p.mBuffer;
+                P<byte> cur = mBuffer;
 
                 uint temp = cur[0].CRC() ^ cur[1];
                 uint hash2Value = temp & (kHash2Size - 1);
-                uint hashValue = (temp ^ ((uint)cur[2] << 8)) & p.mHashMask;
+                uint hashValue = (temp ^ ((uint)cur[2] << 8)) & mHashMask;
 
-                uint delta2 = p.mPos - p.mHash[hash2Value];
-                uint curMatch = p.mHash[kFix3HashSize + hashValue];
+                uint delta2 = mPos - mHash[hash2Value];
+                uint curMatch = mHash[kFix3HashSize + hashValue];
 
-                p.mHash[hash2Value] = p.mPos;
-                p.mHash[kFix3HashSize + hashValue] = p.mPos;
+                mHash[hash2Value] = mPos;
+                mHash[kFix3HashSize + hashValue] = mPos;
 
                 uint maxLen = 2;
                 uint offset = 0;
-                if(delta2 < p.mCyclicBufferSize && (cur - delta2)[0] == cur[0])
+
+                if(delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
                 {
                     while(maxLen != lenLimit)
                     {
@@ -579,87 +603,105 @@ namespace ManagedLzma.LZMA.Master
                     distances[0] = maxLen;
                     distances[1] = delta2 - 1;
                     offset = 2;
+
                     if(maxLen == lenLimit)
                     {
-                        SkipMatchesSpec(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue);
-                        p.mCyclicBufferPos++;
-                        p.mBuffer++;
-                        if(++p.mPos == p.mPosLimit)
-                            p.MatchFinder_CheckLimits();
+                        SkipMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue);
+
+                        mCyclicBufferPos++;
+                        mBuffer++;
+
+                        if(++mPos == mPosLimit)
+                            MatchFinder_CheckLimits();
+
                         return offset;
                     }
                 }
-                offset = (uint)(GetMatchesSpec1(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue, distances + offset, maxLen) - distances);
-                p.mCyclicBufferPos++;
-                p.mBuffer++;
-                if(++p.mPos == p.mPosLimit)
-                    p.MatchFinder_CheckLimits();
+
+                offset = (uint)(GetMatchesSpec1(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue, distances + offset, maxLen) - distances);
+
+                mCyclicBufferPos++;
+                mBuffer++;
+
+                if(++mPos == mPosLimit)
+                    MatchFinder_CheckLimits();
+
                 return offset;
             }
 
             internal uint Bt4_MatchFinder_GetMatches(P<uint> distances)
             {
-                CMatchFinder p = this;
-
-                uint lenLimit = p.mLenLimit;
+                uint lenLimit = mLenLimit;
                 if(lenLimit < 4)
                 {
                     MatchFinder_MovePos();
                     return 0;
                 }
 
-                P<byte> cur = p.mBuffer;
+                P<byte> cur = mBuffer;
 
                 uint temp = cur[0].CRC() ^ cur[1];
                 uint hash2Value = temp & (kHash2Size - 1);
                 uint hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);
-                uint hashValue = (temp ^ ((uint)cur[2] << 8) ^ (cur[3].CRC() << 5)) & p.mHashMask;
+                uint hashValue = (temp ^ ((uint)cur[2] << 8) ^ (cur[3].CRC() << 5)) & mHashMask;
 
-                uint delta2 = p.mPos - p.mHash[hash2Value];
-                uint delta3 = p.mPos - p.mHash[kFix3HashSize + hash3Value];
-                uint curMatch = p.mHash[kFix4HashSize + hashValue];
+                uint delta2 = mPos - mHash[hash2Value];
+                uint delta3 = mPos - mHash[kFix3HashSize + hash3Value];
+                uint curMatch = mHash[kFix4HashSize + hashValue];
 
-                p.mHash[hash2Value] =
-                p.mHash[kFix3HashSize + hash3Value] =
-                p.mHash[kFix4HashSize + hashValue] = p.mPos;
+                mHash[hash2Value] = mPos;
+                mHash[kFix3HashSize + hash3Value] = mPos;
+                mHash[kFix4HashSize + hashValue] = mPos;
 
                 uint maxLen = 1;
                 uint offset = 0;
-                if(delta2 < p.mCyclicBufferSize && (cur - delta2)[0] == cur[0])
+
+                if(delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
                 {
                     distances[0] = maxLen = 2;
                     distances[1] = delta2 - 1;
                     offset = 2;
                 }
-                if(delta2 != delta3 && delta3 < p.mCyclicBufferSize && (cur - delta3)[0] == cur[0])
+
+                if(delta2 != delta3 && delta3 < mCyclicBufferSize && cur[-delta3] == cur[0])
                 {
                     maxLen = 3;
                     distances[offset + 1] = delta3 - 1;
                     offset += 2;
                     delta2 = delta3;
                 }
+
                 if(offset != 0)
                 {
                     while(maxLen != lenLimit && cur[maxLen - delta2] == cur[maxLen])
                         maxLen++;
+
                     distances[offset - 2] = maxLen;
+
                     if(maxLen == lenLimit)
                     {
-                        SkipMatchesSpec(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue);
-                        p.mCyclicBufferPos++;
-                        p.mBuffer++;
-                        if(++p.mPos == p.mPosLimit)
+                        SkipMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue);
+                        mCyclicBufferPos++;
+                        mBuffer++;
+
+                        if(++mPos == mPosLimit)
                             MatchFinder_CheckLimits();
+
                         return offset;
                     }
                 }
+
                 if(maxLen < 3)
                     maxLen = 3;
-                offset = (uint)(GetMatchesSpec1(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue, distances + offset, maxLen) - distances);
-                p.mCyclicBufferPos++;
-                p.mBuffer++;
-                if(++p.mPos == p.mPosLimit)
+
+                offset = (uint)(GetMatchesSpec1(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue, distances + offset, maxLen) - distances);
+
+                mCyclicBufferPos++;
+                mBuffer++;
+
+                if(++mPos == mPosLimit)
                     MatchFinder_CheckLimits();
+
                 return offset;
             }
 
@@ -689,7 +731,8 @@ namespace ManagedLzma.LZMA.Master
 
                 uint maxLen = 1;
                 uint offset = 0;
-                if(delta2 < mCyclicBufferSize && (cur - delta2)[0] == cur[0])
+
+                if(delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
                 {
                     TR("Hc4_MatchFinder_GetMatches:a1", maxLen);
                     TR("Hc4_MatchFinder_GetMatches:a2", delta2);
@@ -697,7 +740,8 @@ namespace ManagedLzma.LZMA.Master
                     distances[1] = delta2 - 1;
                     offset = 2;
                 }
-                if(delta2 != delta3 && delta3 < mCyclicBufferSize && (cur - delta3)[0] == cur[0])
+
+                if(delta2 != delta3 && delta3 < mCyclicBufferSize && cur[-delta3] == cur[0])
                 {
                     TR("Hc4_MatchFinder_GetMatches:b1", offset);
                     TR("Hc4_MatchFinder_GetMatches:b2", delta3);
@@ -706,13 +750,17 @@ namespace ManagedLzma.LZMA.Master
                     offset += 2;
                     delta2 = delta3;
                 }
+
                 if(offset != 0)
                 {
                     while(maxLen != lenLimit && cur[maxLen - delta2] == cur[maxLen])
                         maxLen++;
+
                     TR("Hc4_MatchFinder_GetMatches:c1", offset);
                     TR("Hc4_MatchFinder_GetMatches:c2", maxLen);
+
                     distances[offset - 2] = maxLen;
+
                     if(maxLen == lenLimit)
                     {
                         TR("Hc4_MatchFinder_GetMatches:d", curMatch);
@@ -725,38 +773,46 @@ namespace ManagedLzma.LZMA.Master
                         return offset;
                     }
                 }
+
                 if(maxLen < 3)
                     maxLen = 3;
+
                 offset = (uint)(Hc_GetMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue, distances + offset, maxLen) - distances);
+
                 mCyclicBufferPos++;
                 mBuffer++;
                 mPos++;
+
                 if(mPos == mPosLimit)
                     MatchFinder_CheckLimits();
+
                 return offset;
             }
 
             internal void Bt2_MatchFinder_Skip(uint num)
             {
-                CMatchFinder p = this;
                 do
                 {
-                    uint lenLimit = p.mLenLimit;
+                    uint lenLimit = mLenLimit;
                     if(lenLimit < 2)
                     {
                         MatchFinder_MovePos();
                         continue;
                     }
 
-                    P<byte> cur = p.mBuffer;
+                    P<byte> cur = mBuffer;
                     uint hashValue = cur[0] | ((uint)cur[1] << 8);
 
-                    uint curMatch = p.mHash[hashValue];
-                    p.mHash[hashValue] = p.mPos;
-                    SkipMatchesSpec(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue);
-                    p.mCyclicBufferPos++;
-                    p.mBuffer++;
-                    if(++p.mPos == p.mPosLimit)
+                    uint curMatch = mHash[hashValue];
+
+                    mHash[hashValue] = mPos;
+
+                    SkipMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue);
+
+                    mCyclicBufferPos++;
+                    mBuffer++;
+
+                    if(++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
                 while(--num != 0);
@@ -764,28 +820,31 @@ namespace ManagedLzma.LZMA.Master
 
             internal void Bt3_MatchFinder_Skip(uint num)
             {
-                CMatchFinder p = this;
                 do
                 {
-                    uint lenLimit = p.mLenLimit;
+                    uint lenLimit = mLenLimit;
                     if(lenLimit < 3)
                     {
                         MatchFinder_MovePos();
                         continue;
                     }
 
-                    P<byte> cur = p.mBuffer;
+                    P<byte> cur = mBuffer;
                     uint temp = cur[0].CRC() ^ cur[1];
                     uint hash2Value = temp & (kHash2Size - 1);
-                    uint hashValue = (temp ^ ((uint)cur[2] << 8)) & p.mHashMask;
+                    uint hashValue = (temp ^ ((uint)cur[2] << 8)) & mHashMask;
 
-                    uint curMatch = p.mHash[kFix3HashSize + hashValue];
-                    p.mHash[hash2Value] = p.mPos;
-                    p.mHash[kFix3HashSize + hashValue] = p.mPos;
-                    SkipMatchesSpec(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue);
-                    p.mCyclicBufferPos++;
-                    p.mBuffer++;
-                    if(++p.mPos == p.mPosLimit)
+                    uint curMatch = mHash[kFix3HashSize + hashValue];
+
+                    mHash[hash2Value] = mPos;
+                    mHash[kFix3HashSize + hashValue] = mPos;
+
+                    SkipMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue);
+
+                    mCyclicBufferPos++;
+                    mBuffer++;
+
+                    if(++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
                 while(--num != 0);
@@ -793,28 +852,33 @@ namespace ManagedLzma.LZMA.Master
 
             internal void Bt4_MatchFinder_Skip(uint num)
             {
-                CMatchFinder p = this;
                 do
                 {
-                    uint lenLimit = p.mLenLimit;
+                    uint lenLimit = mLenLimit;
                     if(lenLimit < 4)
                     {
                         MatchFinder_MovePos();
                         continue;
                     }
-                    P<byte> cur = p.mBuffer;
+
+                    P<byte> cur = mBuffer;
                     uint temp = cur[0].CRC() ^ cur[1];
                     uint hash2Value = temp & (kHash2Size - 1);
                     uint hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);
-                    uint hashValue = (temp ^ ((uint)cur[2] << 8) ^ (cur[3].CRC() << 5)) & p.mHashMask;
-                    uint curMatch = p.mHash[kFix4HashSize + hashValue];
-                    p.mHash[hash2Value] =
-                    p.mHash[kFix3HashSize + hash3Value] = p.mPos;
-                    p.mHash[kFix4HashSize + hashValue] = p.mPos;
-                    SkipMatchesSpec(lenLimit, curMatch, p.mPos, p.mBuffer, p.mSon, p.mCyclicBufferPos, p.mCyclicBufferSize, p.mCutValue);
-                    p.mCyclicBufferPos++;
-                    p.mBuffer++;
-                    if(++p.mPos == p.mPosLimit)
+                    uint hashValue = (temp ^ ((uint)cur[2] << 8) ^ (cur[3].CRC() << 5)) & mHashMask;
+
+                    uint curMatch = mHash[kFix4HashSize + hashValue];
+
+                    mHash[hash2Value] = mPos;
+                    mHash[kFix3HashSize + hash3Value] = mPos;
+                    mHash[kFix4HashSize + hashValue] = mPos;
+
+                    SkipMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue);
+
+                    mCyclicBufferPos++;
+                    mBuffer++;
+
+                    if(++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
                 while(--num != 0);
@@ -822,37 +886,33 @@ namespace ManagedLzma.LZMA.Master
 
             internal void Hc4_MatchFinder_Skip(uint num)
             {
-                CMatchFinder p = this;
                 do
                 {
-                    uint hash2Value, hash3Value;
-                    uint lenLimit;
-                    uint hashValue;
-                    P<byte> cur;
-                    uint curMatch;
-                    lenLimit = p.mLenLimit;
+                    uint lenLimit = mLenLimit;
+                    if(lenLimit < 4)
                     {
-                        if(lenLimit < 4)
-                        {
-                            MatchFinder_MovePos();
-                            continue;
-                        }
+                        MatchFinder_MovePos();
+                        continue;
                     }
-                    cur = p.mBuffer;
-                    {
-                        uint temp = cur[0].CRC() ^ cur[1];
-                        hash2Value = temp & (kHash2Size - 1);
-                        hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);
-                        hashValue = (temp ^ ((uint)cur[2] << 8) ^ (cur[3].CRC() << 5)) & p.mHashMask;
-                    };
-                    curMatch = p.mHash[kFix4HashSize + hashValue];
-                    p.mHash[hash2Value] =
-                    p.mHash[kFix3HashSize + hash3Value] =
-                    p.mHash[kFix4HashSize + hashValue] = p.mPos;
-                    p.mSon[p.mCyclicBufferPos] = curMatch;
-                    p.mCyclicBufferPos++;
-                    p.mBuffer++;
-                    if(++p.mPos == p.mPosLimit)
+
+                    P<byte> cur = mBuffer;
+                    uint temp = cur[0].CRC() ^ cur[1];
+                    uint hash2Value = temp & (kHash2Size - 1);
+                    uint hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);
+                    uint hashValue = (temp ^ ((uint)cur[2] << 8) ^ (cur[3].CRC() << 5)) & mHashMask;
+
+                    uint curMatch = mHash[kFix4HashSize + hashValue];
+
+                    mHash[hash2Value] = mPos;
+                    mHash[kFix3HashSize + hash3Value] = mPos;
+                    mHash[kFix4HashSize + hashValue] = mPos;
+
+                    mSon[mCyclicBufferPos] = curMatch;
+
+                    mCyclicBufferPos++;
+                    mBuffer++;
+
+                    if(++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
                 while(--num != 0);
