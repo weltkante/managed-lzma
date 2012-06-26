@@ -39,48 +39,50 @@ namespace ManagedLzma.LZMA.Master
 
             public void Lzma2EncProps_Normalize()
             {
-                CLzmaEncProps lzmaProps = new CLzmaEncProps(mLzmaProps);
-                lzmaProps.LzmaEncProps_Normalize();
-                int t1n = lzmaProps.mNumThreads;
-                int t1 = mLzmaProps.mNumThreads;
-                int t2 = mNumBlockThreads;
-                int t3 = mNumTotalThreads;
+                CLzmaEncProps normalizedLzmaProps = new CLzmaEncProps(mLzmaProps);
+                normalizedLzmaProps.LzmaEncProps_Normalize();
+                int tempThreadsNormalized = normalizedLzmaProps.mNumThreads;
+                int tempThreads = mLzmaProps.mNumThreads;
+                int tempBlockThreads = mNumBlockThreads;
+                int tempTotalThreads = mNumTotalThreads;
 
-                if(t2 > NUM_MT_CODER_THREADS_MAX)
-                    t2 = NUM_MT_CODER_THREADS_MAX;
+                if(tempBlockThreads > NUM_MT_CODER_THREADS_MAX)
+                    tempBlockThreads = NUM_MT_CODER_THREADS_MAX;
 
-                if(t3 <= 0)
+                if(tempTotalThreads <= 0)
                 {
-                    if(t2 <= 0)
-                        t2 = 1;
+                    if(tempBlockThreads <= 0)
+                        tempBlockThreads = 1;
 
-                    t3 = t1n * t2;
+                    tempTotalThreads = tempThreadsNormalized * tempBlockThreads;
                 }
-                else if(t2 <= 0)
+                else if(tempBlockThreads <= 0)
                 {
-                    t2 = t3 / t1n;
+                    tempBlockThreads = tempTotalThreads / tempThreadsNormalized;
 
-                    if(t2 == 0)
+                    if(tempBlockThreads == 0)
                     {
-                        t1 = 1;
-                        t2 = t3;
+                        tempThreads = 1;
+                        tempBlockThreads = tempTotalThreads;
                     }
 
-                    if(t2 > NUM_MT_CODER_THREADS_MAX)
-                        t2 = NUM_MT_CODER_THREADS_MAX;
+                    if(tempBlockThreads > NUM_MT_CODER_THREADS_MAX)
+                        tempBlockThreads = NUM_MT_CODER_THREADS_MAX;
                 }
-                else if(t1 <= 0)
+                else if(tempThreads <= 0)
                 {
-                    t1 = t3 / t2;
-                    if(t1 == 0)
-                        t1 = 1;
+                    tempThreads = tempTotalThreads / tempBlockThreads;
+                    if(tempThreads == 0)
+                        tempThreads = 1;
                 }
                 else
-                    t3 = t1n * t2;
+                {
+                    tempTotalThreads = tempThreadsNormalized * tempBlockThreads;
+                }
 
-                mLzmaProps.mNumThreads = t1;
-                mNumBlockThreads = t2;
-                mNumTotalThreads = t3;
+                mLzmaProps.mNumThreads = tempThreads;
+                mNumBlockThreads = tempBlockThreads;
+                mNumTotalThreads = tempTotalThreads;
                 mLzmaProps.LzmaEncProps_Normalize();
 
                 if(mBlockSize == 0)
