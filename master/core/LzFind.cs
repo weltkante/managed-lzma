@@ -122,7 +122,7 @@ namespace ManagedLzma.LZMA.Master
                 {
                     LzInWindow_Free(alloc);
                     mBlockSize = blockSize;
-                    mBufferBase = (byte[])alloc.Alloc<byte>(alloc, (long)blockSize);
+                    mBufferBase = alloc.Alloc<byte>(alloc, (long)blockSize);
                 }
 
                 return mBufferBase != null;
@@ -213,7 +213,7 @@ namespace ManagedLzma.LZMA.Master
                 if(sizeInBytes / sizeof(uint) != num)
                     return null;
 
-                return (uint[])alloc.Alloc<uint>(alloc, num);
+                return alloc.Alloc<uint>(alloc, num);
             }
 
             // Conditions:

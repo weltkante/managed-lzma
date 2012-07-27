@@ -88,7 +88,7 @@ namespace ManagedLzma.LZMA.Master
                 if(mBlockSize == 0)
                 {
                     uint dictSize = mLzmaProps.mDictSize;
-                    ulong blockSize = (ulong)dictSize << 2;
+                    long blockSize = (long)dictSize << 2;
 
                     const uint kMinSize = 1 << 20;
                     const uint kMaxSize = 1 << 28;
@@ -102,7 +102,7 @@ namespace ManagedLzma.LZMA.Master
                     if(blockSize < dictSize)
                         blockSize = dictSize;
 
-                    mBlockSize = (long)blockSize;
+                    mBlockSize = blockSize;
                 }
             }
 

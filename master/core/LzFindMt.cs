@@ -556,7 +556,7 @@ namespace ManagedLzma.LZMA.Master
 
                 if(p.mHashBuf == null)
                 {
-                    p.mHashBuf = (uint[])alloc.Alloc<uint>(alloc, kHashBufferSize + kBtBufferSize);
+                    p.mHashBuf = alloc.Alloc<uint>(alloc, kHashBufferSize + kBtBufferSize);
                     if(p.mHashBuf == null)
                         return SZ_ERROR_MEM;
 
