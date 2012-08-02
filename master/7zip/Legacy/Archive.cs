@@ -580,7 +580,7 @@ namespace master._7zip.Legacy
                         int idSize = (mainByte & 0xF);
                         byte[] longID = new byte[idSize];
                         ReadBytes(longID, 0, idSize);
-                        Log.WriteLine("MethodId: " + string.Join("", Enumerable.Range(0, idSize).Select(x => longID[x].ToString("x2"))));
+                        Log.WriteLine("MethodId: " + Compat.String.Join("", Enumerable.Range(0, idSize).Select(x => longID[x].ToString("x2"))));
                         if(idSize > 8)
                             throw new NotSupportedException();
                         ulong id = 0;
@@ -606,7 +606,7 @@ namespace master._7zip.Legacy
                             int propsSize = ReadNum();
                             coder.Props = new byte[propsSize];
                             ReadBytes(coder.Props, 0, propsSize);
-                            Log.WriteLine("Settings: " + string.Join("", coder.Props.Select(bt => bt.ToString("x2"))));
+                            Log.WriteLine("Settings: " + Compat.String.Join("", coder.Props.Select(bt => bt.ToString("x2"))));
                         }
 
                         if((mainByte & 0x80) != 0)

@@ -67,7 +67,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             if(itemList.Count == 0)
                 return null;
 
-            return String.Join("/", itemList.Select(item => item.Name));
+            return Compat.String.Join("/", itemList.Select(item => item.Name));
         }
 
         public static string CalculateName(DirectoryInfo root, FileInfo file)
@@ -650,7 +650,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                             }
 
                             // TODO: Bind pairs and association to streams ...
-                            if(fileset.Coders.Count() > 1 || coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
+                            if(fileset.Coders.Length > 1 || coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
                                 throw new NotSupportedException();
                         }
                     }
@@ -686,6 +686,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                 if(files.Any(file => file.Size == 0))
                 {
+                    int emptyStreams = 0;
+
                     WriteNumber(BlockType.EmptyStream);
                     WriteNumber((files.Length + 7) / 8);
                     for(int i = 0; i < files.Length; i += 8)
@@ -694,23 +696,22 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         for(int j = 0; j < 8; j++)
                         {
                             if(i + j < files.Length && files[i + j].Size == 0)
-                                mask |= 1;
-                            mask <<= 1;
+                            {
+                                mask |= 1 << (7 - j);
+                                emptyStreams++;
+                            }
                         }
                         mFileWriter.Write((byte)mask);
                     }
 
                     WriteNumber(BlockType.EmptyFile);
-                    WriteNumber((files.Length + 7) / 8);
-                    for(int i = 0; i < files.Length; i += 8)
+                    WriteNumber((emptyStreams + 7) / 8);
+                    for(int i = 0; i < emptyStreams; i += 8)
                     {
                         int mask = 0;
                         for(int j = 0; j < 8; j++)
-                        {
-                            if(i + j < files.Length && files[i + j].Size == 0)
-                                mask |= 1;
-                            mask <<= 1;
-                        }
+                            if(i + j < emptyStreams)
+                                mask |= 1 << (7 - j);
                         mFileWriter.Write((byte)mask);
                     }
                 }
@@ -851,7 +852,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                             }
 
                             // TODO: Bind pairs and association to streams ...
-                            if(fileset.Coders.Count() > 1 || coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
+                            if(fileset.Coders.Length > 1 || coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
                                 throw new NotSupportedException();
                         }
                     }
@@ -882,7 +883,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     limit += kMaxNumberLen; // (files.Length + 7) / 8
                     limit += (files.Length + 7) / 8; // bit vector
                     limit += kBlockTypeLen; // BlockType.EmptyFile
-                    limit += kMaxNumberLen; // (files.Length + 7) / 8
+                    limit += kMaxNumberLen; // (files.Length + 7) / 8 -- this is an upper bound, for an exact size we need to count the number of empty streams
                     limit += (files.Length + 7) / 8; // bit vector
                 }
 

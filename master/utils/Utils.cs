@@ -3,6 +3,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+namespace Compat
+{
+    public static class String
+    {
+        public static string Join(string separator, IEnumerable<string> fragments)
+        {
+#if NET_20
+            StringBuilder sb = new StringBuilder();
+            using(var iter = fragments.GetEnumerator())
+            {
+                if(iter.MoveNext())
+                {
+                    sb.Append(iter.Current);
+                    while(iter.MoveNext())
+                    {
+                        sb.Append(separator);
+                        sb.Append(iter.Current);
+                    }
+                }
+            }
+            return sb.ToString();
+#else
+            return System.String.Join(separator, fragments);
+#endif
+        }
+    }
+}
+
 namespace ManagedLzma.LZMA
 {
     public interface IBufferPool

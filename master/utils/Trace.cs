@@ -15,20 +15,26 @@ namespace ManagedLzma.LZMA
         {
             private static void TR(string str, int arg)
             {
+#if !DISABLE_TRACE
                 if(SyncTrace.Enable)
                     Trace.Match(str, arg);
+#endif
             }
 
             private static void TR(string str, uint arg)
             {
+#if !DISABLE_TRACE
                 if(SyncTrace.Enable)
                     Trace.Match(str, arg);
+#endif
             }
 
             private static void TRS(string str1, string str2)
             {
+#if !DISABLE_TRACE
                 if(SyncTrace.Enable)
                     Trace.Match(str1, str2);
+#endif
             }
 
             private static SRes TSZ(string kind)
@@ -38,10 +44,19 @@ namespace ManagedLzma.LZMA
         }
     }
 
-    public static class SyncTrace { public static bool Enable = true;}
+    public static class SyncTrace
+    {
+#if DISABLE_TRACE
+        public const bool Enable = false;
+#else
+        public static bool Enable = true;
+#endif
+    }
 
     internal static class Trace
     {
+#if !DISABLE_TRACE
+
         #region Constants
 
         private const int CMD_INIT_TRACE = 10;
@@ -758,18 +773,27 @@ namespace ManagedLzma.LZMA
         [ThreadStatic]
         private static Context mContext;
 
+#endif
+
         #region Public Methods
 
         public static void InitSession(Guid id)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             if(mContext != null)
                 throw new InvalidOperationException("This thread is already traced.");
 
             mContext = new Session(@"LZMA\TEST\" + id.ToString("N")).InitMainThread();
+#endif
         }
 
         public static void StopSession()
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             if(mContext == null)
                 throw new InvalidOperationException("This thread is not traced.");
 
@@ -779,61 +803,106 @@ namespace ManagedLzma.LZMA
             Session root = mContext.Session;
             try { root.EnsureEnd(); }
             finally { root.Dispose(); }
+#endif
         }
 
         public static Thread MatchThreadStart(Action fun)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             return mContext.MatchThreadStart(fun);
+#endif
         }
 
         public static void MatchThreadWait(Thread thread)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.MatchThreadWait(thread);
+#endif
         }
 
         public static void MatchThreadClose(Thread thread)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.MatchThreadClose(thread);
+#endif
         }
 
         public static void MatchObjectCreate(object obj, string arg)
         {
+#if !DISABLE_TRACE
             mContext.MatchObjectCreate(obj, arg);
+#else
+            throw new NotSupportedException();
+#endif
         }
 
         public static void MatchObjectDestroy(object obj, string arg)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.MatchObjectDestroy(obj, arg);
+#endif
         }
 
         public static void MatchObjectWait(object obj, string arg)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.MatchObjectWait(obj, arg);
+#endif
         }
 
         public static int MatchStatusCode(string arg)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             return mContext.MatchStatusCode(arg);
+#endif
         }
 
         public static void Match(int arg1, int arg2 = 0)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.Match(arg1, arg2);
+#endif
         }
 
         public static void Match(string arg1, int arg2 = 0)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.Match(arg1, arg2);
+#endif
         }
 
         public static void Match(string arg1, uint arg2)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.Match(arg1, (int)arg2);
+#endif
         }
 
         public static void Match(string arg1, string arg2)
         {
+#if DISABLE_TRACE
+            throw new NotSupportedException();
+#else
             mContext.Match(arg1, arg2);
+#endif
         }
 
         #endregion
