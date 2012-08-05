@@ -581,8 +581,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             get
             {
-                if(mEncoder != null)
-                    throw new NotSupportedException("Calculating size limits is not possible while an encoder is open.");
+                // TODO: We need to somehow support calculating limits with open encoders, or something.
+
+                //if(mEncoder != null)
+                //    throw new NotSupportedException("Calculating size limits is not possible while an encoder is open.");
 
                 return mFileStream.Position + CalculateHeaderLimit();
             }
