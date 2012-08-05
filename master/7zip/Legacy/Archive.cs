@@ -1518,7 +1518,7 @@ namespace master._7zip.Legacy
             {
                 if(i >= numFilesInFolder)
                     throw new InvalidOperationException();
-                skipSize += folderInfo.UnpackSizes[i];
+                skipSize += _db.Files[firstFileIndex + i].Size;
             }
             Stream s = DecoderStreamHelper.CreateDecoderStream(_stream, folderStartPackPos, packSizes.ToArray(), folderInfo, pw);
             if(skipSize > 0)
@@ -1532,7 +1532,7 @@ namespace master._7zip.Legacy
                     skipSize -= processed;
                 }
             }
-            return new master._7zip.Utilities.UnpackSubStream(s, folderInfo.UnpackSizes[fileIndex - firstFileIndex]);
+            return new master._7zip.Utilities.UnpackSubStream(s, _db.Files[fileIndex].Size);
         }
 
         public void Extract(CArchiveDatabaseEx _db, int[] indices, IPasswordProvider pw)
