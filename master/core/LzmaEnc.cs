@@ -1711,10 +1711,7 @@ namespace ManagedLzma.LZMA.Master
 
             private uint GetOptimumFast(out uint backRes)
             {
-                uint numAvail, mainLen, mainDist, numPairs, repIndex, repLen, i;
-                P<byte> data;
-                P<uint> matches;
-
+                uint mainLen, numPairs;
                 if(mAdditionalOffset == 0)
                 {
                     mainLen = ReadMatchDistances(out numPairs);
@@ -1726,16 +1723,17 @@ namespace ManagedLzma.LZMA.Master
                     numPairs = mNumPairs;
                 }
 
-                numAvail = mNumAvail;
+                uint numAvail = mNumAvail;
                 backRes = ~0u;
                 if(numAvail < 2)
                     return 1;
                 if(numAvail > LZMA_MATCH_LEN_MAX)
                     numAvail = LZMA_MATCH_LEN_MAX;
-                data = mMatchFinder.GetPointerToCurrentPos(mMatchFinderObj) - 1;
+                P<byte> data = mMatchFinder.GetPointerToCurrentPos(mMatchFinderObj) - 1;
 
-                repLen = repIndex = 0;
-                for(i = 0; i < LZMA_NUM_REPS; i++)
+                uint repLen = 0;
+                uint repIndex = 0;
+                for(uint i = 0; i < LZMA_NUM_REPS; i++)
                 {
                     P<byte> data2 = data - (mReps[i] + 1);
                     TR("GetOptimumFast:reps[i]:a", mReps[i]);
@@ -1760,7 +1758,7 @@ namespace ManagedLzma.LZMA.Master
                     }
                 }
 
-                matches = mMatches;
+                P<uint> matches = mMatches;
                 if(mainLen >= mNumFastBytes)
                 {
                     backRes = matches[numPairs - 1] + LZMA_NUM_REPS;
@@ -1768,7 +1766,7 @@ namespace ManagedLzma.LZMA.Master
                     return mainLen;
                 }
 
-                mainDist = 0; /* for GCC */
+                uint mainDist = 0;
                 if(mainLen >= 2)
                 {
                     mainDist = matches[numPairs - 1];
@@ -1811,7 +1809,7 @@ namespace ManagedLzma.LZMA.Master
                 }
 
                 data = mMatchFinder.GetPointerToCurrentPos(mMatchFinderObj) - 1;
-                for(i = 0; i < LZMA_NUM_REPS; i++)
+                for(uint i = 0; i < LZMA_NUM_REPS; i++)
                 {
                     TR("GetOptimumFast:reps[i]:b", mReps[i]);
                     P<byte> data2 = data - (mReps[i] + 1);
@@ -2008,14 +2006,10 @@ namespace ManagedLzma.LZMA.Master
                         uint posState = nowPos32 & mPbMask;
                         if(len == 1 && pos == ~0u)
                         {
-                            byte curByte;
-                            P<ushort> probs;
-                            P<byte> data;
-
                             mRC.RangeEnc_EncodeBit(ref mIsMatch[mState][posState], 0);
-                            data = mMatchFinder.GetPointerToCurrentPos(mMatchFinderObj) - mAdditionalOffset;
-                            curByte = data[0];
-                            probs = LIT_PROBS(nowPos32, (data - 1)[0]);
+                            P<byte> data = mMatchFinder.GetPointerToCurrentPos(mMatchFinderObj) - mAdditionalOffset;
+                            byte curByte = data[0];
+                            P<ushort> probs = LIT_PROBS(nowPos32, (data - 1)[0]);
 
                             if(IsCharState(mState))
                                 LitEnc_Encode(mRC, probs, curByte);
