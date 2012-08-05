@@ -684,6 +684,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     mFileWriter.Write('\0');
                 }
 
+                /* had to disable empty streams and files because above BlockType.Size doesn't respect them
+                 * if a file is marked as empty stream it doesn't get a size/hash entry in the coder header above
+                 * however, to fix that, we'd need to skip coders with only empty files too, so its easier to do it this way for now
                 if(files.Any(file => file.Size == 0))
                 {
                     int emptyStreams = 0;
@@ -715,6 +718,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         mFileWriter.Write((byte)mask);
                     }
                 }
+                */
 
                 WriteNumber(BlockType.End);
 
