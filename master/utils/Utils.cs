@@ -64,14 +64,17 @@ namespace ManagedLzma.LZMA
 
         public static void memmove<T>(P<T> dst, P<T> src, long size)
         {
-            if (dst.mBuffer == src.mBuffer && src.mOffset < dst.mOffset + size && dst.mOffset < src.mOffset + size)
+            if (dst.mBuffer == src.mBuffer && dst.mOffset > src.mOffset && dst.mOffset < src.mOffset + size)
             {
-                System.Diagnostics.Debugger.Break();
-                throw new NotImplementedException("memmove for overlapping regions is not implemented");
+                // destination would overwrite source so we need to copy backwards
+                for(long i = size - 1; i >= 0; i--)
+                    dst[i] = src[i];
             }
-
-            for (uint i = 0; i < size; i++)
-                dst[i] = src[i];
+            else
+            {
+                for(uint i = 0; i < size; i++)
+                    dst[i] = src[i];
+            }
         }
 
         public static T[] Init<T>(int sz1, Func<T> init)
