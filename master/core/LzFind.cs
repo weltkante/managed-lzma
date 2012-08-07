@@ -88,6 +88,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal void MatchFinder_MoveBlock()
             {
+                // Note: source and destination memory regions may overlap!
                 CUtils.memmove(mBufferBase, mBuffer - mKeepSizeBefore, mStreamPos - mPos + mKeepSizeBefore);
                 mBuffer = mBufferBase + mKeepSizeBefore;
             }
