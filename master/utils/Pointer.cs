@@ -17,7 +17,7 @@ namespace ManagedLzma.LZMA
             return new P<T>(buffer, offset);
         }
 
-        public static P<byte> From(PZ p)
+        public static P<byte> From(Testing.PZ p)
         {
             return From(p.Buffer, p.Offset);
         }

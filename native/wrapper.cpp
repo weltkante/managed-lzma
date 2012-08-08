@@ -5,7 +5,7 @@
 
 using namespace System::IO;
 using namespace System::Threading;
-using namespace ManagedLzma::LZMA;
+using namespace ManagedLzma::Testing;
 using namespace ManagedLzma::LZMA::Reference::Native;
 
 static void TraceInit(Guid^ id)

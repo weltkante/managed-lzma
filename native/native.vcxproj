@@ -122,11 +122,6 @@
     <ClCompile Include="wrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\shared\shared.csproj">
-      <Project>{ff95b100-848c-4dc4-9312-767869a9767a}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="lzma\Alloc.h" />
     <ClInclude Include="lzma\LzFind.h" />
     <ClInclude Include="lzma\LzFindMt.h" />
@@ -142,6 +137,11 @@
     <ClInclude Include="native.h" />
     <ClInclude Include="Trace.h" />
     <ClInclude Include="wrapper.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\master\master.csproj">
+      <Project>{b55693b1-3a6d-44bc-92f9-1e2f7018553f}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

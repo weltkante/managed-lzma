@@ -86,10 +86,6 @@
       <Project>{90d09946-00d8-fbfc-8b29-fedbc72cfa08}</Project>
       <Name>native</Name>
     </ProjectReference>
-    <ProjectReference Include="..\shared\shared.csproj">
-      <Project>{ff95b100-848c-4dc4-9312-767869a9767a}</Project>
-      <Name>shared</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

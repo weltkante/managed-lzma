@@ -12,23 +12,23 @@ namespace Reference {
 namespace Native {
 
 	public ref class Helper
-		: public IHelper
+		: public Testing::IHelper
 	{
 	public:
 		Helper(Guid^ id);
 		~Helper();
-		virtual void LzmaCompress(SharedSettings^ s);
-		virtual void LzmaUncompress(SharedSettings^ s);
+		virtual void LzmaCompress(Testing::SharedSettings^ s);
+		virtual void LzmaUncompress(Testing::SharedSettings^ s);
 	};
 
 	public ref class Helper2
-		: public IHelper
+		: public Testing::IHelper
 	{
 	public:
 		Helper2(Guid^ id);
 		~Helper2();
-		virtual void LzmaCompress(SharedSettings^ s);
-		virtual void LzmaUncompress(SharedSettings^ s);
+		virtual void LzmaCompress(Testing::SharedSettings^ s);
+		virtual void LzmaUncompress(Testing::SharedSettings^ s);
 	};
 
 } } } }

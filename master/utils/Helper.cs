@@ -6,6 +6,7 @@ using System.IO;
 namespace ManagedLzma.LZMA
 {
     using Master;
+    using Testing;
 
     public class Helper: IHelper
     {

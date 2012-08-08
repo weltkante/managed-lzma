@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-
+using ManagedLzma.Testing;
 using ManagedCoder = ManagedLzma.LZMA.Helper;
 using ManagedCoder2 = ManagedLzma.LZMA.Helper2;
 using NativeCoder = ManagedLzma.LZMA.Reference.Native.Helper;
