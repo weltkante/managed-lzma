@@ -803,7 +803,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static P<uint> MixMatches2(CMatchFinderMt p, uint matchMinPos, P<uint> distances)
             {
-                P<uint> hash = p.mHash;
+                uint[] hash = p.mHash;
                 P<byte> cur = p.mPointerToCurPos;
                 uint lzPos = p.mLzPos;
                 uint hash2Value = (cur[0].CRC() ^ cur[1]) & (kHash2Size - 1);
@@ -832,7 +832,7 @@ namespace ManagedLzma.LZMA.Master
                     if(p.mBtNumAvailBytes-- >= 2)
                     {
                         P<byte> cur = p.mPointerToCurPos;
-                        P<uint> hash = p.mHash;
+                        uint[] hash = p.mHash;
                         uint hash2Value = (cur[0].CRC() ^ cur[1]) & (kHash2Size - 1);
                         hash[hash2Value] = p.mLzPos;
                     }
@@ -859,7 +859,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static P<uint> MixMatches3(CMatchFinderMt p, uint matchMinPos, P<uint> distances)
             {
-                P<uint> hash = p.mHash;
+                uint[] hash = p.mHash;
                 P<byte> cur = p.mPointerToCurPos;
                 uint lzPos = p.mLzPos;
                 uint temp = cur[0].CRC() ^ cur[1];
@@ -908,7 +908,7 @@ namespace ManagedLzma.LZMA.Master
                     if(p.mBtNumAvailBytes-- >= 3)
                     {
                         P<byte> cur = p.mPointerToCurPos;
-                        P<uint> hash = p.mHash;
+                        uint[] hash = p.mHash;
                         uint temp = cur[0].CRC() ^ cur[1];
                         uint hash2Value = temp & (kHash2Size - 1);
                         uint hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);
@@ -993,7 +993,7 @@ namespace ManagedLzma.LZMA.Master
                     if(p.mBtNumAvailBytes-- >= 4)
                     {
                         P<byte> cur = p.mPointerToCurPos;
-                        P<uint> hash = p.mHash;
+                        uint[] hash = p.mHash;
                         uint temp = cur[0].CRC() ^ cur[1];
                         uint hash2Value = temp & (kHash2Size - 1);
                         uint hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);
@@ -1012,7 +1012,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static P<uint> MixMatches4(CMatchFinderMt p, uint matchMinPos, P<uint> distances)
             {
-                P<uint> hash = p.mHash;
+                uint[] hash = p.mHash;
                 P<byte> cur = p.mPointerToCurPos;
                 uint lzPos = p.mLzPos;
 
