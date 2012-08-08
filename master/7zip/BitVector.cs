@@ -77,5 +77,13 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             mBits[index >> 5] |= mask;
             return (bits & mask) != 0;
         }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder(mLength);
+            for(int i = 0; i < mLength; i++)
+                sb.Append(this[i] ? 'x' : '.');
+            return sb.ToString();
+        }
     }
 }
