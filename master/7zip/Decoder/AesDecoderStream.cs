@@ -26,9 +26,6 @@ namespace master._7zip.Legacy
 
         public AesDecoderStream(Stream input, byte[] info, IPasswordProvider pass, long limit)
         {
-#if NET_20
-            throw new NotSupportedException();
-#else
             mStream = input;
             mLimit = limit;
 
@@ -50,7 +47,6 @@ namespace master._7zip.Legacy
             }
 
             mBuffer = new byte[4 << 10];
-#endif
         }
 
         protected override void Dispose(bool disposing)

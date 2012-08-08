@@ -67,7 +67,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             if(itemList.Count == 0)
                 return null;
 
-            return Compat.String.Join("/", itemList.Select(item => item.Name));
+            return String.Join("/", itemList.Select(item => item.Name));
         }
 
         public static string CalculateName(DirectoryInfo root, FileInfo file)
