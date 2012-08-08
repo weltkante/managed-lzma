@@ -722,6 +722,105 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 }
                 */
 
+                int ctimeCount = files.Count(file => file.CTime.HasValue);
+                if(ctimeCount != 0)
+                {
+                    WriteNumber(BlockType.CTime);
+
+                    if(ctimeCount == files.Length)
+                    {
+                        WriteNumber(2 + ctimeCount * 8);
+                        mFileWriter.Write((byte)1);
+                    }
+                    else
+                    {
+                        WriteNumber((ctimeCount + 7) / 8 + 2 + ctimeCount * 8);
+                        mFileWriter.Write((byte)0);
+
+                        for(int i = 0; i < files.Length; i += 8)
+                        {
+                            int mask = 0;
+                            for(int j = 0; j < 8; j++)
+                                if(i + j < files.Length && files[i + j].CTime.HasValue)
+                                    mask |= 1 << (7 - j);
+
+                            mFileWriter.Write((byte)mask);
+                        }
+                    }
+
+                    mFileWriter.Write((byte)0); // inline data
+
+                    for(int i = 0; i < files.Length; i++)
+                        if(files[i].CTime.HasValue)
+                            mFileWriter.Write(files[i].CTime.Value.ToFileTimeUtc());
+                }
+
+                int atimeCount = files.Count(file => file.ATime.HasValue);
+                if(atimeCount != 0)
+                {
+                    WriteNumber(BlockType.ATime);
+
+                    if(atimeCount == files.Length)
+                    {
+                        WriteNumber(2 + atimeCount * 8);
+                        mFileWriter.Write((byte)1);
+                    }
+                    else
+                    {
+                        WriteNumber((atimeCount + 7) / 8 + 2 + atimeCount * 8);
+                        mFileWriter.Write((byte)0);
+
+                        for(int i = 0; i < files.Length; i += 8)
+                        {
+                            int mask = 0;
+                            for(int j = 0; j < 8; j++)
+                                if(i + j < files.Length && files[i + j].ATime.HasValue)
+                                    mask |= 1 << (7 - j);
+
+                            mFileWriter.Write((byte)mask);
+                        }
+                    }
+
+                    mFileWriter.Write((byte)0); // inline data
+
+                    for(int i = 0; i < files.Length; i++)
+                        if(files[i].ATime.HasValue)
+                            mFileWriter.Write(files[i].ATime.Value.ToFileTimeUtc());
+                }
+
+                int mtimeCount = files.Count(file => file.MTime.HasValue);
+                if(mtimeCount != 0)
+                {
+                    WriteNumber(BlockType.MTime);
+
+                    if(mtimeCount == files.Length)
+                    {
+                        WriteNumber(2 + mtimeCount * 8);
+                        mFileWriter.Write((byte)1);
+                    }
+                    else
+                    {
+                        WriteNumber((mtimeCount + 7) / 8 + 2 + mtimeCount * 8);
+                        mFileWriter.Write((byte)0);
+
+                        for(int i = 0; i < files.Length; i += 8)
+                        {
+                            int mask = 0;
+                            for(int j = 0; j < 8; j++)
+                                if(i + j < files.Length && files[i + j].MTime.HasValue)
+                                    mask |= 1 << (7 - j);
+
+                            mFileWriter.Write((byte)mask);
+                        }
+                    }
+
+                    mFileWriter.Write((byte)0); // inline data
+
+                    for(int i = 0; i < files.Length; i++)
+                        if(files[i].MTime.HasValue)
+                            mFileWriter.Write(files[i].MTime.Value.ToFileTimeUtc());
+                }
+
                 WriteNumber(BlockType.End);
 
                 long headerSize = mFileStream.Position - headerOffset;
@@ -892,6 +991,18 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     limit += kMaxNumberLen; // (files.Length + 7) / 8 -- this is an upper bound, for an exact size we need to count the number of empty streams
                     limit += (files.Length + 7) / 8; // bit vector
                 }
+
+                limit += kBlockTypeLen; // BlockType.CTime
+                limit += kMaxNumberLen; // (ctimeCount + 7) / 8 + 2 + ctimeCount * 8;
+                limit += (files.Length + 7) / 8 + 2 + files.Length * 8;
+
+                limit += kBlockTypeLen; // BlockType.ATime
+                limit += kMaxNumberLen; // (atimeCount + 7) / 8 + 2 + atimeCount * 8;
+                limit += (files.Length + 7) / 8 + 2 + files.Length * 8;
+
+                limit += kBlockTypeLen; // BlockType.MTime
+                limit += kMaxNumberLen; // (mtimeCount + 7) / 8 + 2 + mtimeCount * 8;
+                limit += (files.Length + 7) / 8 + 2 + files.Length * 8;
 
                 limit += kBlockTypeLen; // BlockType.End
             }
