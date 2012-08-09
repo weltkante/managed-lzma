@@ -82,10 +82,6 @@
       <Project>{3A8BC6B3-262A-413A-A3EC-A876AA8F4AE0}</Project>
       <Name>native.2010</Name>
     </ProjectReference>
-    <ProjectReference Include="..\shared\shared.2010.csproj">
-      <Project>{37AD3430-2EA7-4412-9108-DAD8C88DB2D0}</Project>
-      <Name>shared.2010</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -85,10 +85,6 @@
       <Project>{FCFD97A2-881B-484B-8F2D-BA75C5735330}</Project>
       <Name>sandbox.2010</Name>
     </ProjectReference>
-    <ProjectReference Include="..\shared\shared.2010.csproj">
-      <Project>{37AD3430-2EA7-4412-9108-DAD8C88DB2D0}</Project>
-      <Name>shared.2010</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="UnitTestFastMode.tt">

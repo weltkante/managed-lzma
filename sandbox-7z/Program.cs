@@ -28,8 +28,6 @@ namespace sandbox_7z
         [STAThread]
         static void Main()
         {
-            ManagedLzma.LZMA.SyncTrace.Enable = false;
-
             Directory.CreateDirectory("_test");
 
             using(var stream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))

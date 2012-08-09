@@ -39,7 +39,11 @@ namespace ManagedLzma.LZMA
 
             private static SRes TSZ(string kind)
             {
-                return SyncTrace.Enable ? new SRes(Trace.MatchStatusCode(kind)) : SZ_OK;
+#if DISABLE_TRACE
+                return SZ_OK;
+#else
+                return new SRes(Trace.MatchStatusCode(kind));
+#endif
             }
         }
     }
@@ -49,7 +53,7 @@ namespace ManagedLzma.LZMA
 #if DISABLE_TRACE
         public const bool Enable = false;
 #else
-        public static bool Enable = true;
+        public const bool Enable = true;
 #endif
     }
 

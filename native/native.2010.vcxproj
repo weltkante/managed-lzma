@@ -71,8 +71,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AssemblyInfo.cpp" />
@@ -121,8 +119,8 @@
     <ClCompile Include="wrapper.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\shared\shared.2010.csproj">
-      <Project>{37ad3430-2ea7-4412-9108-dad8c88db2d0}</Project>
+    <ProjectReference Include="..\master\master.2010.csproj">
+      <Project>{53e41f2c-4586-4387-a6c8-77f27d90523a}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
