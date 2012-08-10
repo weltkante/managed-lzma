@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Threading;
 using System.Globalization;
+using D = System.Diagnostics;
 
 namespace ManagedLzma.LZMA
 {
@@ -16,24 +17,21 @@ namespace ManagedLzma.LZMA
             private static void TR(string str, int arg)
             {
 #if !DISABLE_TRACE
-                if(SyncTrace.Enable)
-                    Trace.Match(str, arg);
+                Trace.Match(str, arg);
 #endif
             }
 
             private static void TR(string str, uint arg)
             {
 #if !DISABLE_TRACE
-                if(SyncTrace.Enable)
-                    Trace.Match(str, arg);
+                Trace.Match(str, arg);
 #endif
             }
 
             private static void TRS(string str1, string str2)
             {
 #if !DISABLE_TRACE
-                if(SyncTrace.Enable)
-                    Trace.Match(str1, str2);
+                Trace.Match(str1, str2);
 #endif
             }
 
@@ -46,15 +44,6 @@ namespace ManagedLzma.LZMA
 #endif
             }
         }
-    }
-
-    public static class SyncTrace
-    {
-#if DISABLE_TRACE
-        public const bool Enable = false;
-#else
-        public const bool Enable = true;
-#endif
     }
 
     internal static class Trace
@@ -841,25 +830,19 @@ namespace ManagedLzma.LZMA
         {
 #if !DISABLE_TRACE
             mContext.MatchObjectCreate(obj, arg);
-#else
-            throw new NotSupportedException();
 #endif
         }
 
         public static void MatchObjectDestroy(object obj, string arg)
         {
-#if DISABLE_TRACE
-            throw new NotSupportedException();
-#else
+#if !DISABLE_TRACE
             mContext.MatchObjectDestroy(obj, arg);
 #endif
         }
 
         public static void MatchObjectWait(object obj, string arg)
         {
-#if DISABLE_TRACE
-            throw new NotSupportedException();
-#else
+#if !DISABLE_TRACE
             mContext.MatchObjectWait(obj, arg);
 #endif
         }

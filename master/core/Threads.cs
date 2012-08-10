@@ -28,10 +28,11 @@ namespace ManagedLzma.LZMA.Master
         {
             if(p != null)
             {
-                if(SyncTrace.Enable)
-                    Trace.MatchThreadClose(p._thread);
-                else
-                    p._thread.Join();
+#if !DISABLE_TRACE
+                Trace.MatchThreadClose(p._thread);
+#else
+                p._thread.Join();
+#endif
             }
 
             p = null;
@@ -40,23 +41,21 @@ namespace ManagedLzma.LZMA.Master
         internal static SRes Thread_Wait(CThread p)
         {
             p._thread.Join();
-            if(SyncTrace.Enable)
-                Trace.MatchThreadWait(p._thread);
+#if !DISABLE_TRACE
+            Trace.MatchThreadWait(p._thread);
+#endif
             return TSZ("Thread_Wait");
         }
 
         internal static SRes Thread_Create(out CThread p, Action func)
         {
             p = new CThread();
-            if(SyncTrace.Enable)
-            {
-                p._thread = Trace.MatchThreadStart(func);
-            }
-            else
-            {
-                p._thread = new System.Threading.Thread(delegate() { func(); });
-                p._thread.Start();
-            }
+#if !DISABLE_TRACE
+            p._thread = Trace.MatchThreadStart(func);
+#else
+            p._thread = new System.Threading.Thread(delegate() { func(); });
+            p._thread.Start();
+#endif
             return TSZ("Thread_Create");
         }
 
@@ -85,48 +84,53 @@ namespace ManagedLzma.LZMA.Master
         {
             if(p != null)
             {
-                if(SyncTrace.Enable)
-                    Trace.MatchObjectDestroy(p, "Event_Close");
-                else
-                    p.Event.Close();
+#if !DISABLE_TRACE
+                Trace.MatchObjectDestroy(p, "Event_Close");
+#else
+                p.Event.Close();
+#endif
             }
             p = null;
         }
 
         internal static SRes Event_Wait(CEvent p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectWait(p, "Event_Wait");
-            else
-                p.Event.WaitOne();
+#if !DISABLE_TRACE
+            Trace.MatchObjectWait(p, "Event_Wait");
+#else
+            p.Event.WaitOne();
+#endif
             return TSZ("Event_Wait");
         }
 
         internal static SRes Event_Set(CEvent p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectWait(p, "Event_Set");
-            else
-                p.Event.Set();
+#if !DISABLE_TRACE
+            Trace.MatchObjectWait(p, "Event_Set");
+#else
+            p.Event.Set();
+#endif
             return TSZ("Event_Set");
         }
 
         internal static SRes Event_Reset(CEvent p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectWait(p, "Event_Reset");
-            else
-                p.Event.Reset();
+#if !DISABLE_TRACE
+            Trace.MatchObjectWait(p, "Event_Reset");
+#else
+            p.Event.Reset();
+#endif
             return TSZ("Event_Reset");
         }
 
         internal static SRes AutoResetEvent_CreateNotSignaled(out CEvent p)
         {
             p = new CEvent();
-            if(SyncTrace.Enable)
-                Trace.MatchObjectCreate(p, "Event_Create");
-            else
-                p.Event = new System.Threading.AutoResetEvent(false);
+#if !DISABLE_TRACE
+            Trace.MatchObjectCreate(p, "Event_Create");
+#else
+            p.Event = new System.Threading.AutoResetEvent(false);
+#endif
             return TSZ("Event_Create");
         }
 
@@ -148,10 +152,11 @@ namespace ManagedLzma.LZMA.Master
         {
             if(p != null)
             {
-                if(SyncTrace.Enable)
-                    Trace.MatchObjectDestroy(p, "Semaphore_Close");
-                else
-                    p.Semaphore.Close();
+#if !DISABLE_TRACE
+                Trace.MatchObjectDestroy(p, "Semaphore_Close");
+#else
+                p.Semaphore.Close();
+#endif
             }
 
             p = null;
@@ -159,34 +164,33 @@ namespace ManagedLzma.LZMA.Master
 
         internal static SRes Semaphore_Wait(CSemaphore p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectWait(p, "Semaphore_Wait");
-            else
-                p.Semaphore.WaitOne();
+#if !DISABLE_TRACE
+            Trace.MatchObjectWait(p, "Semaphore_Wait");
+#else
+            p.Semaphore.WaitOne();
+#endif
             return TSZ("Semaphore_Wait");
         }
 
         internal static SRes Semaphore_Create(out CSemaphore p, uint initCount, uint maxCount)
         {
             p = new CSemaphore();
-            if(SyncTrace.Enable)
-            {
-                Trace.MatchObjectCreate(p, "Semaphore_Create");
-                Trace.Match((int)initCount, (int)maxCount);
-            }
-            else
-            {
-                p.Semaphore = new System.Threading.Semaphore(checked((int)initCount), checked((int)maxCount));
-            }
+#if !DISABLE_TRACE
+            Trace.MatchObjectCreate(p, "Semaphore_Create");
+            Trace.Match((int)initCount, (int)maxCount);
+#else
+            p.Semaphore = new System.Threading.Semaphore(checked((int)initCount), checked((int)maxCount));
+#endif
             return TSZ("Semaphore_Create");
         }
 
         internal static SRes Semaphore_Release1(CSemaphore p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectWait(p, "Semaphore_Release");
-            else
-                p.Semaphore.Release();
+#if !DISABLE_TRACE
+            Trace.MatchObjectWait(p, "Semaphore_Release");
+#else
+            p.Semaphore.Release();
+#endif
             return TSZ("Semaphore_Release");
         }
 
@@ -199,31 +203,35 @@ namespace ManagedLzma.LZMA.Master
         internal static SRes CriticalSection_Init(out CCriticalSection p)
         {
             p = new CCriticalSection();
-            if(SyncTrace.Enable)
-                Trace.MatchObjectCreate(p, "CriticalSection_Init");
+#if !DISABLE_TRACE
+            Trace.MatchObjectCreate(p, "CriticalSection_Init");
+#endif
             return SZ_OK; // never fails in C code either
         }
 
         internal static void CriticalSection_Delete(CCriticalSection p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectDestroy(p, "CriticalSection_Delete");
+#if !DISABLE_TRACE
+            Trace.MatchObjectDestroy(p, "CriticalSection_Delete");
+#endif
         }
 
         internal static void CriticalSection_Enter(CCriticalSection p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectWait(p, "CriticalSection_Enter");
-            else
-                System.Threading.Monitor.Enter(p);
+#if !DISABLE_TRACE
+            Trace.MatchObjectWait(p, "CriticalSection_Enter");
+#else
+            System.Threading.Monitor.Enter(p);
+#endif
         }
 
         internal static void CriticalSection_Leave(CCriticalSection p)
         {
-            if(SyncTrace.Enable)
-                Trace.MatchObjectWait(p, "CriticalSection_Leave");
-            else
-                System.Threading.Monitor.Exit(p);
+#if !DISABLE_TRACE
+            Trace.MatchObjectWait(p, "CriticalSection_Leave");
+#else
+            System.Threading.Monitor.Exit(p);
+#endif
         }
 
         #endregion

@@ -64,11 +64,11 @@ namespace ManagedLzma.LZMA.Master
                 {
                     mNumProcessedBlocks = 1;
                     mNeedStart = false;
-                    if(SyncTrace.Enable)
-                        Trace.MatchObjectWait(this, "MtSync_GetNextBlock:start");
+
+                    Trace.MatchObjectWait(this, "MtSync_GetNextBlock:start");
                     mStopWriting = false;
-                    if(SyncTrace.Enable)
-                        Trace.MatchObjectWait(this, "MtSync_GetNextBlock:start");
+                    Trace.MatchObjectWait(this, "MtSync_GetNextBlock:start");
+
                     mExit = false;
                     Event_Reset(mWasStarted);
                     Event_Reset(mWasStopped);
@@ -95,11 +95,9 @@ namespace ManagedLzma.LZMA.Master
                 if(!Thread_WasCreated(mThread) || mNeedStart)
                     return;
 
-                if(SyncTrace.Enable)
-                    Trace.MatchObjectWait(this, "MtSync_StopWriting:stop");
+                Trace.MatchObjectWait(this, "MtSync_StopWriting:stop");
                 mStopWriting = true;
-                if(SyncTrace.Enable)
-                    Trace.MatchObjectWait(this, "MtSync_StopWriting:stop");
+                Trace.MatchObjectWait(this, "MtSync_StopWriting:stop");
 
                 if(mCsWasEntered)
                 {
@@ -145,10 +143,7 @@ namespace ManagedLzma.LZMA.Master
                 Semaphore_Close(ref mFilledSemaphore);
 
                 if(mWasCreated)
-                {
-                    if(SyncTrace.Enable)
-                        Trace.MatchObjectDestroy(this, "MtSync_Destruct");
-                }
+                    Trace.MatchObjectDestroy(this, "MtSync_Destruct");
 
                 mWasCreated = false;
             }
@@ -158,8 +153,7 @@ namespace ManagedLzma.LZMA.Master
                 if(mWasCreated)
                     return SZ_OK;
 
-                if(SyncTrace.Enable)
-                    Trace.MatchObjectCreate(this, "MtSync_Create2");
+                Trace.MatchObjectCreate(this, "MtSync_Create2");
 
                 if(CriticalSection_Init(out mCS) != SZ_OK)
                     return SZ_ERROR_THREAD;
@@ -341,18 +335,15 @@ namespace ManagedLzma.LZMA.Master
                         if(p.mExit)
                             return;
 
-                        if(SyncTrace.Enable)
-                            Trace.MatchObjectWait(p, "HashThreadFunc:stop");
+                        Trace.MatchObjectWait(p, "HashThreadFunc:stop");
                         if(p.mStopWriting)
                         {
-                            if(SyncTrace.Enable)
-                                Trace.MatchObjectWait(p, "HashThreadFunc:stop");
+                            Trace.MatchObjectWait(p, "HashThreadFunc:stop");
                             p.mNumProcessedBlocks = numProcessedBlocks;
                             Event_Set(p.mWasStopped);
                             break;
                         }
-                        if(SyncTrace.Enable)
-                            Trace.MatchObjectWait(p, "HashThreadFunc:stop");
+                        Trace.MatchObjectWait(p, "HashThreadFunc:stop");
 
                         {
                             CMatchFinder mf = mt.@base;
@@ -521,21 +512,16 @@ namespace ManagedLzma.LZMA.Master
                         if(p.mExit)
                             return;
                         
-                        if(SyncTrace.Enable)
-                            Trace.MatchObjectWait(p, "BtThreadFunc:stop");
-
+                        Trace.MatchObjectWait(p, "BtThreadFunc:stop");
                         if(p.mStopWriting)
                         {
-                            if(SyncTrace.Enable)
-                                Trace.MatchObjectWait(p, "BtThreadFunc:stop");
+                            Trace.MatchObjectWait(p, "BtThreadFunc:stop");
                             p.mNumProcessedBlocks = blockIndex;
                             mt.mHashSync.MtSync_StopWriting();
                             Event_Set(p.mWasStopped);
                             break;
                         }
-
-                        if(SyncTrace.Enable)
-                            Trace.MatchObjectWait(p, "BtThreadFunc:stop");
+                        Trace.MatchObjectWait(p, "BtThreadFunc:stop");
 
                         Semaphore_Wait(p.mFreeSemaphore);
                         mt.BtFillBlock(blockIndex++);
