@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 // TODO: Replace BinaryWriter by a custom one which is always little-endian.
@@ -198,7 +199,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         #region Configuration Implementations
 
-        private abstract class EncoderConfig
+        private abstract class EncoderConfig: IDisposable
         {
             private static DateTime? EnsureUTC(DateTime? value)
             {
@@ -214,6 +215,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private master._7zip.Legacy.CrcBuilderStream mCurrentStream;
             private List<FileEntry> mFiles;
             private FileEntry mCurrentFile;
+
+            public virtual void Dispose() { }
 
             private void FinishCurrentFile()
             {
@@ -464,6 +467,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 var settings = new LZMA.CLzma2EncProps();
                 settings.Lzma2EncProps_Init();
+                //settings.mLzmaProps.mNumThreads = 2;
+                //settings.mNumBlockThreads = 2;
 
                 var encoder = new LZMA.CLzma2Enc(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
                 var res = encoder.Lzma2Enc_SetProps(settings);
@@ -521,6 +526,222 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
+        private sealed class Lzma2ThreadedEncoderConfig: EncoderConfig
+        {
+            private sealed class ThreadedEncoderStream: EncoderStream
+            {
+                private Lzma2ThreadedEncoderConfig mContext;
+                private int mBufferOffset;
+                private int mBufferEnding;
+
+                public ThreadedEncoderStream(Lzma2ThreadedEncoderConfig context, int offset, int ending)
+                {
+                    mContext = context;
+                    mBufferOffset = offset;
+                    mBufferEnding = ending;
+                }
+
+                protected override void Dispose(bool disposing)
+                {
+                    mContext = null;
+                    base.Dispose(disposing);
+                }
+
+                public override void Write(byte[] buffer, int offset, int count)
+                {
+                    if(mContext == null)
+                        throw new ObjectDisposedException(null);
+
+                    while(count > 0)
+                    {
+                        int copy;
+                        if(mBufferOffset <= mBufferEnding)
+                            copy = Math.Min(count, mBufferEnding - mBufferOffset);
+                        else
+                            copy = Math.Min(count, kBufferLength - mBufferOffset);
+
+                        if(copy > 0)
+                        {
+                            Buffer.BlockCopy(buffer, offset, mContext.mInputBuffer, mBufferOffset, copy);
+                            count -= copy;
+                            offset += copy;
+                            mBufferOffset = (mBufferOffset + copy) % kBufferLength;
+                        }
+
+                        lock(mContext.mSyncObject)
+                        {
+                            if(copy > 0)
+                            {
+                                mContext.mInputEnding = mBufferOffset;
+                                Monitor.Pulse(mContext.mSyncObject);
+                            }
+
+                            for(; ; )
+                            {
+                                if(mContext.mShutdown)
+                                    throw new ObjectDisposedException(null);
+
+                                int offsetMinusOne = (mContext.mInputOffset + kBufferLength - 1) % kBufferLength;
+                                if(mContext.mInputEnding != offsetMinusOne)
+                                {
+                                    mBufferEnding = offsetMinusOne;
+                                    break;
+                                }
+
+                                Monitor.Wait(mContext.mSyncObject);
+                            }
+                        }
+                    }
+                }
+            }
+
+            private const int kBufferLength = 1 << 20;
+
+            private object mSyncObject;
+            private bool mShutdown;
+            private Thread mEncoderThread;
+            private byte[] mInputBuffer;
+            private int mInputOffset;
+            private int mInputEnding;
+            private byte mSettings;
+            private Stream mTargetStream;
+
+            public override void Dispose()
+            {
+                try
+                {
+                    lock(mSyncObject)
+                    {
+                        if(mShutdown)
+                            return;
+
+                        mShutdown = true;
+                        Monitor.Pulse(mSyncObject);
+                    }
+
+                    mEncoderThread.Join();
+                }
+                finally
+                {
+                    base.Dispose();
+                }
+            }
+
+            private void EncoderThread()
+            {
+                var settings = new LZMA.CLzma2EncProps();
+                settings.Lzma2EncProps_Init();
+                //settings.mLzmaProps.mNumThreads = 2;
+                //settings.mNumBlockThreads = 2;
+
+                var encoder = new LZMA.CLzma2Enc(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
+                var res = encoder.Lzma2Enc_SetProps(settings);
+                if(res != LZMA.SZ_OK)
+                    throw new InvalidOperationException();
+
+                mSettings = encoder.Lzma2Enc_WriteProperties();
+
+                var outBuffer = new LZMA.CSeqOutStream(delegate(P<byte> buf, long sz) {
+                    mTargetStream.Write(buf.mBuffer, buf.mOffset, checked((int)sz));
+                });
+
+                var inBuffer = new LZMA.CSeqInStream(delegate(P<byte> buf, long sz) {
+                    Utils.Assert(sz != 0);
+                    lock(mSyncObject)
+                    {
+                        for(; ; )
+                        {
+                            if(mShutdown)
+                                return 0;
+
+                            if(mInputOffset != mInputEnding)
+                            {
+                                int size;
+                                if(mInputOffset <= mInputEnding)
+                                    size = Math.Min(checked((int)sz), mInputEnding - mInputOffset);
+                                else
+                                    size = Math.Min(checked((int)sz), kBufferLength - mInputOffset);
+
+                                Utils.Assert(size != 0);
+                                Buffer.BlockCopy(mInputBuffer, mInputOffset, buf.mBuffer, buf.mOffset, size);
+                                mInputOffset = (mInputOffset + size) % kBufferLength;
+                                Monitor.Pulse(mSyncObject);
+                                return size;
+                            }
+
+                            Monitor.Wait(mSyncObject);
+                        }
+                    }
+                });
+
+                res = encoder.Lzma2Enc_Encode(outBuffer, inBuffer, null);
+                if(res != LZMA.SZ_OK)
+                    throw new InvalidOperationException();
+
+                encoder.Lzma2Enc_Destroy();
+            }
+
+            internal Lzma2ThreadedEncoderConfig(Stream stream)
+                : base(stream)
+            {
+                mTargetStream = stream;
+                mSyncObject = new object();
+                mInputBuffer = new byte[kBufferLength];
+                mEncoderThread = new Thread(EncoderThread);
+                mEncoderThread.Name = "LZMA 2 Stream Buffer Thread";
+                mEncoderThread.Start();
+            }
+
+            protected override Stream GetNextWriterStream(Stream stream)
+            {
+                lock(mSyncObject)
+                {
+                    for(; ; )
+                    {
+                        if(mShutdown)
+                            throw new ObjectDisposedException(null);
+
+                        int offsetMinusOne = (mInputOffset + kBufferLength - 1) % kBufferLength;
+                        if(offsetMinusOne != mInputEnding)
+                            return new ThreadedEncoderStream(this, mInputEnding, offsetMinusOne);
+
+                        Monitor.Wait(mSyncObject);
+                    }
+                }
+            }
+
+            protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
+            {
+                if(entries == null || entries.Length == 0)
+                    return null;
+
+                lock(mSyncObject)
+                {
+                    Utils.Assert(!mShutdown);
+
+                    while(mInputOffset != mInputEnding)
+                        Monitor.Wait(mSyncObject);
+
+                    mShutdown = true;
+                    Monitor.Pulse(mSyncObject);
+                }
+
+                mEncoderThread.Join();
+
+                return new FileSet {
+                    Files = entries,
+                    DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
+                    InputStreams = new[] { new InputStream { Size = stream.Position - origin } },
+                    Coders = new[] { new Coder {
+                        MethodId = master._7zip.Legacy.CMethodId.kLzma2,
+                        Settings = new byte[] { mSettings },
+                        InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
+                        OutputStreams = new[] { new CoderStream { Size = processed } },
+                    } },
+                };
+            }
+        }
+
         #endregion
 
         #region Constants & Variables
@@ -547,6 +768,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             if(!stream.CanSeek)
                 throw new ArgumentException("Stream must support seeking.", "stream");
+
+            // TODO: Implement the encoding independant of BinaryWriter endianess.
+            if(!BitConverter.IsLittleEndian)
+                throw new NotSupportedException("BinaryWriter must be little endian.");
 
             mFileStream = stream;
             mFileOrigin = stream.Position;
@@ -865,6 +1090,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             FinishCurrentEncoder();
             mEncoder = new Lzma2EncoderConfig(mFileStream);
+        }
+
+        public void InitializeLzma2EncoderTB()
+        {
+            FinishCurrentEncoder();
+            mEncoder = new Lzma2ThreadedEncoderConfig(mFileStream);
         }
 
         public Stream BeginWriteFile(IArchiveWriterEntry metadata)

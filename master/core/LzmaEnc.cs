@@ -136,7 +136,7 @@ namespace ManagedLzma.LZMA.Master
                 if(mNumThreads < 0)
                     mNumThreads =
 #if !_7ZIP_ST
- ((mBtMode != 0 && mAlgo != 0) ? 2 : 1);
+                        ((mBtMode != 0 && mAlgo != 0) ? 2 : 1);
 #else
                         1;
 #endif
