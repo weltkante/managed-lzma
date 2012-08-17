@@ -113,6 +113,7 @@ namespace master._7zip.Legacy
             if(streams.Length != 4)
                 throw new NotSupportedException();
 
+            mLimit = limit;
             mMainStream = streams[0];
             mCallStream = streams[1];
             mJumpStream = streams[2];

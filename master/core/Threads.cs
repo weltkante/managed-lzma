@@ -67,7 +67,9 @@ namespace ManagedLzma.LZMA.Master
 
         internal sealed class CEvent
         {
+#if DISABLE_TRACE
             public System.Threading.AutoResetEvent Event;
+#endif
         }
 
         internal static void Event_Construct(out CEvent p)
@@ -140,7 +142,9 @@ namespace ManagedLzma.LZMA.Master
 
         internal sealed class CSemaphore
         {
+#if DISABLE_TRACE
             public System.Threading.Semaphore Semaphore;
+#endif
         }
 
         internal static void Semaphore_Construct(out CSemaphore p)

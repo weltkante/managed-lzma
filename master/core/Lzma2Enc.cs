@@ -230,7 +230,7 @@ namespace ManagedLzma.LZMA.Master
                     mEnc.LzmaEnc_RestoreState();
                     return SZ_OK;
                 }
-
+                else
                 {
                     long destPos = 0;
                     uint u = unpackSize - 1;
