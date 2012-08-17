@@ -201,6 +201,7 @@ namespace ManagedLzma.LZMA.Master
         }
 
         internal class CMatchFinderMt
+            : CMatchFinder /* Hash */
         {
             #region Variables
 
@@ -214,9 +215,9 @@ namespace ManagedLzma.LZMA.Master
             internal uint mLzPos;
             internal uint mBtNumAvailBytes;
 
-            internal uint[] mHash;
-            internal uint mFixedHashSize;
-            internal uint mHistorySize;
+            internal uint[] mLocalHash;
+            internal uint mLocalFixedHashSize;
+            internal uint mLocalHistorySize;
 
             /* LZ + BT */
             internal CMtSync mBtSync = new CMtSync();
@@ -227,20 +228,17 @@ namespace ManagedLzma.LZMA.Master
             internal uint mHashBufPosLimit;
             internal uint mHashNumAvail;
 
-            internal P<uint> mSon;
-            internal uint mMatchMaxLen;
-            internal uint mNumHashBytes;
-            internal uint mPos;
-            internal P<byte> mBuffer;
-            internal uint mCyclicBufferPos;
-            internal uint mCyclicBufferSize; // it must be historySize + 1
-            internal uint mCutValue;
+            internal P<uint> mLocalSon;
+            internal uint mLocalMatchMaxLen;
+            internal uint mLocalNumHashBytes;
+            internal uint mLocalPos;
+            internal P<byte> mLocalBuffer;
+            internal uint mLocalCyclicBufferPos;
+            internal uint mLocalCyclicBufferSize; // it must be historySize + 1
+            internal uint mLocalCutValue;
 
             /* BT + Hash */
             internal CMtSync mHashSync = new CMtSync();
-
-            /* Hash */
-            internal CMatchFinder @base;
 
             #endregion
 
@@ -248,8 +246,6 @@ namespace ManagedLzma.LZMA.Master
 
             internal CMatchFinderMt()
             {
-                @base = new CMatchFinder();
-
                 TR("MatchFinderMt_Construct", 0);
 
                 mHashBuf = null;
@@ -283,8 +279,8 @@ namespace ManagedLzma.LZMA.Master
 
             private void MatchFinderMt_Normalize()
             {
-                CMatchFinder.MatchFinder_Normalize3(mLzPos - mHistorySize - 1, mHash, mFixedHashSize);
-                mLzPos = mHistorySize + 1;
+                CMatchFinder.MatchFinder_Normalize3(mLzPos - mLocalHistorySize - 1, mLocalHash, mLocalFixedHashSize);
+                mLzPos = mLocalHistorySize + 1;
             }
 
             internal void MatchFinderMt_GetNextBlock_Bt()
@@ -346,7 +342,7 @@ namespace ManagedLzma.LZMA.Master
                         Trace.MatchObjectWait(p, "HashThreadFunc:stop");
 
                         {
-                            CMatchFinder mf = mt.@base;
+                            CMatchFinder mf = mt;
                             if(mf.MatchFinder_NeedMove())
                             {
                                 CriticalSection_Enter(mt.mBtSync.mCS);
@@ -356,7 +352,7 @@ namespace ManagedLzma.LZMA.Master
                                     mf.MatchFinder_MoveBlock();
                                     P<byte> afterPtr = mf.MatchFinder_GetPointerToCurrentPos();
                                     mt.mPointerToCurPos -= beforePtr - afterPtr;
-                                    mt.mBuffer -= beforePtr - afterPtr;
+                                    mt.mLocalBuffer -= beforePtr - afterPtr;
                                 }
                                 CriticalSection_Leave(mt.mBtSync.mCS);
                                 CriticalSection_Leave(mt.mHashSync.mCS);
@@ -399,7 +395,7 @@ namespace ManagedLzma.LZMA.Master
             {
                 uint numProcessed = 0;
                 uint curPos = 2;
-                uint limit = kMtBtBlockSize - (mMatchMaxLen * 2);
+                uint limit = kMtBtBlockSize - (mLocalMatchMaxLen * 2);
 
                 distances[1] = mHashNumAvail;
 
@@ -410,7 +406,7 @@ namespace ManagedLzma.LZMA.Master
                         MatchFinderMt_GetNextBlock_Hash();
                         distances[1] = numProcessed + mHashNumAvail;
 
-                        if(mHashNumAvail >= mNumHashBytes)
+                        if(mHashNumAvail >= mLocalNumHashBytes)
                             continue;
 
                         while(mHashNumAvail != 0)
@@ -422,13 +418,13 @@ namespace ManagedLzma.LZMA.Master
                         break;
                     }
                     {
-                        TR("BtGetMatches:cyclicBufferPos0", mCyclicBufferPos);
+                        TR("BtGetMatches:cyclicBufferPos0", mLocalCyclicBufferPos);
 
                         uint size = mHashBufPosLimit - mHashBufPos;
-                        uint lenLimit = mMatchMaxLen;
-                        uint pos = mPos;
-                        uint cyclicBufferPos = mCyclicBufferPos;
-                        
+                        uint lenLimit = mLocalMatchMaxLen;
+                        uint pos = mLocalPos;
+                        uint cyclicBufferPos = mLocalCyclicBufferPos;
+
                         if(lenLimit >= mHashNumAvail)
                             lenLimit = mHashNumAvail;
 
@@ -437,7 +433,7 @@ namespace ManagedLzma.LZMA.Master
                             if(size2 < size)
                                 size = size2;
 
-                            size2 = mCyclicBufferSize - cyclicBufferPos;
+                            size2 = mLocalCyclicBufferSize - cyclicBufferPos;
                             if(size2 < size)
                                 size = size2;
                         }
@@ -446,26 +442,26 @@ namespace ManagedLzma.LZMA.Master
                         {
                             P<uint> startDistances = distances + curPos;
                             uint num = (uint)(CMatchFinder.GetMatchesSpec1(lenLimit, pos - mHashBuf[mHashBufPos++],
-                                pos, mBuffer, mSon, cyclicBufferPos, mCyclicBufferSize, mCutValue,
-                                startDistances + 1, mNumHashBytes - 1) - startDistances);
+                                pos, mLocalBuffer, mLocalSon, cyclicBufferPos, mLocalCyclicBufferSize, mLocalCutValue,
+                                startDistances + 1, mLocalNumHashBytes - 1) - startDistances);
                             TR("GetMatchesSpec1", num);
                             startDistances[0] = num - 1;
                             curPos += num;
                             cyclicBufferPos++;
                             pos++;
-                            mBuffer++;
+                            mLocalBuffer++;
                         }
 
-                        numProcessed += pos - mPos;
-                        mHashNumAvail -= pos - mPos;
-                        mPos = pos;
+                        numProcessed += pos - mLocalPos;
+                        mHashNumAvail -= pos - mLocalPos;
+                        mLocalPos = pos;
 
-                        if(cyclicBufferPos == mCyclicBufferSize)
+                        if(cyclicBufferPos == mLocalCyclicBufferSize)
                             cyclicBufferPos = 0;
 
-                        mCyclicBufferPos = cyclicBufferPos;
+                        mLocalCyclicBufferPos = cyclicBufferPos;
 
-                        TR("BtGetMatches:cyclicBufferPos1", mCyclicBufferPos);
+                        TR("BtGetMatches:cyclicBufferPos1", mLocalCyclicBufferPos);
                     }
                 }
 
@@ -483,11 +479,11 @@ namespace ManagedLzma.LZMA.Master
 
                 BtGetMatches(mBtBuf + (globalBlockIndex & kMtBtNumBlocksMask) * kMtBtBlockSize);
 
-                if(mPos > kMtMaxValForNormalize - kMtBtBlockSize)
+                if(mLocalPos > kMtMaxValForNormalize - kMtBtBlockSize)
                 {
-                    uint subValue = mPos - mCyclicBufferSize;
-                    CMatchFinder.MatchFinder_Normalize3(subValue, mSon, mCyclicBufferSize * 2);
-                    mPos -= subValue;
+                    uint subValue = mLocalPos - mLocalCyclicBufferSize;
+                    CMatchFinder.MatchFinder_Normalize3(subValue, mLocalSon, mLocalCyclicBufferSize * 2);
+                    mLocalPos -= subValue;
                 }
 
                 if(!sync.mNeedStart)
@@ -511,7 +507,7 @@ namespace ManagedLzma.LZMA.Master
                     {
                         if(p.mExit)
                             return;
-                        
+
                         Trace.MatchObjectWait(p, "BtThreadFunc:stop");
                         if(p.mStopWriting)
                         {
@@ -533,9 +529,9 @@ namespace ManagedLzma.LZMA.Master
             internal SRes MatchFinderMt_Create(uint historySize, uint keepAddBufferBefore, uint matchMaxLen, uint keepAddBufferAfter, ISzAlloc alloc)
             {
                 CMatchFinderMt p = this;
-                CMatchFinder mf = p.@base;
+                CMatchFinder mf = p;
 
-                p.mHistorySize = historySize;
+                p.mLocalHistorySize = historySize;
 
                 if(kMtBtBlockSize <= matchMaxLen * 4)
                     return SZ_ERROR_PARAM;
@@ -566,8 +562,8 @@ namespace ManagedLzma.LZMA.Master
             internal void MatchFinderMt_CreateVTable(out IMatchFinder vTable)
             {
                 // Careful: don't use this.mNumHashBytes - it hasn't been initialized yet!
-                TR("MatchFinderMt_CreateVTable", @base.mNumHashBytes);
-                switch(@base.mNumHashBytes)
+                TR("MatchFinderMt_CreateVTable", base.mNumHashBytes);
+                switch(base.mNumHashBytes)
                 {
                 case 2:
                     vTable = mInterface = new MatchFinderMt2();
@@ -581,7 +577,7 @@ namespace ManagedLzma.LZMA.Master
                     break;
                 case 4:
 #endif
-                    if(@base.mBigHash)
+                    if(base.mBigHash)
                         vTable = mInterface = new MatchFinderMt4b();
                     else
                         vTable = mInterface = new MatchFinderMt4a();
@@ -626,26 +622,26 @@ namespace ManagedLzma.LZMA.Master
             /* Call it after ReleaseStream / SetStream */
             private static void MatchFinderMt_Init(CMatchFinderMt p)
             {
-                CMatchFinder mf = p.@base;
+                CMatchFinder mf = p;
 
                 p.mBtBufPos = p.mBtBufPosLimit = 0;
                 p.mHashBufPos = p.mHashBufPosLimit = 0;
                 mf.MatchFinder_Init();
                 p.mPointerToCurPos = mf.MatchFinder_GetPointerToCurrentPos();
                 p.mBtNumAvailBytes = 0;
-                p.mLzPos = p.mHistorySize + 1;
+                p.mLzPos = p.mLocalHistorySize + 1;
 
-                p.mHash = mf.mHash;
-                p.mFixedHashSize = mf.mFixedHashSize;
+                p.mLocalHash = mf.mHash;
+                p.mLocalFixedHashSize = mf.mFixedHashSize;
 
-                p.mSon = mf.mSon;
-                p.mMatchMaxLen = mf.mMatchMaxLen;
-                p.mNumHashBytes = mf.mNumHashBytes;
-                p.mPos = mf.mPos;
-                p.mBuffer = mf.mBuffer;
-                p.mCyclicBufferPos = mf.mCyclicBufferPos;
-                p.mCyclicBufferSize = mf.mCyclicBufferSize;
-                p.mCutValue = mf.mCutValue;
+                p.mLocalSon = mf.mSon;
+                p.mLocalMatchMaxLen = mf.mMatchMaxLen;
+                p.mLocalNumHashBytes = mf.mNumHashBytes;
+                p.mLocalPos = mf.mPos;
+                p.mLocalBuffer = mf.mBuffer;
+                p.mLocalCyclicBufferPos = mf.mCyclicBufferPos;
+                p.mLocalCyclicBufferSize = mf.mCyclicBufferSize;
+                p.mLocalCutValue = mf.mCutValue;
             }
 
             private static uint MatchFinderMt_GetMatches(CMatchFinderMt p, P<uint> distances)
@@ -659,7 +655,7 @@ namespace ManagedLzma.LZMA.Master
                 if(len == 0)
                 {
                     if(p.mBtNumAvailBytes-- >= 4)
-                        len = (uint)(p.mInterface.MixMatchesFunc(p, p.mLzPos - p.mHistorySize, distances) - distances);
+                        len = (uint)(p.mInterface.MixMatchesFunc(p, p.mLzPos - p.mLocalHistorySize, distances) - distances);
                 }
                 else
                 {
@@ -789,7 +785,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static P<uint> MixMatches2(CMatchFinderMt p, uint matchMinPos, P<uint> distances)
             {
-                uint[] hash = p.mHash;
+                uint[] hash = p.mLocalHash;
                 P<byte> cur = p.mPointerToCurPos;
                 uint lzPos = p.mLzPos;
                 uint hash2Value = (cur[0].CRC() ^ cur[1]) & (kHash2Size - 1);
@@ -818,7 +814,7 @@ namespace ManagedLzma.LZMA.Master
                     if(p.mBtNumAvailBytes-- >= 2)
                     {
                         P<byte> cur = p.mPointerToCurPos;
-                        uint[] hash = p.mHash;
+                        uint[] hash = p.mLocalHash;
                         uint hash2Value = (cur[0].CRC() ^ cur[1]) & (kHash2Size - 1);
                         hash[hash2Value] = p.mLzPos;
                     }
@@ -845,7 +841,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static P<uint> MixMatches3(CMatchFinderMt p, uint matchMinPos, P<uint> distances)
             {
-                uint[] hash = p.mHash;
+                uint[] hash = p.mLocalHash;
                 P<byte> cur = p.mPointerToCurPos;
                 uint lzPos = p.mLzPos;
                 uint temp = cur[0].CRC() ^ cur[1];
@@ -894,7 +890,7 @@ namespace ManagedLzma.LZMA.Master
                     if(p.mBtNumAvailBytes-- >= 3)
                     {
                         P<byte> cur = p.mPointerToCurPos;
-                        uint[] hash = p.mHash;
+                        uint[] hash = p.mLocalHash;
                         uint temp = cur[0].CRC() ^ cur[1];
                         uint hash2Value = temp & (kHash2Size - 1);
                         uint hash3Value = (temp ^ ((uint)cur[2] << 8)) & (kHash3Size - 1);

@@ -1926,7 +1926,7 @@ namespace ManagedLzma.LZMA.Master
                 mRC.RangeEnc_Construct();
 #if !_7ZIP_ST
                 mMatchFinderMt = new CMatchFinderMt();
-                mMatchFinderBase = mMatchFinderMt.@base;
+                mMatchFinderBase = mMatchFinderMt;
 #else
                 mMatchFinderBase = new CMatchFinder();
 #endif
