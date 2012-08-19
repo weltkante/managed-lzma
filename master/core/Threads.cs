@@ -47,13 +47,14 @@ namespace ManagedLzma.LZMA.Master
             return TSZ("Thread_Wait");
         }
 
-        internal static SRes Thread_Create(out CThread p, Action func)
+        internal static SRes Thread_Create(out CThread p, Action func, string threadName)
         {
             p = new CThread();
 #if !DISABLE_TRACE
             p._thread = Trace.MatchThreadStart(func);
 #else
             p._thread = new System.Threading.Thread(delegate() { func(); });
+            p._thread.Name = threadName;
             p._thread.Start();
 #endif
             return TSZ("Thread_Create");

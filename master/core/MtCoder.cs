@@ -76,7 +76,7 @@ namespace ManagedLzma.LZMA.Master
                     return res;
                 if((res = AutoResetEvent_CreateNotSignaled(out mFinishedEvent)) != SZ_OK)
                     return res;
-                return Thread_Create(out mThread, LoopThreadFunc);
+                return Thread_Create(out mThread, LoopThreadFunc, "LZMA 2 Loop Thread");
             }
 
             internal SRes LoopThread_StopAndWait()

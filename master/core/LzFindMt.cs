@@ -148,7 +148,7 @@ namespace ManagedLzma.LZMA.Master
                 mWasCreated = false;
             }
 
-            private SRes MtSync_Create2(Action startAddress, uint numBlocks)
+            private SRes MtSync_Create2(Action startAddress, string threadName, uint numBlocks)
             {
                 if(mWasCreated)
                     return SZ_OK;
@@ -173,16 +173,16 @@ namespace ManagedLzma.LZMA.Master
 
                 mNeedStart = true;
 
-                if(Thread_Create(out mThread, startAddress) != SZ_OK)
+                if(Thread_Create(out mThread, startAddress, threadName) != SZ_OK)
                     return SZ_ERROR_THREAD;
                 mWasCreated = true;
 
                 return SZ_OK;
             }
 
-            internal SRes MtSync_Create(Action startAddress, uint numBlocks)
+            internal SRes MtSync_Create(Action startAddress, string threadName, uint numBlocks)
             {
-                SRes res = MtSync_Create2(startAddress, numBlocks);
+                SRes res = MtSync_Create2(startAddress, threadName, numBlocks);
                 if(res != SZ_OK)
                     MtSync_Destruct();
                 return res;
@@ -543,9 +543,9 @@ namespace ManagedLzma.LZMA.Master
                     return SZ_ERROR_MEM;
 
                 SRes res;
-                if((res = mHashSync.MtSync_Create(HashThreadFunc, kMtHashNumBlocks)) != SZ_OK)
+                if((res = mHashSync.MtSync_Create(HashThreadFunc, "LZMA Hash Thread", kMtHashNumBlocks)) != SZ_OK)
                     return res;
-                if((res = mBtSync.MtSync_Create(BtThreadFunc, kMtBtNumBlocks)) != SZ_OK)
+                if((res = mBtSync.MtSync_Create(BtThreadFunc, "LZMA BT Thread", kMtBtNumBlocks)) != SZ_OK)
                     return res;
                 return SZ_OK;
             }
