@@ -340,47 +340,46 @@ namespace ManagedLzma.LZMA.Master
                         }
                         Trace.MatchObjectWait(p, "HashThreadFunc:stop");
 
-                            if(base.MatchFinder_NeedMove())
+                        if(base.MatchFinder_NeedMove())
+                        {
+                            CriticalSection_Enter(mBtSync.mCS);
+                            CriticalSection_Enter(mHashSync.mCS);
                             {
-                                CriticalSection_Enter(mBtSync.mCS);
-                                CriticalSection_Enter(mHashSync.mCS);
-                                {
-                                    P<byte> beforePtr = base.MatchFinder_GetPointerToCurrentPos();
-                                    base.MatchFinder_MoveBlock();
-                                    P<byte> afterPtr = base.MatchFinder_GetPointerToCurrentPos();
-                                    mPointerToCurPos -= beforePtr - afterPtr;
-                                    mLocalBuffer -= beforePtr - afterPtr;
-                                }
-                                CriticalSection_Leave(mBtSync.mCS);
-                                CriticalSection_Leave(mHashSync.mCS);
-                                continue;
+                                P<byte> beforePtr = base.MatchFinder_GetPointerToCurrentPos();
+                                base.MatchFinder_MoveBlock();
+                                P<byte> afterPtr = base.MatchFinder_GetPointerToCurrentPos();
+                                mPointerToCurPos -= beforePtr - afterPtr;
+                                mLocalBuffer -= beforePtr - afterPtr;
                             }
+                            CriticalSection_Leave(mBtSync.mCS);
+                            CriticalSection_Leave(mHashSync.mCS);
+                            continue;
+                        }
 
-                            Semaphore_Wait(p.mFreeSemaphore);
+                        Semaphore_Wait(p.mFreeSemaphore);
 
-                            base.MatchFinder_ReadIfRequired();
-                            if(base.mPos > (kMtMaxValForNormalize - kMtHashBlockSize))
-                            {
-                                uint subValue = (base.mPos - base.mHistorySize - 1);
-                                base.MatchFinder_ReduceOffsets(subValue);
-                                CMatchFinder.MatchFinder_Normalize3(subValue, P.From(base.mHash, base.mFixedHashSize), base.mHashMask + 1);
-                            }
-                            {
-                                P<uint> heads = P.From(mHashBuf, ((numProcessedBlocks++) & kMtHashNumBlocksMask) * kMtHashBlockSize);
-                                uint num = base.mStreamPos - base.mPos;
-                                heads[0] = 2;
-                                heads[1] = num;
-                                if(num >= base.mNumHashBytes)
-                                {
-                                    num = num - base.mNumHashBytes + 1;
-                                    if(num > kMtHashBlockSize - 2)
-                                        num = kMtHashBlockSize - 2;
-                                    mInterface.GetHeadsFunc(base.mBuffer, base.mPos, P.From(base.mHash, base.mFixedHashSize), base.mHashMask, heads + 2, num);
-                                    heads[0] += num;
-                                }
-                                base.mPos += num;
-                                base.mBuffer += num;
-                            }
+                        base.MatchFinder_ReadIfRequired();
+                        if(base.mPos > (kMtMaxValForNormalize - kMtHashBlockSize))
+                        {
+                            uint subValue = (base.mPos - base.mHistorySize - 1);
+                            base.MatchFinder_ReduceOffsets(subValue);
+                            CMatchFinder.MatchFinder_Normalize3(subValue, P.From(base.mHash, base.mFixedHashSize), base.mHashMask + 1);
+                        }
+
+                        P<uint> heads = P.From(mHashBuf, ((numProcessedBlocks++) & kMtHashNumBlocksMask) * kMtHashBlockSize);
+                        uint num = base.mStreamPos - base.mPos;
+                        heads[0] = 2;
+                        heads[1] = num;
+                        if(num >= base.mNumHashBytes)
+                        {
+                            num = num - base.mNumHashBytes + 1;
+                            if(num > kMtHashBlockSize - 2)
+                                num = kMtHashBlockSize - 2;
+                            mInterface.GetHeadsFunc(base.mBuffer, base.mPos, P.From(base.mHash, base.mFixedHashSize), base.mHashMask, heads + 2, num);
+                            heads[0] += num;
+                        }
+                        base.mPos += num;
+                        base.mBuffer += num;
 
                         Semaphore_Release1(p.mFilledSemaphore);
                     }
