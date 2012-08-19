@@ -319,8 +319,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal void HashThreadFunc()
             {
-                CMatchFinderMt mt = this;
-                CMtSync p = mt.mHashSync;
+                CMtSync p = mHashSync;
                 for(; ; )
                 {
                     uint numProcessedBlocks = 0;
@@ -341,50 +340,47 @@ namespace ManagedLzma.LZMA.Master
                         }
                         Trace.MatchObjectWait(p, "HashThreadFunc:stop");
 
-                        {
-                            CMatchFinder mf = mt;
-                            if(mf.MatchFinder_NeedMove())
+                            if(base.MatchFinder_NeedMove())
                             {
-                                CriticalSection_Enter(mt.mBtSync.mCS);
-                                CriticalSection_Enter(mt.mHashSync.mCS);
+                                CriticalSection_Enter(mBtSync.mCS);
+                                CriticalSection_Enter(mHashSync.mCS);
                                 {
-                                    P<byte> beforePtr = mf.MatchFinder_GetPointerToCurrentPos();
-                                    mf.MatchFinder_MoveBlock();
-                                    P<byte> afterPtr = mf.MatchFinder_GetPointerToCurrentPos();
-                                    mt.mPointerToCurPos -= beforePtr - afterPtr;
-                                    mt.mLocalBuffer -= beforePtr - afterPtr;
+                                    P<byte> beforePtr = base.MatchFinder_GetPointerToCurrentPos();
+                                    base.MatchFinder_MoveBlock();
+                                    P<byte> afterPtr = base.MatchFinder_GetPointerToCurrentPos();
+                                    mPointerToCurPos -= beforePtr - afterPtr;
+                                    mLocalBuffer -= beforePtr - afterPtr;
                                 }
-                                CriticalSection_Leave(mt.mBtSync.mCS);
-                                CriticalSection_Leave(mt.mHashSync.mCS);
+                                CriticalSection_Leave(mBtSync.mCS);
+                                CriticalSection_Leave(mHashSync.mCS);
                                 continue;
                             }
 
                             Semaphore_Wait(p.mFreeSemaphore);
 
-                            mf.MatchFinder_ReadIfRequired();
-                            if(mf.mPos > (kMtMaxValForNormalize - kMtHashBlockSize))
+                            base.MatchFinder_ReadIfRequired();
+                            if(base.mPos > (kMtMaxValForNormalize - kMtHashBlockSize))
                             {
-                                uint subValue = (mf.mPos - mf.mHistorySize - 1);
-                                mf.MatchFinder_ReduceOffsets(subValue);
-                                CMatchFinder.MatchFinder_Normalize3(subValue, P.From(mf.mHash, mf.mFixedHashSize), mf.mHashMask + 1);
+                                uint subValue = (base.mPos - base.mHistorySize - 1);
+                                base.MatchFinder_ReduceOffsets(subValue);
+                                CMatchFinder.MatchFinder_Normalize3(subValue, P.From(base.mHash, base.mFixedHashSize), base.mHashMask + 1);
                             }
                             {
-                                P<uint> heads = P.From(mt.mHashBuf, ((numProcessedBlocks++) & kMtHashNumBlocksMask) * kMtHashBlockSize);
-                                uint num = mf.mStreamPos - mf.mPos;
+                                P<uint> heads = P.From(mHashBuf, ((numProcessedBlocks++) & kMtHashNumBlocksMask) * kMtHashBlockSize);
+                                uint num = base.mStreamPos - base.mPos;
                                 heads[0] = 2;
                                 heads[1] = num;
-                                if(num >= mf.mNumHashBytes)
+                                if(num >= base.mNumHashBytes)
                                 {
-                                    num = num - mf.mNumHashBytes + 1;
+                                    num = num - base.mNumHashBytes + 1;
                                     if(num > kMtHashBlockSize - 2)
                                         num = kMtHashBlockSize - 2;
-                                    mt.mInterface.GetHeadsFunc(mf.mBuffer, mf.mPos, P.From(mf.mHash, mf.mFixedHashSize), mf.mHashMask, heads + 2, num);
+                                    mInterface.GetHeadsFunc(base.mBuffer, base.mPos, P.From(base.mHash, base.mFixedHashSize), base.mHashMask, heads + 2, num);
                                     heads[0] += num;
                                 }
-                                mf.mPos += num;
-                                mf.mBuffer += num;
+                                base.mPos += num;
+                                base.mBuffer += num;
                             }
-                        }
 
                         Semaphore_Release1(p.mFilledSemaphore);
                     }
@@ -495,8 +491,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal void BtThreadFunc()
             {
-                CMatchFinderMt mt = this;
-                CMtSync p = mt.mBtSync;
+                CMtSync p = mBtSync;
                 for(; ; )
                 {
                     Event_Wait(p.mCanStart);
@@ -513,14 +508,14 @@ namespace ManagedLzma.LZMA.Master
                         {
                             Trace.MatchObjectWait(p, "BtThreadFunc:stop");
                             p.mNumProcessedBlocks = blockIndex;
-                            mt.mHashSync.MtSync_StopWriting();
+                            mHashSync.MtSync_StopWriting();
                             Event_Set(p.mWasStopped);
                             break;
                         }
                         Trace.MatchObjectWait(p, "BtThreadFunc:stop");
 
                         Semaphore_Wait(p.mFreeSemaphore);
-                        mt.BtFillBlock(blockIndex++);
+                        BtFillBlock(blockIndex++);
                         Semaphore_Release1(p.mFilledSemaphore);
                     }
                 }
@@ -528,33 +523,30 @@ namespace ManagedLzma.LZMA.Master
 
             internal SRes MatchFinderMt_Create(uint historySize, uint keepAddBufferBefore, uint matchMaxLen, uint keepAddBufferAfter, ISzAlloc alloc)
             {
-                CMatchFinderMt p = this;
-                CMatchFinder mf = p;
-
-                p.mLocalHistorySize = historySize;
+                mLocalHistorySize = historySize;
 
                 if(kMtBtBlockSize <= matchMaxLen * 4)
                     return SZ_ERROR_PARAM;
 
-                if(p.mHashBuf == null)
+                if(mHashBuf == null)
                 {
-                    p.mHashBuf = alloc.Alloc<uint>(alloc, kHashBufferSize + kBtBufferSize);
-                    if(p.mHashBuf == null)
+                    mHashBuf = alloc.Alloc<uint>(alloc, kHashBufferSize + kBtBufferSize);
+                    if(mHashBuf == null)
                         return SZ_ERROR_MEM;
 
-                    p.mBtBuf = P.From(p.mHashBuf, kHashBufferSize);
+                    mBtBuf = P.From(mHashBuf, kHashBufferSize);
                 }
 
                 keepAddBufferBefore += (kHashBufferSize + kBtBufferSize);
                 keepAddBufferAfter += kMtHashBlockSize;
 
-                if(!mf.MatchFinder_Create(historySize, keepAddBufferBefore, matchMaxLen, keepAddBufferAfter, alloc))
+                if(!base.MatchFinder_Create(historySize, keepAddBufferBefore, matchMaxLen, keepAddBufferAfter, alloc))
                     return SZ_ERROR_MEM;
 
                 SRes res;
-                if((res = p.mHashSync.MtSync_Create(p.HashThreadFunc, kMtHashNumBlocks)) != SZ_OK)
+                if((res = mHashSync.MtSync_Create(HashThreadFunc, kMtHashNumBlocks)) != SZ_OK)
                     return res;
-                if((res = p.mBtSync.MtSync_Create(p.BtThreadFunc, kMtBtNumBlocks)) != SZ_OK)
+                if((res = mBtSync.MtSync_Create(BtThreadFunc, kMtBtNumBlocks)) != SZ_OK)
                     return res;
                 return SZ_OK;
             }
