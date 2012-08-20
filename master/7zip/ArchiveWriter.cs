@@ -605,6 +605,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private int mInputEnding;
             private byte mSettings;
             private Stream mTargetStream;
+            private int? mThreadCount;
 
             public override void Dispose()
             {
@@ -631,8 +632,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 var settings = new LZMA.CLzma2EncProps();
                 settings.Lzma2EncProps_Init();
-                //settings.mLzmaProps.mNumThreads = 2;
-                //settings.mNumBlockThreads = 2;
+
+                if(mThreadCount.HasValue)
+                    settings.mNumBlockThreads = mThreadCount.Value;
 
                 var encoder = new LZMA.CLzma2Enc(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
                 var res = encoder.Lzma2Enc_SetProps(settings);
@@ -681,10 +683,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 encoder.Lzma2Enc_Destroy();
             }
 
-            internal Lzma2ThreadedEncoderConfig(Stream stream)
+            internal Lzma2ThreadedEncoderConfig(Stream stream, int? threadCount)
                 : base(stream)
             {
                 mTargetStream = stream;
+                mThreadCount = threadCount;
                 mSyncObject = new object();
                 mInputBuffer = new byte[kBufferLength];
                 mEncoderThread = new Thread(EncoderThread);
@@ -1086,16 +1089,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             mEncoder = new LzmaEncoderConfig(mFileStream);
         }
 
+        [Obsolete("Use InitializeLzma2EncoderTB instead.")]
         public void InitializeLzma2Encoder()
         {
             FinishCurrentEncoder();
             mEncoder = new Lzma2EncoderConfig(mFileStream);
         }
 
-        public void InitializeLzma2EncoderTB()
+        public void InitializeLzma2EncoderTB(int? threadCount)
         {
             FinishCurrentEncoder();
-            mEncoder = new Lzma2ThreadedEncoderConfig(mFileStream);
+            mEncoder = new Lzma2ThreadedEncoderConfig(mFileStream, threadCount);
         }
 
         public Stream BeginWriteFile(IArchiveWriterEntry metadata)
