@@ -336,8 +336,9 @@ namespace ManagedLzma.LZMA.Master
 
             internal void MatchFinder_Init()
             {
-                for(uint i = 0; i < mHashSizeSum; i++)
-                    mHash[i] = kEmptyHashValue;
+                //for(uint i = 0; i < mHashSizeSum; i++)
+                //    mHash[i] = kEmptyHashValue;
+                Array.Clear(mHash, 0, (int)mHashSizeSum);
 
                 mCyclicBufferPos = 0;
                 mBuffer = mBufferBase;
