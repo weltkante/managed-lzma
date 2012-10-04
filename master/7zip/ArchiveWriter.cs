@@ -281,6 +281,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 return fileset;
             }
 
+            public abstract long LowerBound { get; }
+            public abstract long UpperBound { get; }
             protected abstract Stream GetNextWriterStream(Stream stream);
             protected abstract FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin);
         }
@@ -332,41 +334,53 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             public abstract override void Write(byte[] buffer, int offset, int count);
         }
 
-        private sealed class ForwardingEncoderStream: EncoderStream
-        {
-            private Stream mTargetStream;
-
-            public ForwardingEncoderStream(Stream targetStream)
-            {
-                if(targetStream == null)
-                    throw new ArgumentNullException("targetStream");
-
-                mTargetStream = targetStream;
-            }
-
-            protected override void Dispose(bool disposing)
-            {
-                mTargetStream = null;
-                base.Dispose(disposing);
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                if(mTargetStream == null)
-                    throw new ObjectDisposedException(null);
-
-                mTargetStream.Write(buffer, offset, count);
-            }
-        }
-
         private sealed class PlainEncoderConfig: EncoderConfig
         {
+            private sealed class PlainEncoderStream: EncoderStream
+            {
+                private PlainEncoderConfig mOwner;
+                private Stream mStream;
+
+                public PlainEncoderStream(PlainEncoderConfig owner, Stream stream)
+                {
+                    mOwner = owner;
+                    mStream = stream;
+                }
+
+                protected override void Dispose(bool disposing)
+                {
+                    mStream = null;
+                    base.Dispose(disposing);
+                }
+
+                public override void Write(byte[] buffer, int offset, int count)
+                {
+                    if(mStream == null)
+                        throw new ObjectDisposedException(null);
+
+                    mOwner.mWrittenSize += count;
+                    mStream.Write(buffer, offset, count);
+                }
+            }
+
+            private long mWrittenSize;
+
             internal PlainEncoderConfig(Stream target)
                 : base(target) { }
 
             protected override Stream GetNextWriterStream(Stream stream)
             {
-                return new ForwardingEncoderStream(stream);
+                return new PlainEncoderStream(this, stream);
+            }
+
+            public override long LowerBound
+            {
+                get { return mWrittenSize; }
+            }
+
+            public override long UpperBound
+            {
+                get { return mWrittenSize; }
             }
 
             protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
@@ -390,6 +404,33 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         private sealed class LzmaEncoderConfig: EncoderConfig
         {
+            private sealed class LzmaEncoderStream: EncoderStream
+            {
+                private Stream mTargetStream;
+
+                public LzmaEncoderStream(Stream targetStream)
+                {
+                    if(targetStream == null)
+                        throw new ArgumentNullException("targetStream");
+
+                    mTargetStream = targetStream;
+                }
+
+                protected override void Dispose(bool disposing)
+                {
+                    mTargetStream = null;
+                    base.Dispose(disposing);
+                }
+
+                public override void Write(byte[] buffer, int offset, int count)
+                {
+                    if(mTargetStream == null)
+                        throw new ObjectDisposedException(null);
+
+                    mTargetStream.Write(buffer, offset, count);
+                }
+            }
+
             private MemoryStream mBuffer;
             private byte[] mSettings;
 
@@ -432,7 +473,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             protected override Stream GetNextWriterStream(Stream stream)
             {
-                return new ForwardingEncoderStream(mBuffer);
+                return new LzmaEncoderStream(mBuffer);
+            }
+
+            public override long LowerBound
+            {
+                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
+            }
+
+            public override long UpperBound
+            {
+                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
             }
 
             protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
@@ -460,6 +511,33 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         private sealed class Lzma2EncoderConfig: EncoderConfig
         {
+            private sealed class Lzma2EncoderStream: EncoderStream
+            {
+                private Stream mTargetStream;
+
+                public Lzma2EncoderStream(Stream targetStream)
+                {
+                    if(targetStream == null)
+                        throw new ArgumentNullException("targetStream");
+
+                    mTargetStream = targetStream;
+                }
+
+                protected override void Dispose(bool disposing)
+                {
+                    mTargetStream = null;
+                    base.Dispose(disposing);
+                }
+
+                public override void Write(byte[] buffer, int offset, int count)
+                {
+                    if(mTargetStream == null)
+                        throw new ObjectDisposedException(null);
+
+                    mTargetStream.Write(buffer, offset, count);
+                }
+            }
+
             private MemoryStream mBuffer;
             private byte mSettings;
 
@@ -500,7 +578,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             protected override Stream GetNextWriterStream(Stream stream)
             {
-                return new ForwardingEncoderStream(mBuffer);
+                return new Lzma2EncoderStream(mBuffer);
+            }
+
+            public override long LowerBound
+            {
+                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
+            }
+
+            public override long UpperBound
+            {
+                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
             }
 
             protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
@@ -572,6 +660,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         {
                             if(copy > 0)
                             {
+                                mContext.mUpperBound += copy;
                                 mContext.mInputEnding = mBufferOffset;
                                 Monitor.Pulse(mContext.mSyncObject);
                             }
@@ -606,6 +695,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private byte mSettings;
             private Stream mTargetStream;
             private int? mThreadCount;
+            private long mLowerBound;
+            private long mUpperBound;
 
             public override void Dispose()
             {
@@ -645,6 +736,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                 var outBuffer = new LZMA.CSeqOutStream(delegate(P<byte> buf, long sz) {
                     mTargetStream.Write(buf.mBuffer, buf.mOffset, checked((int)sz));
+                    lock(mSyncObject)
+                        mLowerBound += sz;
                 });
 
                 var inBuffer = new LZMA.CSeqInStream(delegate(P<byte> buf, long sz) {
@@ -713,6 +806,24 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 }
             }
 
+            public override long LowerBound
+            {
+                get
+                {
+                    lock(mSyncObject)
+                        return mLowerBound;
+                }
+            }
+
+            public override long UpperBound
+            {
+                get
+                {
+                    lock(mSyncObject)
+                        return mUpperBound;
+                }
+            }
+
             protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
             {
                 if(entries == null || entries.Length == 0)
@@ -752,6 +863,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         private static readonly byte[] kSignature = { (byte)'7', (byte)'z', 0xBC, 0xAF, 0x27, 0x1C };
 
         private long mFileOrigin;
+        private long mWrittenSize;
+        private long mWrittenSync;
         private Stream mFileStream;
         private List<FileSet> mFileSets;
         private EncoderConfig mEncoder;
@@ -768,6 +881,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             if(!stream.CanWrite)
                 throw new ArgumentException("Stream must support writing.", "stream");
 
+            // Seeking is required only because we need to go back to the start of the stream
+            // and fix up a reference to the header data. Possible solution: If we fix filesize
+            // ahead of time we could reserve space for the header and output a fixed offset.
             if(!stream.CanSeek)
                 throw new ArgumentException("Stream must support seeking.", "stream");
 
@@ -789,6 +905,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             WriteHeaderInfo(writer, 0, 0, CRC.Finish(CRC.kInitCRC));
 
             mFileSets = new List<FileSet>();
+            mWrittenSync = mFileStream.Position;
         }
 
         /// <summary>
@@ -797,24 +914,35 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         /// </summary>
         public long WrittenSize
         {
-            get { return mFileStream.Position; }
+            get
+            {
+                // TODO: If we have an encoder we shouldn't access the file stream because it's owned by the encoder.
+
+                long size = mWrittenSize;
+
+                if(mEncoder != null)
+                    size += mEncoder.LowerBound;
+
+                return size;
+            }
         }
 
         /// <summary>
         /// Returns an estimated limit for the file size if the archive would be closed now.
-        /// This consists of WrittenSize plus an estimated size limit for the header.
+        /// This consists of WrittenSize plus an estimated size limit for buffered data and the header.
         /// The actual archive size may be smaller due to overestimating the header size.
         /// </summary>
         public long CurrentSizeLimit
         {
             get
             {
-                // TODO: We need to somehow support calculating limits with open encoders, or something.
+                // TODO: CalculateHeaderLimit does not include the metadata from the active encoder!
+                long size = mWrittenSize + CalculateHeaderLimit();
 
-                //if(mEncoder != null)
-                //    throw new NotSupportedException("Calculating size limits is not possible while an encoder is open.");
+                if(mEncoder != null)
+                    size += mEncoder.UpperBound;
 
-                return mFileStream.Position + CalculateHeaderLimit();
+                return size;
             }
         }
 
@@ -1076,6 +1204,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     mFileSets.Add(fileSet);
 
                 mEncoder = null;
+
+                long position = mFileStream.Position;
+                mWrittenSize += position - mWrittenSync;
+                mWrittenSync = position;
             }
         }
 
@@ -1149,6 +1281,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         private long CalculateHeaderLimit()
         {
+            return 1024; // HACK: mFileSets.SelectMany(stream => stream.Files).ToArray() is too slow
+
             const int kMaxNumberLen = 9; // 0xFF + sizeof(ulong)
             const int kBlockTypeLen = kMaxNumberLen;
             const int kZeroNumberLen = kMaxNumberLen;
