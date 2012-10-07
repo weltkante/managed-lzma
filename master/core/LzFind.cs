@@ -103,7 +103,7 @@ namespace ManagedLzma.LZMA.Master
             {
                 if(!mDirectInput)
                 {
-                    alloc.Free(alloc, mBufferBase);
+                    alloc.FreeBytes(alloc, mBufferBase.mBuffer);
                     mBufferBase = null;
                 }
             }
@@ -123,7 +123,7 @@ namespace ManagedLzma.LZMA.Master
                 {
                     LzInWindow_Free(alloc);
                     mBlockSize = blockSize;
-                    mBufferBase = alloc.Alloc<byte>(alloc, (long)blockSize);
+                    mBufferBase = alloc.AllocBytes(alloc, (long)blockSize);
                 }
 
                 return mBufferBase != null;
@@ -198,7 +198,7 @@ namespace ManagedLzma.LZMA.Master
 
             private void MatchFinder_FreeThisClassMemory(ISzAlloc alloc)
             {
-                alloc.Free(alloc, mHash);
+                alloc.FreeUInt32(alloc, mHash);
                 mHash = null;
             }
 
@@ -214,7 +214,7 @@ namespace ManagedLzma.LZMA.Master
                 if(sizeInBytes / sizeof(uint) != num)
                     return null;
 
-                return alloc.Alloc<uint>(alloc, num);
+                return alloc.AllocUInt32(alloc, num);
             }
 
             // Conditions:

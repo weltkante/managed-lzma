@@ -117,31 +117,74 @@ namespace ManagedLzma.LZMA.Master
                 mKind = kind;
             }
 
-            public T Alloc<T>(object p)
+            public T AllocObject<T>(object p)
                 where T: new()
             {
                 return new T();
             }
 
-            public T[] Alloc<T>(object p, long size)
+            public byte[] AllocBytes(object p, long size)
             {
-                return new T[size];
+                System.Diagnostics.Debug.WriteLine("Alloc byte size=" + size);
+                return new byte[size];
             }
 
-            public void Free(object p, object address)
+            public ushort[] AllocUInt16(object p, long size)
+            {
+                System.Diagnostics.Debug.WriteLine("Alloc ushort size=" + size);
+                return new ushort[size];
+            }
+
+            public uint[] AllocUInt32(object p, long size)
+            {
+                System.Diagnostics.Debug.WriteLine("Alloc uint size=" + size);
+                return new uint[size];
+            }
+
+            public void FreeObject(object p, object address)
+            {
+                // ignore
+            }
+
+            public void FreeBytes(object p, byte[] address)
+            {
+                // ignore
+            }
+
+            public void FreeUInt16(object p, ushort[] address)
+            {
+                // ignore
+            }
+
+            public void FreeUInt32(object p, uint[] address)
             {
                 // ignore
             }
         }
 
-        public static object IAlloc_Alloc<T>(object p, long size)
+        public static byte[] IAlloc_AllocBytes(object p, long size)
         {
-            return ((ISzAlloc)p).Alloc<T>(p, size);
+            return ((ISzAlloc)p).AllocBytes(p, size);
         }
 
-        public static void IAlloc_Free(object p, object a)
+        public static uint[] IAlloc_AllocUInt32(object p, long size)
         {
-            ((ISzAlloc)p).Free(p, a);
+            return ((ISzAlloc)p).AllocUInt32(p, size);
+        }
+
+        public static void IAlloc_FreeObject(object p, object a)
+        {
+            ((ISzAlloc)p).FreeObject(p, a);
+        }
+
+        public static void IAlloc_FreeBytes(object p, byte[] a)
+        {
+            ((ISzAlloc)p).FreeBytes(p, a);
+        }
+
+        public static void IAlloc_FreeUInt32(object p, uint[] a)
+        {
+            ((ISzAlloc)p).FreeUInt32(p, a);
         }
     }
 }

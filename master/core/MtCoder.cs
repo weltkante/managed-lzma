@@ -332,12 +332,12 @@ namespace ManagedLzma.LZMA.Master
                 }
 
                 if(mMtCoder.mAlloc != null)
-                    IAlloc_Free(mMtCoder.mAlloc, mOutBuf);
+                    IAlloc_FreeBytes(mMtCoder.mAlloc, mOutBuf);
 
                 mOutBuf = null;
 
                 if(mMtCoder.mAlloc != null)
-                    IAlloc_Free(mMtCoder.mAlloc, mInBuf);
+                    IAlloc_FreeBytes(mMtCoder.mAlloc, mInBuf);
 
                 mInBuf = null;
             }
@@ -346,18 +346,18 @@ namespace ManagedLzma.LZMA.Master
             {
                 if(mInBuf == null || mInBufSize != mMtCoder.mBlockSize)
                 {
-                    IAlloc_Free(mMtCoder.mAlloc, mInBuf);
+                    IAlloc_FreeBytes(mMtCoder.mAlloc, mInBuf);
                     mInBufSize = mMtCoder.mBlockSize;
-                    mInBuf = (byte[])IAlloc_Alloc<byte>(mMtCoder.mAlloc, mInBufSize);
+                    mInBuf = IAlloc_AllocBytes(mMtCoder.mAlloc, mInBufSize);
                     if(mInBuf == null)
                         return SZ_ERROR_MEM;
                 }
 
                 if(mOutBuf == null || mOutBufSize != mMtCoder.mDestBlockSize)
                 {
-                    IAlloc_Free(mMtCoder.mAlloc, mOutBuf);
+                    IAlloc_FreeBytes(mMtCoder.mAlloc, mOutBuf);
                     mOutBufSize = mMtCoder.mDestBlockSize;
-                    mOutBuf = (byte[])IAlloc_Alloc<byte>(mMtCoder.mAlloc, mOutBufSize);
+                    mOutBuf = IAlloc_AllocBytes(mMtCoder.mAlloc, mOutBufSize);
                     if(mOutBuf == null)
                         return SZ_ERROR_MEM;
                 }

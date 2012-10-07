@@ -265,7 +265,7 @@ namespace ManagedLzma.LZMA.Master
             {
                 mHashSync.MtSync_Destruct();
                 mBtSync.MtSync_Destruct();
-                alloc.Free(alloc, mHashBuf);
+                alloc.FreeUInt32(alloc, mHashBuf);
                 mHashBuf = null;
             }
 
@@ -529,7 +529,7 @@ namespace ManagedLzma.LZMA.Master
 
                 if(mHashBuf == null)
                 {
-                    mHashBuf = alloc.Alloc<uint>(alloc, kHashBufferSize + kBtBufferSize);
+                    mHashBuf = alloc.AllocUInt32(alloc, kHashBufferSize + kBtBufferSize);
                     if(mHashBuf == null)
                         return SZ_ERROR_MEM;
 

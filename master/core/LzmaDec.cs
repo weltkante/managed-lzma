@@ -219,7 +219,7 @@ namespace ManagedLzma.LZMA.Master
 
             public void LzmaDec_FreeProbs(ISzAlloc alloc)
             {
-                alloc.Free(alloc, mProbs);
+                alloc.FreeUInt16(alloc, mProbs);
                 mProbs = null;
             }
 
@@ -238,7 +238,7 @@ namespace ManagedLzma.LZMA.Master
                 if(mDic == null || dicBufSize != mDicBufSize)
                 {
                     LzmaDec_FreeDict(alloc);
-                    mDic = alloc.Alloc<byte>(alloc, dicBufSize);
+                    mDic = alloc.AllocBytes(alloc, dicBufSize);
                     if(mDic == null)
                     {
                         LzmaDec_FreeProbs(alloc);
@@ -1194,7 +1194,7 @@ namespace ManagedLzma.LZMA.Master
 
             private void LzmaDec_FreeDict(ISzAlloc alloc)
             {
-                alloc.Free(alloc, mDic);
+                alloc.FreeBytes(alloc, mDic.mBuffer);
                 mDic = null;
             }
 
@@ -1204,7 +1204,7 @@ namespace ManagedLzma.LZMA.Master
                 if(mProbs == null || numProbs != mNumProbs)
                 {
                     LzmaDec_FreeProbs(alloc);
-                    mProbs = alloc.Alloc<ushort>(alloc, numProbs);
+                    mProbs = alloc.AllocUInt16(alloc, numProbs);
                     mNumProbs = numProbs;
                     if(mProbs == null)
                         return SZ_ERROR_MEM;

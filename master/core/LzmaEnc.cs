@@ -380,7 +380,7 @@ namespace ManagedLzma.LZMA.Master
             {
                 if(mBufBase == null)
                 {
-                    mBufBase = alloc.Alloc<byte>(alloc, kBufferSize);
+                    mBufBase = alloc.AllocBytes(alloc, kBufferSize);
                     if(mBufBase == null)
                         return false;
 
@@ -392,7 +392,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal void RangeEnc_Free(ISzAlloc alloc)
             {
-                alloc.Free(alloc, mBufBase);
+                alloc.FreeBytes(alloc, mBufBase.mBuffer);
                 mBufBase = null;
             }
 
@@ -929,7 +929,7 @@ namespace ManagedLzma.LZMA.Master
                 mMatchFinderBase.MatchFinder_Free(allocBig);
                 LzmaEnc_FreeLits(alloc);
                 mRC.RangeEnc_Free(alloc);
-                alloc.Free(alloc, this);
+                alloc.FreeObject(alloc, this);
             }
 
             public SRes LzmaEnc_SetProps(CLzmaEncProps props2)
@@ -1939,8 +1939,8 @@ namespace ManagedLzma.LZMA.Master
 
             internal void LzmaEnc_FreeLits(ISzAlloc alloc)
             {
-                alloc.Free(alloc, mLitProbs);
-                alloc.Free(alloc, mSaveState.mLitProbs);
+                alloc.FreeUInt16(alloc, mLitProbs);
+                alloc.FreeUInt16(alloc, mSaveState.mLitProbs);
                 mLitProbs = null;
                 mSaveState.mLitProbs = null;
             }
@@ -2153,8 +2153,8 @@ namespace ManagedLzma.LZMA.Master
                 if(mLitProbs == null || mSaveState.mLitProbs == null || mLcLp != lclp)
                 {
                     LzmaEnc_FreeLits(alloc);
-                    mLitProbs = alloc.Alloc<ushort>(alloc, 0x300 << lclp);
-                    mSaveState.mLitProbs = alloc.Alloc<ushort>(alloc, 0x300 << lclp);
+                    mLitProbs = alloc.AllocUInt16(alloc, 0x300 << lclp);
+                    mSaveState.mLitProbs = alloc.AllocUInt16(alloc, 0x300 << lclp);
                     if(mLitProbs == null || mSaveState.mLitProbs == null)
                     {
                         LzmaEnc_FreeLits(alloc);
@@ -2540,7 +2540,7 @@ namespace ManagedLzma.LZMA.Master
 
         public static CLzmaEnc LzmaEnc_Create(ISzAlloc alloc)
         {
-            var p = alloc.Alloc<CLzmaEnc>(alloc /*, sizeof(CLzmaEnc)*/);
+            var p = alloc.AllocObject<CLzmaEnc>(alloc /*, sizeof(CLzmaEnc)*/);
             if(p != null)
                 p.LzmaEnc_Construct();
             return p;

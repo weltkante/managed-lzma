@@ -282,7 +282,7 @@ namespace ManagedLzma.LZMA.Master
 
                 if(mainEncoder.mOutBuf == null)
                 {
-                    mainEncoder.mOutBuf = (byte[])IAlloc_Alloc<byte>(mainEncoder.mAlloc, LZMA2_CHUNK_SIZE_COMPRESSED_MAX);
+                    mainEncoder.mOutBuf = IAlloc_AllocBytes(mainEncoder.mAlloc, LZMA2_CHUNK_SIZE_COMPRESSED_MAX);
                     if(mainEncoder.mOutBuf == null)
                         return SZ_ERROR_MEM;
                 }
@@ -394,8 +394,8 @@ namespace ManagedLzma.LZMA.Master
                 mMtCoder.MtCoder_Destruct();
 #endif
 
-                IAlloc_Free(mAlloc, mOutBuf);
-                IAlloc_Free(mAlloc, this);
+                IAlloc_FreeBytes(mAlloc, mOutBuf);
+                IAlloc_FreeObject(mAlloc, this);
             }
 
             public SRes Lzma2Enc_SetProps(CLzma2EncProps props)
