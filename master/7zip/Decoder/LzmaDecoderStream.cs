@@ -47,68 +47,65 @@ namespace master._7zip.Legacy
             if(count == 0 || mOutputEnd)
                 return 0;
 
-        retry:
-            if(mOffset == mEnding)
+            for(; ; )
             {
-                mOffset = 0;
-                mEnding = 0;
+                if(mOffset == mEnding)
+                {
+                    mOffset = 0;
+                    mEnding = 0;
+                }
+
+                if(!mInputEnd && mEnding < mBuffer.Length)
+                {
+                    int read = mInputStream.Read(mBuffer, mEnding, mBuffer.Length - mEnding);
+                    if(read == 0)
+                        mInputEnd = true;
+                    else
+                        mEnding += read;
+                }
+
+                if(mDecoder.mDicPos == mDecoder.mDicBufSize)
+                    mDecoder.mDicPos = 0;
+
+                long origin = mDecoder.mDicPos;
+                int safeCount = count;
+                if(safeCount > mDecoder.mDicBufSize - origin)
+                    safeCount = (int)(mDecoder.mDicBufSize - origin);
+                if(safeCount > mLimit - mWritten)
+                    safeCount = (int)(mLimit - mWritten);
+
+                if(safeCount == 0)
+                    throw new InvalidOperationException("LZMA is stuffed");
+
+                LZMA.ELzmaStatus status;
+                long srcLen = mEnding - mOffset;
+                var res = mDecoder.LzmaDec_DecodeToDic(origin + safeCount, P.From(mBuffer, mOffset), ref srcLen,
+                    mWritten + safeCount == mLimit ? LZMA.ELzmaFinishMode.LZMA_FINISH_END : LZMA.ELzmaFinishMode.LZMA_FINISH_ANY, out status);
+                if(res != LZMA.SZ_OK)
+                    throw new InvalidDataException();
+
+                mOffset += (int)srcLen;
+                int processed = (int)(mDecoder.mDicPos - origin);
+                Buffer.BlockCopy(mDecoder.mDic.mBuffer, mDecoder.mDic.mOffset + (int)origin, buffer, offset, processed);
+                mWritten += processed;
+
+                if(status == LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK)
+                    mOutputEnd = true;
+
+                if(status == LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK && mWritten == mLimit)
+                    mOutputEnd = true;
+
+                if(status == LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT && mOffset != mEnding)
+                    throw new InvalidOperationException("LZMA is confused");
+
+                if(processed != 0 || mOutputEnd)
+                    return processed;
+
+                // we didn't feed enough data to produce output, repeat with more data
+
+                if(mInputEnd && mOffset == mEnding)
+                    throw new InvalidDataException("LZMA incomplete");
             }
-
-            if(!mInputEnd && mEnding < mBuffer.Length)
-            {
-                int read = mInputStream.Read(mBuffer, mEnding, mBuffer.Length - mEnding);
-                if(read == 0)
-                    mInputEnd = true;
-                else
-                    mEnding += read;
-            }
-
-            if(mDecoder.mDicPos == mDecoder.mDicBufSize)
-                mDecoder.mDicPos = 0;
-
-            long origin = mDecoder.mDicPos;
-            if(count > mDecoder.mDicBufSize - origin)
-                count = (int)(mDecoder.mDicBufSize - origin);
-            if(count > mLimit - mWritten)
-                count = (int)(mLimit - mWritten);
-
-            if(count == 0)
-                System.Diagnostics.Debugger.Break();
-
-            LZMA.ELzmaStatus status;
-            long srcLen = mEnding - mOffset;
-            var res = mDecoder.LzmaDec_DecodeToDic(origin + count, P.From(mBuffer, mOffset), ref srcLen,
-                mWritten + count == mLimit ? LZMA.ELzmaFinishMode.LZMA_FINISH_END : LZMA.ELzmaFinishMode.LZMA_FINISH_ANY, out status);
-            if(res != LZMA.SZ_OK)
-                throw new InvalidDataException();
-
-            mOffset += (int)srcLen;
-            int processed = (int)(mDecoder.mDicPos - origin);
-            Buffer.BlockCopy(mDecoder.mDic.mBuffer, mDecoder.mDic.mOffset + (int)origin, buffer, offset, processed);
-            mWritten += processed;
-
-            if(status == LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK)
-                mOutputEnd = true;
-
-            if(status == LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK && mWritten == mLimit)
-                mOutputEnd = true;
-
-            if(status == LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT)
-            {
-                if(mOffset != mEnding)
-                    throw new Exception(); // huh?
-            }
-
-            if(processed == 0 && !mOutputEnd)
-            {
-                if(mInputEnd || mOffset != mEnding)
-                    throw new Exception(); // huh?
-
-                System.Diagnostics.Debugger.Break();
-                goto retry;
-            }
-
-            return processed;
         }
     }
 }
