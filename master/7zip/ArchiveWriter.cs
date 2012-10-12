@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -20,12 +21,7 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma.LZMA.Master.SevenZip
 {
-    // TODO: I don't like the StreamBasedArchiveWriterEntry, too much danger with the stream management.
-    // suggested steps for resoultion:
-    // - turn the interface into an abstract base class and make the Open() method internal-protected
-    // - we need to ensure that Open() is called only once because the origin stream may not be seekable
-    // - no need to make a proxy which prevents close on the stream beacause of the previous point
-
+    // TODO: Can we get rid of this interface and just pass the arguments directly to BeginWriteStream?
     public interface IArchiveWriterEntry
     {
         string Name { get; }
@@ -115,17 +111,277 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         }
     }
 
+    /// <summary>
+    /// MemoryStream which uses chunks of memory instead of one big byte array.
+    /// </summary>
+    internal sealed class FragmentedMemoryStream: Stream
+    {
+        #region Constants
+
+        // Chunk size should be small enough for buffers to not be placed on
+        // the large object heap, so they stay relocable and don't fragment.
+        // Objects are placed on the LOH if they are larger than 85000 bytes,
+        // so 64K buffers should be fine for us.
+
+        private const int kChunkShift = 16;
+        private const int kChunkSize = 1 << kChunkShift;
+        private const int kChunkMask = kChunkSize - 1;
+
+        #endregion
+
+        #region Variables
+
+        private List<byte[]> mChunks = new List<byte[]>();
+        private int mOffset;
+        private int mEnding;
+
+        #endregion
+
+        #region Public Methods
+
+        public FragmentedMemoryStream()
+        {
+        }
+
+        public FragmentedMemoryStream(int capacity)
+        {
+            EnsureCapacity(capacity);
+        }
+
+        public int Capacity
+        {
+            get { return mChunks.Count << kChunkShift; }
+        }
+
+        public void ReduceCapacity()
+        {
+            int requiredChunks = (mEnding + kChunkMask) >> kChunkShift;
+
+            if(mChunks.Count > requiredChunks)
+                mChunks.RemoveRange(requiredChunks, mChunks.Count - requiredChunks);
+        }
+
+        public void ReduceCapacity(int capacity)
+        {
+            if(capacity < 0)
+                throw new ArgumentOutOfRangeException("capacity");
+
+            // Limit stream size to prevent overflows in calculations.
+            if(capacity > Int32.MaxValue - kChunkMask)
+                throw new NotSupportedException("Large streams are not supported.");
+
+            int requiredChunks = (capacity + kChunkMask) >> kChunkShift;
+
+            if(mChunks.Count > requiredChunks)
+                mChunks.RemoveRange(requiredChunks, mChunks.Count - requiredChunks);
+        }
+
+        public void EnsureCapacity(int capacity)
+        {
+            if(capacity < 0)
+                throw new ArgumentOutOfRangeException("capacity");
+
+            // Limit stream size to prevent overflows in calculations.
+            if(capacity > Int32.MaxValue - kChunkMask)
+                throw new NotSupportedException("Large streams are not supported.");
+
+            int requiredChunks = (capacity + kChunkMask) >> kChunkShift;
+
+            while(mChunks.Count < requiredChunks)
+                mChunks.Add(new byte[kChunkSize]);
+        }
+
+        #endregion
+
+        public void FullCopyTo(Stream destination)
+        {
+            int fullCount = mEnding >> kChunkShift;
+            for(int i = 0; i < fullCount; i++)
+                destination.Write(mChunks[i], 0, kChunkSize);
+
+            int remaining = mEnding & kChunkMask;
+            if(remaining != 0)
+                destination.Write(mChunks[fullCount], 0, remaining);
+        }
+
+        #region Stream Implementation
+
+        protected override void Dispose(bool disposing)
+        {
+            if(disposing)
+                mChunks = null;
+
+            base.Dispose(disposing);
+        }
+
+        public override bool CanSeek
+        {
+            get { return true; }
+        }
+
+        public override long Position
+        {
+            get { return mOffset; }
+            set
+            {
+                if(value < 0 || value > mEnding)
+                    throw new ArgumentOutOfRangeException("value");
+
+                mOffset = (int)value;
+            }
+        }
+
+        public override long Length
+        {
+            get { return mEnding; }
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            switch(origin)
+            {
+            case SeekOrigin.Begin:
+                return Position = offset;
+            case SeekOrigin.Current:
+                return Position += offset;
+            case SeekOrigin.End:
+                return Position = Length + offset;
+            default:
+                throw new ArgumentOutOfRangeException("origin");
+            }
+        }
+
+        public override bool CanRead
+        {
+            get { return true; }
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if(buffer == null)
+                throw new ArgumentNullException("buffer");
+
+            if(offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException("offset");
+
+            if(count < 0 || count > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException("count");
+
+            int remaining = mEnding - mOffset;
+            if(count > remaining)
+                count = remaining;
+
+            if(count == 0)
+                return 0;
+
+            byte[] chunk = mChunks[mOffset >> kChunkShift];
+            int chunkOffset = mOffset & kChunkMask;
+            int readLength = Math.Min(kChunkSize - chunkOffset, count);
+            mOffset += readLength;
+            Buffer.BlockCopy(chunk, chunkOffset, buffer, offset, readLength);
+            return readLength;
+        }
+
+        public override int ReadByte()
+        {
+            if(mOffset == mEnding)
+                return -1;
+
+            byte value = mChunks[mOffset >> kChunkShift][mOffset & kChunkMask];
+            mOffset++;
+            return value;
+        }
+
+        public override bool CanWrite
+        {
+            get { return true; }
+        }
+
+        public override void Flush() { }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if(buffer == null)
+                throw new ArgumentNullException("buffer");
+
+            if(offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException("offset");
+
+            if(count < 0 || count > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException("count");
+
+            int remaining = mEnding - mOffset;
+            if(count > remaining)
+            {
+                SetLength((long)mOffset + (long)count);
+                remaining = mEnding - mOffset;
+            }
+
+            while(count > 0)
+            {
+                byte[] chunk = mChunks[mOffset >> kChunkShift];
+                int chunkOffset = mOffset & kChunkMask;
+                int writeLength = Math.Min(kChunkSize - chunkOffset, count);
+                mOffset += writeLength;
+                Buffer.BlockCopy(buffer, offset, chunk, chunkOffset, writeLength);
+                offset += writeLength;
+                count -= writeLength;
+            }
+        }
+
+        public override void WriteByte(byte value)
+        {
+            if(mOffset == mEnding)
+                SetLength(mEnding + 1);
+
+            mChunks[mOffset >> kChunkShift][mOffset & kChunkMask] = value;
+            mOffset++;
+        }
+
+        public override void SetLength(long value)
+        {
+            if(value < 0)
+                throw new ArgumentOutOfRangeException("value");
+
+            // Limit stream size to prevent overflows in calculations.
+            if(value > Int32.MaxValue - kChunkMask)
+                throw new NotSupportedException("Large streams are not supported.");
+
+            mEnding = (int)value;
+
+            if(mOffset > mEnding)
+                mOffset = mEnding;
+
+            int requiredChunks = (mEnding + kChunkMask) >> kChunkShift;
+
+            // TODO: figure out a reasonable strategy about how many chunks to retain
+
+            //if(mChunks.Count >= requiredChunks)
+            //{
+            //    // keep one chunk more than required, in case we start writing again
+            //    if(mChunks.Count > ++requiredChunks)
+            //        mChunks.RemoveRange(requiredChunks, mChunks.Count - requiredChunks);
+            //    return;
+            //}
+
+            while(mChunks.Count < requiredChunks)
+                mChunks.Add(new byte[kChunkSize]);
+        }
+
+        #endregion
+    }
+
     public class ArchiveWriter
     {
         #region Configuration Elements
 
-        private abstract class StreamRef
+        internal abstract class StreamRef
         {
             public abstract long GetSize(FileSet fileset);
             public abstract uint? GetHash(FileSet fileset);
         }
 
-        private class InputStreamRef: StreamRef
+        internal class InputStreamRef: StreamRef
         {
             public int PackedStreamIndex;
 
@@ -140,7 +396,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
-        private class CoderStreamRef: StreamRef
+        internal class CoderStreamRef: StreamRef
         {
             public int CoderIndex;
             public int StreamIndex;
@@ -156,7 +412,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
-        private class Coder
+        internal class Coder
         {
             public master._7zip.Legacy.CMethodId MethodId;
             public byte[] Settings;
@@ -164,19 +420,19 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             public CoderStream[] OutputStreams;
         }
 
-        private class CoderStream
+        internal class CoderStream
         {
             public long Size;
             public uint? Hash;
         }
 
-        private class InputStream
+        internal class InputStream
         {
             public long Size;
             public uint? Hash;
         }
 
-        private class FileSet
+        internal class FileSet
         {
             public InputStream[] InputStreams;
             public Coder[] Coders;
@@ -184,7 +440,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             public FileEntry[] Files;
         }
 
-        private class FileEntry
+        internal class FileEntry
         {
             public string Name;
             public uint? Flags;
@@ -197,98 +453,30 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         #endregion
 
-        #region Configuration Implementations
+        #region Encoders
 
-        private abstract class EncoderConfig: IDisposable
+        internal sealed class EncoderStream: Stream
         {
-            private static DateTime? EnsureUTC(DateTime? value)
+            private long mStreamSize;
+            private Encoder mEncoder;
+            private uint mCRC = CRC.kInitCRC;
+
+            internal EncoderStream(Encoder encoder)
             {
-                if(value.HasValue)
-                    return value.Value.ToUniversalTime();
-                else
-                    return null;
+                mEncoder = encoder;
             }
 
-            private long mOrigin;
-            private long mProcessed;
-            private Stream mTargetStream;
-            private master._7zip.Legacy.CrcBuilderStream mCurrentStream;
-            private List<FileEntry> mFiles;
-            private FileEntry mCurrentFile;
-
-            public virtual void Dispose() { }
-
-            private void FinishCurrentFile()
+            protected override void Dispose(bool disposing)
             {
-                if(mTargetStream == null)
-                    throw new ObjectDisposedException(null);
+                if(disposing && mEncoder != null)
+                {
+                    mEncoder = null;
+                    mCRC = ~mCRC;
+                }
 
-                if(mCurrentFile == null)
-                    return;
-
-                mCurrentFile.Hash = mCurrentStream.Finish();
-                mCurrentFile.Size = mCurrentStream.Processed;
-                mProcessed += mCurrentFile.Size;
-
-                mCurrentStream.Close();
-                mCurrentStream = null;
-
-                if(mFiles == null)
-                    mFiles = new List<FileEntry>();
-
-                mFiles.Add(mCurrentFile);
-                mCurrentFile = null;
+                base.Dispose(disposing);
             }
 
-            protected EncoderConfig(Stream targetStream)
-            {
-                mTargetStream = targetStream;
-                mOrigin = targetStream.Position;
-            }
-
-            public Stream BeginWriteFile(IArchiveWriterEntry file)
-            {
-                FinishCurrentFile();
-
-                if(file == null)
-                    throw new ArgumentNullException("file");
-
-                mCurrentFile = new FileEntry {
-                    Name = file.Name,
-                    CTime = EnsureUTC(file.CreationTime),
-                    MTime = EnsureUTC(file.LastWriteTime),
-                    ATime = EnsureUTC(file.LastAccessTime),
-                };
-
-                var attributes = file.Attributes;
-                if(attributes.HasValue)
-                    mCurrentFile.Flags = (uint)attributes.Value;
-
-                Stream writerStream = GetNextWriterStream(mTargetStream);
-                mCurrentStream = new master._7zip.Legacy.CrcBuilderStream(writerStream);
-                return mCurrentStream;
-            }
-
-            public FileSet Finish()
-            {
-                FinishCurrentFile();
-
-                var fileset = FinishFileSet(mTargetStream, mFiles.ToArray(), mProcessed, mOrigin);
-
-                mTargetStream = null;
-                mFiles = null;
-
-                return fileset;
-            }
-
-            public abstract long LowerBound { get; }
-            public abstract long UpperBound { get; }
-            protected abstract Stream GetNextWriterStream(Stream stream);
-            protected abstract FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin);
-        }
-
-        private abstract class EncoderStream: Stream
-        {
             public sealed override bool CanRead
             {
                 get { return false; }
@@ -331,110 +519,571 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
 
             public override void Flush() { }
-            public abstract override void Write(byte[] buffer, int offset, int count);
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                if(buffer == null)
+                    throw new ArgumentNullException("buffer");
+
+                if(offset < 0 || offset > buffer.Length)
+                    throw new ArgumentOutOfRangeException("offset");
+
+                if(count < 0 || count > buffer.Length - offset)
+                    throw new ArgumentOutOfRangeException("count");
+
+                mStreamSize += count;
+
+                mEncoder.WriteInput(buffer, offset, count);
+            }
+
+            internal void Close(FileEntry file)
+            {
+                Close();
+
+                file.Hash = mCRC;
+                file.Size = mStreamSize;
+            }
         }
 
-        private sealed class PlainEncoderConfig: EncoderConfig
+        internal sealed class BufferedFileSet
         {
-            private sealed class PlainEncoderStream: EncoderStream
+            private FileSet mMetadata;
+            private FragmentedMemoryStream mBuffer;
+
+            public BufferedFileSet(FileSet metadata, FragmentedMemoryStream buffer)
             {
-                private PlainEncoderConfig mOwner;
-                private Stream mStream;
+                mMetadata = metadata;
+                mBuffer = buffer;
+            }
 
-                public PlainEncoderStream(PlainEncoderConfig owner, Stream stream)
+            public FileSet Metadata
+            {
+                get { return mMetadata; }
+            }
+
+            public FragmentedMemoryStream Buffer
+            {
+                get { return mBuffer; }
+            }
+        }
+
+        public abstract class Encoder: IDisposable
+        {
+            private static DateTime? EnsureUTC(DateTime? value)
+            {
+                if(value.HasValue)
+                    return value.Value.ToUniversalTime();
+                else
+                    return null;
+            }
+
+            private long mInputSize;
+            private long mOutputSize;
+            private ArchiveWriter mWriter;
+            private FragmentedMemoryStream mBuffer;
+            private EncoderStream mCurrentStream;
+            private List<FileEntry> mFiles;
+            private FileEntry mCurrentFile;
+            private List<BufferedFileSet> mFlushed;
+
+            public abstract long LowerBound { get; }
+            public abstract long UpperBound { get; }
+
+            internal Encoder() { }
+
+            public virtual void Dispose()
+            {
+                Disconnect();
+            }
+
+            internal void Connect(ArchiveWriter writer)
+            {
+                Debug.Assert(writer != null && mWriter == null);
+
+                mWriter = writer;
+
+                if(mFlushed != null && mFlushed.Count != 0)
                 {
-                    mOwner = owner;
-                    mStream = stream;
+                    foreach(var item in mFlushed)
+                        mWriter.Encoder_WriteFileSet(item);
+
+                    mFlushed.Clear();
                 }
 
-                protected override void Dispose(bool disposing)
+                if(mBuffer != null)
                 {
-                    mStream = null;
-                    base.Dispose(disposing);
-                }
-
-                public override void Write(byte[] buffer, int offset, int count)
-                {
-                    if(mStream == null)
-                        throw new ObjectDisposedException(null);
-
-                    mOwner.mWrittenSize += count;
-                    mStream.Write(buffer, offset, count);
+                    mBuffer.FullCopyTo(writer.mFileStream);
+                    mBuffer.SetLength(0);
                 }
             }
 
-            private long mWrittenSize;
-
-            internal PlainEncoderConfig(Stream target)
-                : base(target) { }
-
-            protected override Stream GetNextWriterStream(Stream stream)
+            public void Disconnect()
             {
-                return new PlainEncoderStream(this, stream);
+                if(IsConnected)
+                {
+                    Flush();
+
+                    Debug.Assert(mWriter.mEncoder == this);
+                    mWriter.mEncoder = null;
+                    mWriter = null;
+                }
             }
+
+            private void FinishCurrentFile()
+            {
+                if(mCurrentFile != null)
+                {
+                    mCurrentStream.Close(mCurrentFile);
+                    mCurrentStream = null;
+
+                    if(mFiles == null)
+                        mFiles = new List<FileEntry>();
+
+                    mFiles.Add(mCurrentFile);
+                    mCurrentFile = null;
+                }
+            }
+
+            public ArchiveWriter ArchiveWriter
+            {
+                get { return mWriter; }
+            }
+
+            public bool IsConnected
+            {
+                get { return mWriter != null; }
+            }
+
+            public Stream BeginWriteFile(IArchiveWriterEntry file)
+            {
+                FinishCurrentFile();
+
+                if(file == null)
+                    throw new ArgumentNullException("file");
+
+                mCurrentFile = new FileEntry {
+                    Name = file.Name,
+                    CTime = EnsureUTC(file.CreationTime),
+                    MTime = EnsureUTC(file.LastWriteTime),
+                    ATime = EnsureUTC(file.LastAccessTime),
+                };
+
+                var attributes = file.Attributes;
+                if(attributes.HasValue)
+                    mCurrentFile.Flags = (uint)attributes.Value;
+
+                if(mWriter == null && mBuffer == null)
+                    mBuffer = new FragmentedMemoryStream();
+
+                return mCurrentStream = new EncoderStream(this);
+            }
+
+            /// <summary>
+            /// Closes the currently opened file stream and flushes buffered metadata.
+            /// </summary>
+            public void Flush()
+            {
+                FinishCurrentFile();
+
+                if(mFiles != null && mFiles.Count != 0)
+                {
+                    var fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize);
+                    mFiles.Clear();
+                    mInputSize = 0;
+                    mOutputSize = 0;
+
+                    if(IsConnected)
+                    {
+                        mWriter.Encoder_FinishFileSet(fileset);
+                    }
+                    else
+                    {
+                        if(mFlushed == null)
+                            mFlushed = new List<BufferedFileSet>();
+
+                        Debug.Assert(mBuffer != null);
+                        mFlushed.Add(new BufferedFileSet(fileset, mBuffer));
+                        mBuffer = null;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Write flushed data to an ArchiveWriter without connecting to it.
+            /// If the ArchiveWriter has a connected encoder it is flushed first.
+            /// This does not flush this encoder, if that is required do it manually.
+            /// </summary>
+            public void WriteFlushedData(ArchiveWriter writer)
+            {
+                if(writer == null)
+                    throw new ArgumentNullException("writer");
+
+                // If the writer has a connected encoder we need to flush that one.
+                if(writer.mEncoder != null)
+                    writer.mEncoder.Flush();
+
+                if(mFlushed != null && mFlushed.Count != 0)
+                {
+                    foreach(var item in mFlushed)
+                        writer.Encoder_WriteFileSet(item);
+
+                    mFlushed.Clear();
+                }
+            }
+
+            internal abstract FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize);
+            internal abstract void OnWriteInput(byte[] buffer, int offset, int length);
+
+            internal void WriteInput(byte[] buffer, int offset, int length)
+            {
+                OnWriteInput(buffer, offset, length);
+
+                // If we didn't throw we assume the input was processed.
+                mInputSize += length;
+            }
+
+            #region Protected Methods
+
+            protected long CurrentInputSize
+            {
+                get { return mInputSize; }
+            }
+
+            protected long CurrentOutputSize
+            {
+                get { return mOutputSize; }
+            }
+
+            protected void WriteOutput(byte[] buffer, int offset, int length)
+            {
+                if(mWriter != null)
+                    mWriter.mFileStream.Write(buffer, offset, length);
+                else
+                    mBuffer.Write(buffer, offset, length);
+
+                // If we didn't throw we assume the output was processed.
+                mOutputSize += length;
+            }
+
+            #endregion
+        }
+
+        public sealed class PlainEncoder: Encoder
+        {
+            public PlainEncoder() { }
 
             public override long LowerBound
             {
-                get { return mWrittenSize; }
+                get { return CurrentOutputSize; }
             }
 
             public override long UpperBound
             {
-                get { return mWrittenSize; }
+                get { return CurrentOutputSize; }
             }
 
-            protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
+            internal override void OnWriteInput(byte[] buffer, int offset, int length)
             {
-                if(entries == null || entries.Length == 0)
-                    return null;
+                WriteOutput(buffer, offset, length);
+            }
+
+            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
+            {
+                Debug.Assert(inputSize == outputSize);
 
                 return new FileSet {
                     Files = entries,
                     DataStream = new InputStreamRef { PackedStreamIndex = 0 },
-                    InputStreams = new[] { new InputStream { Size = stream.Position - origin } },
+                    InputStreams = new[] { new InputStream { Size = outputSize } },
                     Coders = new[] { new Coder {
                         MethodId = master._7zip.Legacy.CMethodId.kCopy,
                         Settings = null,
                         InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
-                        OutputStreams = new[] { new CoderStream { Size = processed } },
+                        OutputStreams = new[] { new CoderStream { Size = inputSize } },
                     } },
                 };
             }
         }
 
-        private sealed class LzmaEncoderConfig: EncoderConfig
+        public abstract class ThreadedEncoder: Encoder
         {
-            private sealed class LzmaEncoderStream: EncoderStream
+            private enum State
             {
-                private Stream mTargetStream;
+                Ready = 0,
+                Flush = 1,
+                Dispose = 2,
+            }
 
-                public LzmaEncoderStream(Stream targetStream)
+            private const int kBufferLength = 1 << 20;
+
+            private object mSyncObject;
+            private Thread mEncoderThread;
+            private State mState;
+            private byte[] mInputBuffer;
+            private int mInputOffset;
+            private int mInputEnding;
+            private int mBufferOffset; // not locked (not accessed by thread)
+            private int mBufferEnding; // not locked (not accessed by thread)
+
+            // HACK: To allow the user to react when the buffering crosses a certain threshold. Need a better API for this.
+            private int mOutputThreshold;
+            private bool mTriggerOutputThreshold;
+            public event EventHandler OnOutputThresholdReached;
+            public void SetOutputThreshold(int threshold)
+            {
+                lock(mSyncObject)
                 {
-                    if(targetStream == null)
-                        throw new ArgumentNullException("targetStream");
-
-                    mTargetStream = targetStream;
-                }
-
-                protected override void Dispose(bool disposing)
-                {
-                    mTargetStream = null;
-                    base.Dispose(disposing);
-                }
-
-                public override void Write(byte[] buffer, int offset, int count)
-                {
-                    if(mTargetStream == null)
-                        throw new ObjectDisposedException(null);
-
-                    mTargetStream.Write(buffer, offset, count);
+                    mTriggerOutputThreshold = false;
+                    mOutputThreshold = threshold;
                 }
             }
 
-            private MemoryStream mBuffer;
+            internal ThreadedEncoder()
+            {
+                mSyncObject = new object();
+                mInputBuffer = new byte[kBufferLength];
+                mBufferEnding = kBufferLength - 1;
+            }
+
+            protected void StartThread(string threadName)
+            {
+                mEncoderThread = new Thread(EncoderThread);
+                mEncoderThread.Name = threadName;
+                mEncoderThread.Start();
+            }
+
+            public override void Dispose()
+            {
+                try
+                {
+                    base.Dispose();
+                }
+                finally
+                {
+                    lock(mSyncObject)
+                    {
+                        if(mState == State.Dispose)
+                            goto skip;
+
+                        // If we are in flushed state the owner thread should be blocking inside FinishFileSet.
+                        // So getting here in flushed state means some foreign thread called us, which is invalid.
+                        Utils.Assert(mState == State.Ready);
+                        mState = State.Dispose;
+                        Monitor.Pulse(mSyncObject);
+                    }
+
+                    mEncoderThread.Join();
+
+                skip: { }
+                }
+            }
+
+            internal sealed override void OnWriteInput(byte[] buffer, int offset, int count)
+            {
+                if(mInputBuffer == null)
+                    throw new ObjectDisposedException(null);
+
+                // HACK: this is really ugly and probably hurts performance, but whatever, don't have a better solution currently
+                //       it must be done at this place because at the place where we calculate the threshold we are on the wrong thread
+                bool trigger = false;
+                lock(mSyncObject)
+                {
+                    if(mTriggerOutputThreshold)
+                    {
+                        mTriggerOutputThreshold = false;
+                        trigger = true;
+                        System.Diagnostics.Debug.WriteLine("output threshold triggered");
+                    }
+                }
+                if(trigger)
+                {
+                    var handler = OnOutputThresholdReached;
+                    if(handler != null)
+                        handler(this, EventArgs.Empty);
+                }
+                // HACK END
+
+                while(count > 0)
+                {
+                    int copy;
+                    if(mBufferOffset <= mBufferEnding)
+                        copy = Math.Min(count, mBufferEnding - mBufferOffset);
+                    else
+                        copy = Math.Min(count, kBufferLength - mBufferOffset);
+
+                    if(copy > 0)
+                    {
+                        Buffer.BlockCopy(buffer, offset, mInputBuffer, mBufferOffset, copy);
+                        count -= copy;
+                        offset += copy;
+                        mBufferOffset = (mBufferOffset + copy) % kBufferLength;
+                    }
+
+                    lock(mSyncObject)
+                    {
+                        if(copy > 0)
+                        {
+                            mInputEnding = mBufferOffset;
+                            Monitor.Pulse(mSyncObject);
+                        }
+
+                        for(; ; )
+                        {
+                            if(mState != State.Ready)
+                                throw new ObjectDisposedException(null);
+
+                            int offsetMinusOne = (mInputOffset + kBufferLength - 1) % kBufferLength;
+                            if(mInputEnding != offsetMinusOne)
+                            {
+                                mBufferEnding = offsetMinusOne;
+                                break;
+                            }
+
+                            Monitor.Wait(mSyncObject);
+                        }
+                    }
+                }
+            }
+
+            internal abstract FileSet FinishFileSetSync(FileEntry[] entries, long inputSize, long outputSize);
+            internal sealed override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
+            {
+                lock(mSyncObject)
+                {
+                    Utils.Assert(mState == State.Ready);
+
+                    while(mInputOffset != mInputEnding)
+                        Monitor.Wait(mSyncObject);
+
+                    mState = State.Flush;
+                    Monitor.Pulse(mSyncObject);
+
+                    do { Monitor.Wait(mSyncObject); }
+                    while(mState == State.Flush);
+                }
+
+                return FinishFileSetSync(entries, inputSize, outputSize);
+            }
+
+            private void EncoderThread()
+            {
+                for(; ; )
+                {
+                    EncoderThreadLoop();
+
+                    lock(mSyncObject)
+                    {
+                        if(mState == State.Dispose)
+                            return;
+
+                        Utils.Assert(mState == State.Flush);
+                        mState = State.Ready;
+                        Monitor.Pulse(mSyncObject);
+                    }
+                }
+            }
+
+            protected abstract void EncoderThreadLoop();
+
+            protected int ReadInputAsync(byte[] buffer, int offset, int length)
+            {
+                lock(mSyncObject)
+                {
+                    for(; ; )
+                    {
+                        if(mState != State.Ready)
+                            return 0;
+
+                        if(mInputOffset != mInputEnding)
+                        {
+                            int size;
+                            if(mInputOffset <= mInputEnding)
+                                size = Math.Min(length, mInputEnding - mInputOffset);
+                            else
+                                size = Math.Min(length, kBufferLength - mInputOffset);
+
+                            Utils.Assert(size != 0);
+                            Buffer.BlockCopy(mInputBuffer, mInputOffset, buffer, offset, size);
+                            mInputOffset = (mInputOffset + size) % kBufferLength;
+                            Monitor.Pulse(mSyncObject);
+                            return size;
+                        }
+
+                        Monitor.Wait(mSyncObject);
+                    }
+                }
+            }
+
+            protected void WriteOutputAsync(byte[] buffer, int offset, int length)
+            {
+                // TODO: is it sane to write without lock here?
+                //       need to check both for buffered and connected output cases
+                //       -> it probably is not sane because the base class increments that CurrentOutputSize counter
+                //          which is also read from the main thread to estimate bounds -> need to fix that counter issue
+                WriteOutput(buffer, offset, length);
+
+                // HACK: this doesn't really belong here, but I don't have any idea how to provide equivalent functionality
+                //       maybe let the caller provide the buffer stream so the caller can hook into it through subclassing
+                //       (note that we are on the wrong thread and can't call the event handler directly)
+                lock(mSyncObject)
+                {
+                    if(mOutputThreshold > 0)
+                    {
+                        mOutputThreshold -= length;
+                        if(mOutputThreshold <= 0)
+                        {
+                            mTriggerOutputThreshold = true;
+                            System.Diagnostics.Debug.WriteLine("output threshold reached");
+                        }
+                    }
+                }
+            }
+        }
+
+        public sealed class LzmaEncoder: ThreadedEncoder
+        {
+            private long mLowerBound;
+            private object mSyncObject;
+            private LZMA.CSeqOutStream mOutputHelper;
+            private LZMA.CSeqInStream mInputHelper;
             private byte[] mSettings;
 
-            private void EncodeBufferedData(Stream stream)
+            public LzmaEncoder()
+            {
+                mSyncObject = new object();
+                mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
+                mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
+                StartThread("LZMA Stream Buffer Thread");
+            }
+
+            public override long LowerBound
+            {
+                get
+                {
+                    lock(mSyncObject)
+                        return mLowerBound;
+                }
+            }
+
+            public override long UpperBound
+            {
+                get { return CurrentInputSize; }
+            }
+
+            private long ReadInputHelper(P<byte> buf, long sz)
+            {
+                Utils.Assert(sz != 0);
+                return ReadInputAsync(buf.mBuffer, buf.mOffset, checked((int)sz));
+            }
+
+            private void WriteOutputHelper(P<byte> buf, long sz)
+            {
+                WriteOutputAsync(buf.mBuffer, buf.mOffset, checked((int)sz));
+                lock(mSyncObject)
+                    mLowerBound += sz;
+            }
+
+            protected override void EncoderThreadLoop()
             {
                 var settings = LZMA.CLzmaEncProps.LzmaEncProps_Init();
                 var encoder = LZMA.LzmaEnc_Create(LZMA.ISzAlloc.SmallAlloc);
@@ -450,276 +1099,75 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(binarySettingsSize != LZMA.LZMA_PROPS_SIZE)
                     throw new NotSupportedException();
 
-                var outBuffer = new LZMA.CSeqOutStream(delegate(P<byte> buf, long sz) {
-                    stream.Write(buf.mBuffer, buf.mOffset, checked((int)sz));
-                });
-
-                var inBuffer = new LZMA.CSeqInStream(delegate(P<byte> buf, long size) {
-                    return mBuffer.Read(buf.mBuffer, buf.mOffset, checked((int)size));
-                });
-
-                res = encoder.LzmaEnc_Encode(outBuffer, inBuffer, null, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
+                res = encoder.LzmaEnc_Encode(mOutputHelper, mInputHelper, null, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
                 if(res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
                 encoder.LzmaEnc_Destroy(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
             }
 
-            internal LzmaEncoderConfig(Stream stream)
-                : base(stream)
+            internal override FileSet FinishFileSetSync(FileEntry[] entries, long inputSize, long outputSize)
             {
-                mBuffer = new MemoryStream();
-            }
-
-            protected override Stream GetNextWriterStream(Stream stream)
-            {
-                return new LzmaEncoderStream(mBuffer);
-            }
-
-            public override long LowerBound
-            {
-                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
-            }
-
-            public override long UpperBound
-            {
-                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
-            }
-
-            protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
-            {
-                if(entries == null || entries.Length == 0)
-                    return null;
-
-                mBuffer.Position = 0;
-                EncodeBufferedData(stream);
-                mBuffer = null;
-
                 return new FileSet {
                     Files = entries,
                     DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
-                    InputStreams = new[] { new InputStream { Size = stream.Position - origin } },
+                    InputStreams = new[] { new InputStream { Size = outputSize } },
                     Coders = new[] { new Coder {
                         MethodId = master._7zip.Legacy.CMethodId.kLzma,
                         Settings = mSettings,
                         InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
-                        OutputStreams = new[] { new CoderStream { Size = processed } },
+                        OutputStreams = new[] { new CoderStream { Size = inputSize } },
                     } },
                 };
             }
         }
 
-        private sealed class Lzma2EncoderConfig: EncoderConfig
+        public sealed class Lzma2Encoder: ThreadedEncoder
         {
-            private sealed class Lzma2EncoderStream: EncoderStream
-            {
-                private Stream mTargetStream;
-
-                public Lzma2EncoderStream(Stream targetStream)
-                {
-                    if(targetStream == null)
-                        throw new ArgumentNullException("targetStream");
-
-                    mTargetStream = targetStream;
-                }
-
-                protected override void Dispose(bool disposing)
-                {
-                    mTargetStream = null;
-                    base.Dispose(disposing);
-                }
-
-                public override void Write(byte[] buffer, int offset, int count)
-                {
-                    if(mTargetStream == null)
-                        throw new ObjectDisposedException(null);
-
-                    mTargetStream.Write(buffer, offset, count);
-                }
-            }
-
-            private MemoryStream mBuffer;
+            private long mLowerBound;
+            private object mSyncObject;
+            private LZMA.CSeqOutStream mOutputHelper;
+            private LZMA.CSeqInStream mInputHelper;
+            private int? mThreadCount;
             private byte mSettings;
 
-            private void EncodeBufferedData(Stream stream)
+            public Lzma2Encoder(int? threadCount)
             {
-                var settings = new LZMA.CLzma2EncProps();
-                settings.Lzma2EncProps_Init();
-                //settings.mLzmaProps.mNumThreads = 2;
-                //settings.mNumBlockThreads = 2;
-
-                var encoder = new LZMA.CLzma2Enc(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
-                var res = encoder.Lzma2Enc_SetProps(settings);
-                if(res != LZMA.SZ_OK)
-                    throw new InvalidOperationException();
-
-                mSettings = encoder.Lzma2Enc_WriteProperties();
-
-                var outBuffer = new LZMA.CSeqOutStream(delegate(P<byte> buf, long sz) {
-                    stream.Write(buf.mBuffer, buf.mOffset, checked((int)sz));
-                });
-
-                var inBuffer = new LZMA.CSeqInStream(delegate(P<byte> buf, long sz) {
-                    return mBuffer.Read(buf.mBuffer, buf.mOffset, checked((int)sz));
-                });
-
-                res = encoder.Lzma2Enc_Encode(outBuffer, inBuffer, null);
-                if(res != LZMA.SZ_OK)
-                    throw new InvalidOperationException();
-
-                encoder.Lzma2Enc_Destroy();
-            }
-
-            internal Lzma2EncoderConfig(Stream stream)
-                : base(stream)
-            {
-                mBuffer = new MemoryStream();
-            }
-
-            protected override Stream GetNextWriterStream(Stream stream)
-            {
-                return new Lzma2EncoderStream(mBuffer);
+                mThreadCount = threadCount;
+                mSyncObject = new object();
+                mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
+                mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
+                StartThread("LZMA 2 Stream Buffer Thread");
             }
 
             public override long LowerBound
             {
-                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
+                get
+                {
+                    lock(mSyncObject)
+                        return mLowerBound;
+                }
             }
 
             public override long UpperBound
             {
-                get { return mBuffer.Length; } // the cached input size is of course just an estimate (and may even violate the expected constraints)
+                get { return CurrentInputSize; }
             }
 
-            protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
+            private long ReadInputHelper(P<byte> buf, long sz)
             {
-                if(entries == null || entries.Length == 0)
-                    return null;
-
-                mBuffer.Position = 0;
-                EncodeBufferedData(stream);
-                mBuffer = null;
-
-                return new FileSet {
-                    Files = entries,
-                    DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
-                    InputStreams = new[] { new InputStream { Size = stream.Position - origin } },
-                    Coders = new[] { new Coder {
-                        MethodId = master._7zip.Legacy.CMethodId.kLzma2,
-                        Settings = new byte[] { mSettings },
-                        InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
-                        OutputStreams = new[] { new CoderStream { Size = processed } },
-                    } },
-                };
+                Utils.Assert(sz != 0);
+                return ReadInputAsync(buf.mBuffer, buf.mOffset, checked((int)sz));
             }
-        }
 
-        private sealed class Lzma2ThreadedEncoderConfig: EncoderConfig
-        {
-            private sealed class ThreadedEncoderStream: EncoderStream
+            private void WriteOutputHelper(P<byte> buf, long sz)
             {
-                private Lzma2ThreadedEncoderConfig mContext;
-                private int mBufferOffset;
-                private int mBufferEnding;
-
-                public ThreadedEncoderStream(Lzma2ThreadedEncoderConfig context, int offset, int ending)
-                {
-                    mContext = context;
-                    mBufferOffset = offset;
-                    mBufferEnding = ending;
-                }
-
-                protected override void Dispose(bool disposing)
-                {
-                    mContext = null;
-                    base.Dispose(disposing);
-                }
-
-                public override void Write(byte[] buffer, int offset, int count)
-                {
-                    if(mContext == null)
-                        throw new ObjectDisposedException(null);
-
-                    while(count > 0)
-                    {
-                        int copy;
-                        if(mBufferOffset <= mBufferEnding)
-                            copy = Math.Min(count, mBufferEnding - mBufferOffset);
-                        else
-                            copy = Math.Min(count, kBufferLength - mBufferOffset);
-
-                        if(copy > 0)
-                        {
-                            Buffer.BlockCopy(buffer, offset, mContext.mInputBuffer, mBufferOffset, copy);
-                            count -= copy;
-                            offset += copy;
-                            mBufferOffset = (mBufferOffset + copy) % kBufferLength;
-                        }
-
-                        lock(mContext.mSyncObject)
-                        {
-                            if(copy > 0)
-                            {
-                                mContext.mUpperBound += copy;
-                                mContext.mInputEnding = mBufferOffset;
-                                Monitor.Pulse(mContext.mSyncObject);
-                            }
-
-                            for(; ; )
-                            {
-                                if(mContext.mShutdown)
-                                    throw new ObjectDisposedException(null);
-
-                                int offsetMinusOne = (mContext.mInputOffset + kBufferLength - 1) % kBufferLength;
-                                if(mContext.mInputEnding != offsetMinusOne)
-                                {
-                                    mBufferEnding = offsetMinusOne;
-                                    break;
-                                }
-
-                                Monitor.Wait(mContext.mSyncObject);
-                            }
-                        }
-                    }
-                }
+                WriteOutputAsync(buf.mBuffer, buf.mOffset, checked((int)sz));
+                lock(mSyncObject)
+                    mLowerBound += sz;
             }
 
-            private const int kBufferLength = 1 << 20;
-
-            private object mSyncObject;
-            private bool mShutdown;
-            private Thread mEncoderThread;
-            private byte[] mInputBuffer;
-            private int mInputOffset;
-            private int mInputEnding;
-            private byte mSettings;
-            private Stream mTargetStream;
-            private int? mThreadCount;
-            private long mLowerBound;
-            private long mUpperBound;
-
-            public override void Dispose()
-            {
-                try
-                {
-                    lock(mSyncObject)
-                    {
-                        if(mShutdown)
-                            return;
-
-                        mShutdown = true;
-                        Monitor.Pulse(mSyncObject);
-                    }
-
-                    mEncoderThread.Join();
-                }
-                finally
-                {
-                    base.Dispose();
-                }
-            }
-
-            private void EncoderThread()
+            protected override void EncoderThreadLoop()
             {
                 var settings = new LZMA.CLzma2EncProps();
                 settings.Lzma2EncProps_Init();
@@ -734,123 +1182,24 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                 mSettings = encoder.Lzma2Enc_WriteProperties();
 
-                var outBuffer = new LZMA.CSeqOutStream(delegate(P<byte> buf, long sz) {
-                    mTargetStream.Write(buf.mBuffer, buf.mOffset, checked((int)sz));
-                    lock(mSyncObject)
-                        mLowerBound += sz;
-                });
-
-                var inBuffer = new LZMA.CSeqInStream(delegate(P<byte> buf, long sz) {
-                    Utils.Assert(sz != 0);
-                    lock(mSyncObject)
-                    {
-                        for(; ; )
-                        {
-                            if(mShutdown)
-                                return 0;
-
-                            if(mInputOffset != mInputEnding)
-                            {
-                                int size;
-                                if(mInputOffset <= mInputEnding)
-                                    size = Math.Min(checked((int)sz), mInputEnding - mInputOffset);
-                                else
-                                    size = Math.Min(checked((int)sz), kBufferLength - mInputOffset);
-
-                                Utils.Assert(size != 0);
-                                Buffer.BlockCopy(mInputBuffer, mInputOffset, buf.mBuffer, buf.mOffset, size);
-                                mInputOffset = (mInputOffset + size) % kBufferLength;
-                                Monitor.Pulse(mSyncObject);
-                                return size;
-                            }
-
-                            Monitor.Wait(mSyncObject);
-                        }
-                    }
-                });
-
-                res = encoder.Lzma2Enc_Encode(outBuffer, inBuffer, null);
+                res = encoder.Lzma2Enc_Encode(mOutputHelper, mInputHelper, null);
                 if(res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
                 encoder.Lzma2Enc_Destroy();
             }
 
-            internal Lzma2ThreadedEncoderConfig(Stream stream, int? threadCount)
-                : base(stream)
+            internal override FileSet FinishFileSetSync(FileEntry[] entries, long inputSize, long outputSize)
             {
-                mTargetStream = stream;
-                mThreadCount = threadCount;
-                mSyncObject = new object();
-                mInputBuffer = new byte[kBufferLength];
-                mEncoderThread = new Thread(EncoderThread);
-                mEncoderThread.Name = "LZMA 2 Stream Buffer Thread";
-                mEncoderThread.Start();
-            }
-
-            protected override Stream GetNextWriterStream(Stream stream)
-            {
-                lock(mSyncObject)
-                {
-                    for(; ; )
-                    {
-                        if(mShutdown)
-                            throw new ObjectDisposedException(null);
-
-                        int offsetMinusOne = (mInputOffset + kBufferLength - 1) % kBufferLength;
-                        if(offsetMinusOne != mInputEnding)
-                            return new ThreadedEncoderStream(this, mInputEnding, offsetMinusOne);
-
-                        Monitor.Wait(mSyncObject);
-                    }
-                }
-            }
-
-            public override long LowerBound
-            {
-                get
-                {
-                    lock(mSyncObject)
-                        return mLowerBound;
-                }
-            }
-
-            public override long UpperBound
-            {
-                get
-                {
-                    lock(mSyncObject)
-                        return mUpperBound;
-                }
-            }
-
-            protected override FileSet FinishFileSet(Stream stream, FileEntry[] entries, long processed, long origin)
-            {
-                if(entries == null || entries.Length == 0)
-                    return null;
-
-                lock(mSyncObject)
-                {
-                    Utils.Assert(!mShutdown);
-
-                    while(mInputOffset != mInputEnding)
-                        Monitor.Wait(mSyncObject);
-
-                    mShutdown = true;
-                    Monitor.Pulse(mSyncObject);
-                }
-
-                mEncoderThread.Join();
-
                 return new FileSet {
                     Files = entries,
                     DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
-                    InputStreams = new[] { new InputStream { Size = stream.Position - origin } },
+                    InputStreams = new[] { new InputStream { Size = outputSize } },
                     Coders = new[] { new Coder {
                         MethodId = master._7zip.Legacy.CMethodId.kLzma2,
                         Settings = new byte[] { mSettings },
                         InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
-                        OutputStreams = new[] { new CoderStream { Size = processed } },
+                        OutputStreams = new[] { new CoderStream { Size = inputSize } },
                     } },
                 };
             }
@@ -863,11 +1212,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         private static readonly byte[] kSignature = { (byte)'7', (byte)'z', 0xBC, 0xAF, 0x27, 0x1C };
 
         private long mFileOrigin;
-        private long mWrittenSize;
         private long mWrittenSync;
         private Stream mFileStream;
         private List<FileSet> mFileSets;
-        private EncoderConfig mEncoder;
+        private Encoder mEncoder; // TODO: rename to mEncoder
 
         #endregion
 
@@ -916,9 +1264,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             get
             {
-                // TODO: If we have an encoder we shouldn't access the file stream because it's owned by the encoder.
+                // NOTE: If we have an encoder we shouldn't access the file stream because it's owned by the encoder.
 
-                long size = mWrittenSize;
+                long size = mWrittenSync;
 
                 if(mEncoder != null)
                     size += mEncoder.LowerBound;
@@ -937,7 +1285,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             get
             {
                 // TODO: CalculateHeaderLimit does not include the metadata from the active encoder!
-                long size = mWrittenSize + CalculateHeaderLimit();
+                long size = mWrittenSync + CalculateHeaderLimit();
 
                 if(mEncoder != null)
                     size += mEncoder.UpperBound;
@@ -948,7 +1296,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public void WriteFinalHeader()
         {
-            FinishCurrentEncoder();
+            if(mEncoder != null)
+                mEncoder.Flush();
 
             var files = mFileSets.SelectMany(stream => stream.Files).ToArray();
             if(files.Length != 0)
@@ -1193,55 +1542,71 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         #endregion
 
+        #region Internal Methods
+
+        // TODO: move into Encoder class?
+        internal void Encoder_FinishFileSet(FileSet fileset)
+        {
+            mFileSets.Add(fileset);
+            mWrittenSync = mFileStream.Position;
+        }
+
+        // TODO: move into Encoder class?
+        internal void Encoder_WriteFileSet(BufferedFileSet fileset)
+        {
+            fileset.Buffer.FullCopyTo(mFileStream);
+            Encoder_FinishFileSet(fileset.Metadata);
+        }
+
+        #endregion
+
         #region Encoding Methods
 
-        public void FinishCurrentEncoder()
+        /// <summary>
+        /// Returns the currently connected encoder.
+        /// </summary>
+        public Encoder CurrentEncoder
+        {
+            get { return mEncoder; }
+        }
+
+        /// <summary>
+        /// Flushes the currently connected encoder and disconnects it.
+        /// </summary>
+        public void DisconnectEncoder()
         {
             if(mEncoder != null)
             {
-                var fileSet = mEncoder.Finish();
-                if(fileSet != null)
-                    mFileSets.Add(fileSet);
+                mEncoder.Disconnect();
 
-                mEncoder = null;
-
-                long position = mFileStream.Position;
-                mWrittenSize += position - mWrittenSync;
-                mWrittenSync = position;
+                Debug.Assert(mEncoder == null);
             }
         }
 
-        public void InitializePlainEncoder()
+        /// <summary>
+        /// Flushes the currently connected encoder and selects the given encoder as current.
+        /// The connected encoder can write directly to the archive file with reduced buffering.
+        /// </summary>
+        public void ConnectEncoder(Encoder encoder)
         {
-            FinishCurrentEncoder();
-            mEncoder = new PlainEncoderConfig(mFileStream);
-        }
+            if(encoder == null)
+                throw new ArgumentNullException("encoder");
 
-        public void InitializeLzmaEncoder()
-        {
-            FinishCurrentEncoder();
-            mEncoder = new LzmaEncoderConfig(mFileStream);
-        }
+            if(mEncoder == encoder)
+            {
+                mEncoder.Flush();
+            }
+            else
+            {
+                if(encoder.IsConnected)
+                    throw new InvalidOperationException("The given encoder is already connected to another ArchiveWriter.");
 
-        [Obsolete("Use InitializeLzma2EncoderTB instead.")]
-        public void InitializeLzma2Encoder()
-        {
-            FinishCurrentEncoder();
-            mEncoder = new Lzma2EncoderConfig(mFileStream);
-        }
+                if(mEncoder != null)
+                    mEncoder.Disconnect();
 
-        public void InitializeLzma2EncoderTB(int? threadCount)
-        {
-            FinishCurrentEncoder();
-            mEncoder = new Lzma2ThreadedEncoderConfig(mFileStream, threadCount);
-        }
-
-        public Stream BeginWriteFile(IArchiveWriterEntry metadata)
-        {
-            if(mEncoder == null)
-                throw new InvalidOperationException("No encoder has been initialized.");
-
-            return mEncoder.BeginWriteFile(metadata);
+                mEncoder = encoder;
+                mEncoder.Connect(this);
+            }
         }
 
         #endregion
@@ -1390,7 +1755,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public static void WriteFile(this ArchiveWriter writer, IArchiveWriterEntry metadata, Stream content)
         {
-            using(var stream = writer.BeginWriteFile(metadata))
+            if(writer.CurrentEncoder == null)
+                throw new InvalidOperationException("No current encoder configured.");
+
+            using(var stream = writer.CurrentEncoder.BeginWriteFile(metadata))
                 content.CopyTo(stream);
         }
 
