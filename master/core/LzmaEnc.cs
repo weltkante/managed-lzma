@@ -13,22 +13,73 @@ namespace ManagedLzma.LZMA.Master
         {
             #region Variables
 
-            public int mLevel;       /*  0 <= level <= 9 */
-            public uint mDictSize; /* (1 << 12) <= dictSize <= (1 << 27) for 32-bit version
-                      (1 << 12) <= dictSize <= (1 << 30) for 64-bit version
-                       default = (1 << 24) */
-            public uint mReduceSize; /* estimated size of data that will be compressed. default = 0xFFFFFFFF.
-                        Encoder uses this value to reduce dictionary size */
-            public int mLC;          /* 0 <= lc <= 8, default = 3 */
-            public int mLP;          /* 0 <= lp <= 4, default = 0 */
-            public int mPB;          /* 0 <= pb <= 4, default = 2 */
-            public int mAlgo;        /* 0 - fast, 1 - normal, default = 1 */
-            public int mFB;          /* 5 <= fb <= 273, default = 32 */
-            public int mBtMode;      /* 0 - hashChain Mode, 1 - binTree mode - normal, default = 1 */
-            public int mNumHashBytes; /* 2, 3 or 4, default = 4 */
-            public uint mMC;        /* 1 <= mc <= (1 << 30), default = 32 */
-            public uint mWriteEndMark;  /* 0 - do not write EOPM, 1 - write EOPM, default = 0 */
-            public int mNumThreads;  /* 1 or 2, default = 2 */
+            /// <summary>
+            /// 0 &lt;= level &lt;= 9
+            /// </summary>
+            public int mLevel;
+
+            /// <summary>
+            /// (1 &lt;&lt; 12) &lt;= dictSize &lt;= (1 &lt;&lt; 27) for 32-bit version <para/>
+            /// (1 &lt;&lt; 12) &lt;= dictSize &lt;= (1 &lt;&lt; 30) for 64-bit version <para/>
+            /// default = (1 &lt;&lt; 24)
+            /// </summary>
+            public uint mDictSize;
+
+            /// <summary>
+            /// Estimated size of data that will be compressed. default = 0xFFFFFFFF.
+            /// Encoder uses this value to reduce dictionary size
+            /// </summary>
+            public uint mReduceSize;
+
+            /// <summary>
+            /// 0 &lt;= lc &lt;= 8, default = 3
+            /// </summary>
+            public int mLC;
+
+            /// <summary>
+            /// 0 &lt;= lp &lt;= 4, default = 0
+            /// </summary>
+            public int mLP;
+
+            /// <summary>
+            /// 0 &lt;= pb &lt;= 4, default = 2
+            /// </summary>
+            public int mPB;
+
+            /// <summary>
+            /// 0 - fast, 1 - normal, default = 1
+            /// </summary>
+            public int mAlgo;
+
+            /// <summary>
+            /// 5 &lt;= fb &lt;= 273, default = 32
+            /// </summary>
+            public int mFB;
+
+            /// <summary>
+            /// 0 - hashChain Mode, 1 - binTree mode - normal, default = 1
+            /// </summary>
+            public int mBtMode;
+
+            /// <summary>
+            /// 2, 3 or 4, default = 4
+            /// </summary>
+            public int mNumHashBytes;
+
+            /// <summary>
+            /// 1 &lt;= mc &lt;= (1 &lt;&lt; 30), default = 32
+            /// </summary>
+            public uint mMC;
+
+            /// <summary>
+            /// 0 - do not write EOPM, 1 - write EOPM, default = 0
+            /// </summary>
+            public uint mWriteEndMark;
+
+            /// <summary>
+            /// 1 or 2, default = 2
+            /// </summary>
+            public int mNumThreads;
 
             #endregion
 
