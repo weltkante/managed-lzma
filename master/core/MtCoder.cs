@@ -379,11 +379,6 @@ namespace ManagedLzma.LZMA.Master
             #endregion
         }
 
-        internal interface IMtCoderCallback
-        {
-            SRes Code(int index, P<byte> dest, ref long destSize, P<byte> src, long srcSize, bool finished);
-        }
-
         internal sealed class CMtCoder
         {
             #region Variables
@@ -397,7 +392,7 @@ namespace ManagedLzma.LZMA.Master
             public ICompressProgress mProgress;
             public ISzAlloc mAlloc;
 
-            public IMtCoderCallback mMtCallback;
+            public CMtCallbackImp mMtCallback;
             public CCriticalSection mCS = new CCriticalSection();
             public SRes mRes;
 

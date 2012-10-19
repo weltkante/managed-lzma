@@ -480,18 +480,18 @@ namespace ManagedLzma.LZMA.Master
         }
 
 #if !_7ZIP_ST
-        internal sealed class CMtCallbackImp: IMtCoderCallback
+        internal sealed class CMtCallbackImp
         {
             #region Implementation
 
             private CLzma2Enc mLzma2Enc;
 
-            public CMtCallbackImp(CLzma2Enc enc)
+            internal CMtCallbackImp(CLzma2Enc enc)
             {
                 mLzma2Enc = enc;
             }
 
-            SRes IMtCoderCallback.Code(int index, P<byte> dest, ref long destSize, P<byte> src, long srcSize, bool finished)
+            internal SRes Code(int index, P<byte> dest, ref long destSize, P<byte> src, long srcSize, bool finished)
             {
                 CLzma2EncInternal p = mLzma2Enc.mCoders[index];
 
