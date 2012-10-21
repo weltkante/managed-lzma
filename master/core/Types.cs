@@ -121,9 +121,20 @@ namespace ManagedLzma.LZMA.Master
                 mKind = kind;
             }
 
-            public T AllocObject<T>(object p)
-                where T: new()
+#if !DISABLE_TRACE
+            internal bool CheckAllocObject<T>()
             {
+                return true;
+            }
+#endif
+
+            public T AllocObject<T>(object p)
+                where T: class, new()
+            {
+#if !DISABLE_TRACE
+                if(!CheckAllocObject<T>())
+                    return null;
+#endif
                 return new T();
             }
 

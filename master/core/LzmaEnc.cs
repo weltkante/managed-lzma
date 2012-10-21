@@ -1972,7 +1972,7 @@ namespace ManagedLzma.LZMA.Master
                 mMatchPriceCount = 0;
             }
 
-            internal void LzmaEnc_Construct()
+            internal CLzmaEnc() // LzmaEnc_Construct
             {
                 mRC.RangeEnc_Construct();
 #if !_7ZIP_ST
@@ -2591,10 +2591,11 @@ namespace ManagedLzma.LZMA.Master
 
         public static CLzmaEnc LzmaEnc_Create(ISzAlloc alloc)
         {
-            var p = alloc.AllocObject<CLzmaEnc>(alloc /*, sizeof(CLzmaEnc)*/);
-            if(p != null)
-                p.LzmaEnc_Construct();
-            return p;
+#if !DISABLE_TRACE
+            if(!alloc.CheckAllocObject<CLzmaEnc>())
+                return null;
+#endif
+            return new CLzmaEnc();
         }
 
         /* ---------- One Call Interface ---------- */
