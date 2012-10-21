@@ -687,6 +687,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                 if(mFiles != null && mFiles.Count != 0)
                 {
+                    PrepareFinishFileSet();
                     var fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize);
                     mFiles.Clear();
                     mInputSize = 0;
@@ -731,6 +732,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 }
             }
 
+            internal virtual void PrepareFinishFileSet() { }
             internal abstract FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize);
             internal abstract void OnWriteInput(byte[] buffer, int offset, int length);
 
@@ -945,8 +947,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 }
             }
 
-            internal abstract FileSet FinishFileSetSync(FileEntry[] entries, long inputSize, long outputSize);
-            internal sealed override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
+            internal override void PrepareFinishFileSet()
             {
                 lock(mSyncObject)
                 {
@@ -961,8 +962,6 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     do { Monitor.Wait(mSyncObject); }
                     while(mState == State.Flush);
                 }
-
-                return FinishFileSetSync(entries, inputSize, outputSize);
             }
 
             private void EncoderThread()
@@ -1106,7 +1105,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 encoder.LzmaEnc_Destroy(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
             }
 
-            internal override FileSet FinishFileSetSync(FileEntry[] entries, long inputSize, long outputSize)
+            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
             {
                 return new FileSet {
                     Files = entries,
@@ -1189,7 +1188,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 encoder.Lzma2Enc_Destroy();
             }
 
-            internal override FileSet FinishFileSetSync(FileEntry[] entries, long inputSize, long outputSize)
+            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
             {
                 return new FileSet {
                     Files = entries,
