@@ -8,13 +8,16 @@ using System.Threading.Tasks;
 
 namespace master._7zip.Utilities
 {
+    /// <remarks>
+    /// This stream is a length-constrained wrapper around a cached stream so it does not dispose the inner stream.
+    /// </remarks>
     internal class UnpackSubStream: Stream
     {
         private Stream mSource;
         private long mLength;
         private long mOffset;
 
-        public UnpackSubStream(Stream source, long length)
+        internal UnpackSubStream(Stream source, long length)
         {
             mSource = source;
             mLength = length;

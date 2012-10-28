@@ -42,11 +42,6 @@ namespace master._7zip.Legacy
             throw new InvalidOperationException();
         }
 
-        public override long Length
-        {
-            get { throw new NotSupportedException(); }
-        }
-
         public override long Position
         {
             get { throw new NotSupportedException(); }
@@ -80,6 +75,11 @@ namespace master._7zip.Legacy
             if(mDecoder.Lzma2Dec_Allocate(prop, LZMA.ISzAlloc.SmallAlloc) != LZMA.SZ_OK)
                 throw new InvalidDataException();
             mDecoder.Lzma2Dec_Init();
+        }
+
+        public override long Length
+        {
+            get { return mLimit; }
         }
 
         public override int Read(byte[] buffer, int offset, int count)

@@ -379,6 +379,8 @@ namespace master._7zip.Legacy
         internal long _streamEnding;
         internal byte[] _header;
 
+        private Dictionary<int, Stream> _cachedStreams = new Dictionary<int, Stream>();
+
         internal void AddByteStream(byte[] buffer, int offset, int length)
         {
             _readerStack.Push(_currentReader);
@@ -1276,6 +1278,11 @@ namespace master._7zip.Legacy
         {
             if(_stream != null)
                 _stream.Dispose();
+
+            foreach(var stream in _cachedStreams.Values)
+                stream.Dispose();
+
+            _cachedStreams.Clear();
         }
 
         public void ReadDatabase(CArchiveDatabaseEx db, IPasswordProvider pass)
@@ -1500,38 +1507,43 @@ namespace master._7zip.Legacy
             #endregion
         }
 
+        private Stream GetCachedDecoderStream(CArchiveDatabaseEx _db, int folderIndex, IPasswordProvider pw)
+        {
+            Stream s;
+            if(!_cachedStreams.TryGetValue(folderIndex, out s))
+            {
+                CFolder folderInfo = _db.Folders[folderIndex];
+                int packStreamIndex = _db.Folders[folderIndex].FirstPackStreamId;
+                long folderStartPackPos = _db.GetFolderStreamPos(folderIndex, 0);
+                List<long> packSizes = new List<long>();
+                for(int j = 0; j < folderInfo.PackStreams.Count; j++)
+                    packSizes.Add(_db.PackSizes[packStreamIndex + j]);
+
+                s = DecoderStreamHelper.CreateDecoderStream(_stream, folderStartPackPos, packSizes.ToArray(), folderInfo, pw);
+                if(!s.CanSeek)
+                    s = new ManagedLzma._7zip.Decoder.FileBufferedDecoderStream(s);
+
+                _cachedStreams.Add(folderIndex, s);
+            }
+
+            return s;
+        }
+
         public Stream OpenStream(CArchiveDatabaseEx _db, int fileIndex, IPasswordProvider pw)
         {
             int folderIndex = _db.FileIndexToFolderIndexMap[fileIndex];
-            CFolder folderInfo = _db.Folders[folderIndex];
-            int packStreamIndex = _db.Folders[folderIndex].FirstPackStreamId;
-            long folderStartPackPos = _db.GetFolderStreamPos(folderIndex, 0);
-            List<long> packSizes = new List<long>();
-            for(int j = 0; j < folderInfo.PackStreams.Count; j++)
-                packSizes.Add(_db.PackSizes[packStreamIndex + j]);
-            int firstFileIndex = _db.FolderStartFileIndex[folderIndex];
-            if(firstFileIndex > fileIndex)
-                throw new InvalidOperationException();
             int numFilesInFolder = _db.NumUnpackStreamsVector[folderIndex];
+            int firstFileIndex = _db.FolderStartFileIndex[folderIndex];
+            if(firstFileIndex > fileIndex || fileIndex - firstFileIndex >= numFilesInFolder)
+                throw new InvalidOperationException();
+
+            int skipCount = fileIndex - firstFileIndex;
             long skipSize = 0;
-            for(int i = 0; firstFileIndex + i < fileIndex; i++)
-            {
-                if(i >= numFilesInFolder)
-                    throw new InvalidOperationException();
+            for(int i = 0; i < skipCount; i++)
                 skipSize += _db.Files[firstFileIndex + i].Size;
-            }
-            Stream s = DecoderStreamHelper.CreateDecoderStream(_stream, folderStartPackPos, packSizes.ToArray(), folderInfo, pw);
-            if(skipSize > 0)
-            {
-                byte[] buffer = new byte[Math.Min(skipSize, 4 << 10)];
-                while(skipSize > 0)
-                {
-                    int processed = s.Read(buffer, 0, (int)Math.Min(skipSize, buffer.Length));
-                    if(processed == 0)
-                        throw new EndOfStreamException("Decoded stream ended prematurely, unpacked data is corrupt.");
-                    skipSize -= processed;
-                }
-            }
+
+            Stream s = GetCachedDecoderStream(_db, folderIndex, pw);
+            s.Position = skipSize;
             return new master._7zip.Utilities.UnpackSubStream(s, _db.Files[fileIndex].Size);
         }
 

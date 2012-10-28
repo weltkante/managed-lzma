@@ -70,6 +70,7 @@
     <Compile Include="7zip\BitVector.cs" />
     <Compile Include="7zip\CRC.cs" />
     <Compile Include="7zip\Decoder\AesDecoderStream.cs" />
+    <Compile Include="7zip\Decoder\BufferedStream.cs" />
     <Compile Include="7zip\Legacy\Archive.cs" />
     <Compile Include="7zip\Decoder\Bcj2DecoderStream.cs" />
     <Compile Include="7zip\Decoder\BcjDecoderStream.cs" />
