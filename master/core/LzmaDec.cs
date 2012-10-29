@@ -868,7 +868,7 @@ namespace ManagedLzma.LZMA.Master
                                 long src = (long)pos - (long)dicPos;
                                 P<byte> lim = dest + curLen;
                                 dicPos += curLen;
-                                do { dest[0] = (byte)(dest + src)[0]; }
+                                do { dest[0] = dest[src]; }
                                 while(++dest != lim);
                             }
                             else
