@@ -659,7 +659,10 @@ namespace ManagedLzma.LZMA.Master
                                 matchByte <<= 1;
                                 bit = (matchByte & offs);
                                 probLit = prob + offs + bit + symbol;
-                                _GET_BIT2(probLit, ref symbol, delegate { offs &= ~bit; }, delegate { offs &= bit; }, out ttt, out bound, ref range, ref code, ref buf);
+                                if(_GET_BIT2(probLit, ref symbol, out ttt, out bound, ref range, ref code, ref buf))
+                                    offs &= bit;
+                                else
+                                    offs &= ~bit;
                             }
                             while(symbol < 0x100);
                         }
@@ -784,7 +787,8 @@ namespace ManagedLzma.LZMA.Master
                                         uint i = 1;
                                         do
                                         {
-                                            _GET_BIT2(prob + i, ref i, delegate { }, delegate { distance |= mask; }, out ttt, out bound, ref range, ref code, ref buf);
+                                            if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf))
+                                                distance |= mask;
                                             mask <<= 1;
                                         }
                                         while(--numDirectBits != 0);
@@ -819,10 +823,10 @@ namespace ManagedLzma.LZMA.Master
                                     distance <<= kNumAlignBits;
                                     {
                                         uint i = 1;
-                                        _GET_BIT2(prob + i, ref i, delegate { }, delegate { distance |= 1; }, out ttt, out bound, ref range, ref code, ref buf);
-                                        _GET_BIT2(prob + i, ref i, delegate { }, delegate { distance |= 2; }, out ttt, out bound, ref range, ref code, ref buf);
-                                        _GET_BIT2(prob + i, ref i, delegate { }, delegate { distance |= 4; }, out ttt, out bound, ref range, ref code, ref buf);
-                                        _GET_BIT2(prob + i, ref i, delegate { }, delegate { distance |= 8; }, out ttt, out bound, ref range, ref code, ref buf);
+                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 1;
+                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 2;
+                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 4;
+                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 8;
                                     }
                                     if(distance == (uint)0xFFFFFFFF)
                                     {
@@ -1247,25 +1251,25 @@ namespace ManagedLzma.LZMA.Master
                 p[0] = (ushort)(ttt - (ttt >> kNumMoveBits));
             }
 
-            private static void _GET_BIT2(P<ushort> p, ref uint i, Action A0, Action A1, out uint ttt, out uint bound, ref uint range, ref uint code, ref P<byte> buf)
+            private static bool _GET_BIT2(P<ushort> p, ref uint i, out uint ttt, out uint bound, ref uint range, ref uint code, ref P<byte> buf)
             {
                 if(_IF_BIT_0(p, out ttt, out bound, ref range, ref code, ref buf))
                 {
                     _UPDATE_0(p, ttt, bound, ref range);
                     i = (i + i);
-                    A0();
+                    return false; // bit == 0
                 }
                 else
                 {
                     _UPDATE_1(p, ttt, bound, ref range, ref code);
                     i = (i + i) + 1;
-                    A1();
+                    return true; // bit == 1
                 }
             }
 
             private static void _GET_BIT(P<ushort> p, ref uint i, out uint ttt, out uint bound, ref uint range, ref uint code, ref P<byte> buf)
             {
-                _GET_BIT2(p, ref i, delegate { }, delegate { }, out ttt, out bound, ref range, ref code, ref buf);
+                _GET_BIT2(p, ref i, out ttt, out bound, ref range, ref code, ref buf);
             }
 
             private static void _TREE_GET_BIT(P<ushort> probs, ref uint i, out uint ttt, out uint bound, ref uint range, ref uint code, ref P<byte> buf)
