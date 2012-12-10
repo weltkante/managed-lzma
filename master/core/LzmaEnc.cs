@@ -218,6 +218,38 @@ namespace ManagedLzma.LZMA.Master
 
         #region Internal Classes
 
+        internal struct OptimumReps
+        {
+            // number of slots == LZMA_NUM_REPS
+            public uint _0, _1, _2, _3;
+
+            public uint this[uint index]
+            {
+                get
+                {
+                    switch(index)
+                    {
+                    case 0: return _0;
+                    case 1: return _1;
+                    case 2: return _2;
+                    case 3: return _3;
+                    default: throw new InvalidOperationException();
+                    }
+                }
+                set
+                {
+                    switch(index)
+                    {
+                    case 0: _0 = value; break;
+                    case 1: _1 = value; break;
+                    case 2: _2 = value; break;
+                    case 3: _3 = value; break;
+                    default: throw new InvalidOperationException();
+                    }
+                }
+            }
+        }
+
         internal sealed class COptimal
         {
             internal uint mPrice;
@@ -231,7 +263,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal uint mPosPrev;
             internal uint mBackPrev;
-            internal uint[] mBacks = new uint[CLzmaEnc.LZMA_NUM_REPS];
+            internal OptimumReps mBacks = new OptimumReps();
 
             internal void MakeAsChar()
             {
@@ -568,7 +600,7 @@ namespace ManagedLzma.LZMA.Master
             public CLenPriceEnc mLenEnc = new CLenPriceEnc();
             public CLenPriceEnc mRepLenEnc = new CLenPriceEnc();
 
-            public uint[] mReps = new uint[CLzmaEnc.LZMA_NUM_REPS];
+            public OptimumReps mReps = new OptimumReps();
             public uint mState;
 
             #endregion
@@ -917,7 +949,7 @@ namespace ManagedLzma.LZMA.Master
             internal uint[] mMatches = new uint[LZMA_MATCH_LEN_MAX * 2 + 2 + 1];
             internal uint mNumFastBytes;
             internal uint mAdditionalOffset;
-            internal uint[] mReps = new uint[LZMA_NUM_REPS];
+            internal OptimumReps mReps = new OptimumReps();
             internal uint mState;
 
             internal uint[][] mPosSlotPrices = CUtils.Init<uint>(kNumLenToPosStates, kDistTableSizeMax);
@@ -1149,7 +1181,7 @@ namespace ManagedLzma.LZMA.Master
                 memcpy(mSaveState.mIsRepG2, mIsRepG2, kNumStates * 2);
                 memcpy(mSaveState.mPosEncoders, mPosEncoders, (kNumFullDistances - kEndPosModelIndex) * 2);
                 memcpy(mSaveState.mPosAlignEncoder, mPosAlignEncoder, (1 << kNumAlignBits) * 2);
-                memcpy(mSaveState.mReps, mReps, LZMA_NUM_REPS * sizeof(uint));
+                mSaveState.mReps = mReps;
                 memcpy(mSaveState.mLitProbs, mLitProbs, (0x300 << mLcLp) * 2);
             }
 
@@ -1176,13 +1208,13 @@ namespace ManagedLzma.LZMA.Master
                 memcpy(mIsRepG2, mSaveState.mIsRepG2, kNumStates * 2);
                 memcpy(mPosEncoders, mSaveState.mPosEncoders, (kNumFullDistances - kEndPosModelIndex) * 2);
                 memcpy(mPosAlignEncoder, mSaveState.mPosAlignEncoder, (1 << kNumAlignBits) * 2);
-                memcpy(mReps, mSaveState.mReps, LZMA_NUM_REPS * sizeof(uint));
+                mReps = mSaveState.mReps;
                 memcpy(mLitProbs, mSaveState.mLitProbs, (0x300 << mLcLp) * 2);
             }
 
             private uint GetOptimum(uint position, out uint backRes)
             {
-                uint[] reps = new uint[LZMA_NUM_REPS];
+                OptimumReps reps = new OptimumReps();
                 P<uint> matches;
                 uint numAvail;
                 uint lenEnd;
@@ -1221,7 +1253,7 @@ namespace ManagedLzma.LZMA.Master
                         numAvail = LZMA_MATCH_LEN_MAX;
 
                     P<byte> data = mMatchFinder.GetPointerToCurrentPos(mMatchFinderObj) - 1;
-                    uint[] repLens = new uint[LZMA_NUM_REPS];
+                    OptimumReps repLens = new OptimumReps();
                     uint repMaxIndex = 0;
                     for(uint i = 0; i < LZMA_NUM_REPS; i++)
                     {
@@ -1471,7 +1503,7 @@ namespace ManagedLzma.LZMA.Master
                         else
                         {
                             reps[0] = pos - LZMA_NUM_REPS;
-                            for(int i = 1; i < LZMA_NUM_REPS; i++)
+                            for(uint i = 1; i < LZMA_NUM_REPS; i++)
                                 reps[i] = prevOpt.mBacks[i - 1];
                         }
                     }
