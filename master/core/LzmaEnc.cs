@@ -1257,18 +1257,16 @@ namespace ManagedLzma.LZMA.Master
                     uint repMaxIndex = 0;
                     for(uint i = 0; i < LZMA_NUM_REPS; i++)
                     {
-                        uint lenTest;
-                        P<byte> data2;
                         reps[i] = mReps[i];
                         TR("GetOptimum:reps[i]", reps[i]);
-                        data2 = data - (reps[i] + 1);
+                        P<byte> data2 = data - (reps[i] + 1);
                         if(data[0] != data2[0] || data[1] != data2[1])
                         {
                             repLens[i] = 0;
                             continue;
                         }
 
-                        lenTest = 2;
+                        uint lenTest = 2;
                         while(lenTest < numAvail && data[lenTest] == data2[lenTest])
                             lenTest++;
 
@@ -1596,93 +1594,92 @@ namespace ManagedLzma.LZMA.Master
                     }
 
                     uint startLen = 2; /* speed optimization */
+
+                    for(uint repIndex = 0; repIndex < LZMA_NUM_REPS; repIndex++)
                     {
-                        uint repIndex;
-                        for(repIndex = 0; repIndex < LZMA_NUM_REPS; repIndex++)
+                        P<byte> data2 = data - (reps[repIndex] + 1);
+                        if(data[0] != data2[0] || data[1] != data2[1])
+                            continue;
+
+                        uint lenTest = 2;
+                        while(lenTest < numAvail && data[lenTest] == data2[lenTest])
+                            lenTest++;
+
+                        while(lenEnd < cur + lenTest)
+                            mOpt[++lenEnd].mPrice = kInfinityPrice;
+
+                        uint lenTestTemp = lenTest;
+                        uint price = repMatchPrice + GetPureRepPrice(repIndex, state, posState);
+                        do
                         {
-                            P<byte> data2 = data - (reps[repIndex] + 1);
-                            if(data[0] != data2[0] || data[1] != data2[1])
-                                continue;
-
-                            uint lenTest = 2;
-                            while(lenTest < numAvail && data[lenTest] == data2[lenTest])
-                                lenTest++;
-
-                            while(lenEnd < cur + lenTest)
-                                mOpt[++lenEnd].mPrice = kInfinityPrice;
-
-                            uint lenTestTemp = lenTest;
-                            uint price = repMatchPrice + GetPureRepPrice(repIndex, state, posState);
-                            do
+                            uint curAndLenPrice = price + mRepLenEnc.mPrices[posState][lenTest - 2];
+                            COptimal opt = mOpt[cur + lenTest];
+                            if(curAndLenPrice < opt.mPrice)
                             {
-                                uint curAndLenPrice = price + mRepLenEnc.mPrices[posState][lenTest - 2];
-                                COptimal opt = mOpt[cur + lenTest];
-                                if(curAndLenPrice < opt.mPrice)
-                                {
-                                    opt.mPrice = curAndLenPrice;
-                                    opt.mPosPrev = cur;
-                                    opt.mBackPrev = repIndex;
-                                    opt.mPrev1IsChar = false;
-                                }
+                                opt.mPrice = curAndLenPrice;
+                                opt.mPosPrev = cur;
+                                opt.mBackPrev = repIndex;
+                                opt.mPrev1IsChar = false;
                             }
-                            while(--lenTest >= 2);
-                            lenTest = lenTestTemp;
+                        }
+                        while(--lenTest >= 2);
+                        lenTest = lenTestTemp;
 
-                            if(repIndex == 0)
-                                startLen = lenTest + 1;
+                        if(repIndex == 0)
+                            startLen = lenTest + 1;
 
+                        {
+                            uint lenTest2 = lenTest + 1;
+
+                            uint limit = lenTest2 + mNumFastBytes;
+                            if(limit > numAvailFull)
+                                limit = numAvailFull;
+
+                            while(lenTest2 < limit && data[lenTest2] == data2[lenTest2])
+                                lenTest2++;
+
+                            lenTest2 -= lenTest + 1;
+                            if(lenTest2 >= 2)
                             {
-                                uint lenTest2 = lenTest + 1;
+                                uint state2 = kRepNextStates[state];
+                                uint posStateNext = (position + lenTest) & mPbMask;
+                                uint curAndLenCharPrice = price
+                                    + mRepLenEnc.mPrices[posState][lenTest - 2]
+                                    + GET_PRICE_0(mIsMatch[state2][posStateNext])
+                                    + LitEnc_GetPriceMatched(
+                                        LIT_PROBS(position + lenTest, data[lenTest - 1]),
+                                        data[lenTest], data2[lenTest], mProbPrices);
 
-                                uint limit = lenTest2 + mNumFastBytes;
-                                if(limit > numAvailFull)
-                                    limit = numAvailFull;
+                                state2 = kLiteralNextStates[state2];
+                                posStateNext = (position + lenTest + 1) & mPbMask;
+                                uint nextRepMatchPrice = curAndLenCharPrice
+                                    + GET_PRICE_1(mIsMatch[state2][posStateNext])
+                                    + GET_PRICE_1(mIsRep[state2]);
 
-                                while(lenTest2 < limit && data[lenTest2] == data2[lenTest2])
-                                    lenTest2++;
-
-                                lenTest2 -= lenTest + 1;
-                                if(lenTest2 >= 2)
+                                /* for (; lenTest2 >= 2; lenTest2--) */
                                 {
-                                    uint state2 = kRepNextStates[state];
-                                    uint posStateNext = (position + lenTest) & mPbMask;
-                                    uint curAndLenCharPrice = price
-                                        + mRepLenEnc.mPrices[posState][lenTest - 2]
-                                        + GET_PRICE_0(mIsMatch[state2][posStateNext])
-                                        + LitEnc_GetPriceMatched(
-                                            LIT_PROBS(position + lenTest, data[lenTest - 1]),
-                                            data[lenTest], data2[lenTest], mProbPrices);
+                                    uint offset = cur + lenTest + 1 + lenTest2;
+                                    while(lenEnd < offset)
+                                        mOpt[++lenEnd].mPrice = kInfinityPrice;
 
-                                    state2 = kLiteralNextStates[state2];
-                                    posStateNext = (position + lenTest + 1) & mPbMask;
-                                    uint nextRepMatchPrice = curAndLenCharPrice
-                                        + GET_PRICE_1(mIsMatch[state2][posStateNext])
-                                        + GET_PRICE_1(mIsRep[state2]);
+                                    uint curAndLenPrice = nextRepMatchPrice + GetRepPrice(0, lenTest2, state2, posStateNext);
 
-                                    /* for (; lenTest2 >= 2; lenTest2--) */
+                                    COptimal opt = mOpt[offset];
+                                    if(curAndLenPrice < opt.mPrice)
                                     {
-                                        uint offset = cur + lenTest + 1 + lenTest2;
-                                        while(lenEnd < offset)
-                                            mOpt[++lenEnd].mPrice = kInfinityPrice;
-
-                                        uint curAndLenPrice = nextRepMatchPrice + GetRepPrice(0, lenTest2, state2, posStateNext);
-
-                                        COptimal opt = mOpt[offset];
-                                        if(curAndLenPrice < opt.mPrice)
-                                        {
-                                            opt.mPrice = curAndLenPrice;
-                                            opt.mPosPrev = cur + lenTest + 1;
-                                            opt.mBackPrev = 0;
-                                            opt.mPrev1IsChar = true;
-                                            opt.mPrev2 = true;
-                                            opt.mPosPrev2 = cur;
-                                            opt.mBackPrev2 = repIndex;
-                                        }
+                                        opt.mPrice = curAndLenPrice;
+                                        opt.mPosPrev = cur + lenTest + 1;
+                                        opt.mBackPrev = 0;
+                                        opt.mPrev1IsChar = true;
+                                        opt.mPrev2 = true;
+                                        opt.mPosPrev2 = cur;
+                                        opt.mBackPrev2 = repIndex;
                                     }
                                 }
                             }
                         }
                     }
+
                     /* for (uint lenTest = 2; lenTest <= newLen; lenTest++) */
                     if(newLen > numAvail)
                     {
