@@ -1295,7 +1295,7 @@ namespace ManagedLzma.LZMA.Master
                     }
 
                     byte curByte = data[0];
-                    byte matchByte = (data - (reps[0] + 1))[0];
+                    byte matchByte = (data - (reps._0 + 1))[0];
 
                     if(mainLen < 2 && curByte != matchByte && repLens[repMaxIndex] < 2)
                     {
@@ -1338,8 +1338,7 @@ namespace ManagedLzma.LZMA.Master
                     }
 
                     mOpt[1].mPosPrev = 0;
-                    for(uint i = 0; i < LZMA_NUM_REPS; i++)
-                        mOpt[0].mBacks[i] = reps[i];
+                    mOpt[0].mBacks = reps;
 
                     uint len = lenEnd;
                     do { mOpt[len--].mPrice = kInfinityPrice; }
@@ -1368,7 +1367,7 @@ namespace ManagedLzma.LZMA.Master
 
                     uint normalMatchPrice = matchPrice + GET_PRICE_0(mIsRep[mState]);
 
-                    len = ((repLens[0] >= 2) ? repLens[0] + 1 : 2);
+                    len = ((repLens._0 >= 2) ? repLens._0 + 1 : 2);
                     if(len <= mainLen)
                     {
                         uint offs = 0;
@@ -1493,7 +1492,7 @@ namespace ManagedLzma.LZMA.Master
                         COptimal prevOpt = mOpt[posPrev];
                         if(pos < LZMA_NUM_REPS)
                         {
-                            reps[0] = prevOpt.mBacks[pos];
+                            reps._0 = prevOpt.mBacks[pos];
                             uint i = 1;
                             for(; i <= pos; i++)
                                 reps[i] = prevOpt.mBacks[i - 1];
@@ -1502,23 +1501,20 @@ namespace ManagedLzma.LZMA.Master
                         }
                         else
                         {
-                            reps[0] = pos - LZMA_NUM_REPS;
-                            for(uint i = 1; i < LZMA_NUM_REPS; i++)
-                                reps[i] = prevOpt.mBacks[i - 1];
+                            reps._0 = pos - LZMA_NUM_REPS;
+                            reps._1 = prevOpt.mBacks._0;
+                            reps._2 = prevOpt.mBacks._1;
+                            reps._3 = prevOpt.mBacks._2;
                         }
                     }
                     curOpt.mState = state;
-
-                    curOpt.mBacks[0] = reps[0];
-                    curOpt.mBacks[1] = reps[1];
-                    curOpt.mBacks[2] = reps[2];
-                    curOpt.mBacks[3] = reps[3];
+                    curOpt.mBacks = reps;
 
                     uint curPrice = curOpt.mPrice;
                     bool nextIsChar = false;
                     P<byte> data = mMatchFinder.GetPointerToCurrentPos(mMatchFinderObj) - 1;
                     byte curByte = data[0];
-                    byte matchByte = (data - (reps[0] + 1))[0];
+                    byte matchByte = (data - (reps._0 + 1))[0];
 
                     uint posState = (position & mPbMask);
 
@@ -1565,7 +1561,7 @@ namespace ManagedLzma.LZMA.Master
                     if(!nextIsChar && matchByte != curByte) /* speed optimization */
                     {
                         /* try Literal + rep0 */
-                        P<byte> data2 = data - (reps[0] + 1);
+                        P<byte> data2 = data - (reps._0 + 1);
                         uint limit = mNumFastBytes + 1;
                         if(limit > numAvailFull)
                             limit = numAvailFull;
@@ -2097,7 +2093,7 @@ namespace ManagedLzma.LZMA.Master
                             if(IsCharState(mState))
                                 LitEnc_Encode(mRC, probs, curByte);
                             else
-                                LitEnc_EncodeMatched(mRC, probs, curByte, (data - mReps[0] - 1)[0]);
+                                LitEnc_EncodeMatched(mRC, probs, curByte, (data - mReps._0 - 1)[0]);
 
                             mState = kLiteralNextStates[mState];
                         }
@@ -2129,12 +2125,12 @@ namespace ManagedLzma.LZMA.Master
                                         mRC.RangeEnc_EncodeBit(ref mIsRepG1[mState], 1);
                                         mRC.RangeEnc_EncodeBit(ref mIsRepG2[mState], pos - 2);
                                         if(pos == 3)
-                                            mReps[3] = mReps[2];
-                                        mReps[2] = mReps[1];
+                                            mReps._3 = mReps._2;
+                                        mReps._2 = mReps._1;
                                     }
 
-                                    mReps[1] = mReps[0];
-                                    mReps[0] = distance;
+                                    mReps._1 = mReps._0;
+                                    mReps._0 = distance;
                                 }
 
                                 if(len == 1)
@@ -2172,10 +2168,10 @@ namespace ManagedLzma.LZMA.Master
                                     }
                                 }
                                 TR("CodeOneBlock:push-rep-2", pos);
-                                mReps[3] = mReps[2];
-                                mReps[2] = mReps[1];
-                                mReps[1] = mReps[0];
-                                mReps[0] = pos;
+                                mReps._3 = mReps._2;
+                                mReps._2 = mReps._1;
+                                mReps._1 = mReps._0;
+                                mReps._0 = pos;
                                 mMatchPriceCount++;
                             }
                         }
@@ -2280,9 +2276,7 @@ namespace ManagedLzma.LZMA.Master
                 TR("LzmaEnc_Init", 0);
 
                 mState = 0;
-
-                for(uint i = 0; i < LZMA_NUM_REPS; i++)
-                    mReps[i] = 0;
+                mReps = new OptimumReps();
 
                 mRC.RangeEnc_Init();
 
