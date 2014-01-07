@@ -33,6 +33,11 @@ namespace master._7zip.Legacy
             mDecoder.LzmaDec_Init();
         }
 
+        public override long Length
+        {
+            get { return mLimit; }
+        }
+
         public override int Read(byte[] buffer, int offset, int count)
         {
             if(buffer == null)
