@@ -14,13 +14,6 @@ namespace ManagedLzma.LZMA
         public const int CREATE_SUSPENDED = 0x00000004;
         public const int CREATE_BREAKAWAY_FROM_JOB = 0x01000000;
         public const int INFINITE = -1;
-        public const int GWL_STYLE = -16;
-        public const int WS_CHILD = 0x40000000;
-        public const int WS_POPUP = unchecked((int)0x80000000);
-        public const int HWND_MESSAGE = -3;
-
-        [DllImport(kKernel32, SetLastError = false)]
-        public static extern IntPtr GetCurrentProcess();
 
         [DllImport(kKernel32, SetLastError = true)]
         public static extern bool CloseHandle(IntPtr handle);
@@ -55,15 +48,6 @@ namespace ManagedLzma.LZMA
 
         [DllImport(kUser32, SetLastError = true)]
         public static extern int WaitForInputIdle(IntPtr hProcess, int dwMilliseconds);
-
-        [DllImport(kUser32, SetLastError = true)]
-        public static extern IntPtr SetParent(IntPtr child, IntPtr parent);
-
-        [DllImport(kUser32, SetLastError = true)]
-        public static extern int SetWindowLong(IntPtr handle, int field, int value);
-
-        [DllImport(kUser32, SetLastError = true)]
-        public static extern int GetWindowLong(IntPtr handle, int field);
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -101,7 +85,7 @@ namespace ManagedLzma.LZMA
     [StructLayout(LayoutKind.Sequential)]
     internal struct JobObjectExtendedLimitInformation
     {
-        #region BasicLimitInformation;
+        #region BasicLimitInformation
 
         public long PerProcessUserTimeLimit;
         public long PerJobUserTimeLimit;
