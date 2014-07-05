@@ -5,9 +5,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox.2010", "sandbox\san
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "master.2010", "master\master.2010.csproj", "{53E41F2C-4586-4387-A6C8-77F27D90523A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "native.2010", "native\native.2010.vcxproj", "{3A8BC6B3-262A-413A-A3EC-A876AA8F4AE0}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox-native.2010", "sandbox-native\sandbox-native.2010.csproj", "{F05CF1F4-4909-4A8E-8D23-9758A5C7FD8A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "native.2010", "native\native.2010.vcxproj", "{3A8BC6B3-262A-413A-A3EC-A876AA8F4AE0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testing.2010", "testing\testing.2010.csproj", "{A5D57FB7-1887-477B-A3A8-0C57937136E3}"
 EndProject

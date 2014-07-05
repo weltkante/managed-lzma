@@ -1,27 +1,28 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.30501.0
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox", "sandbox\sandbox.csproj", "{6197C4D9-94CA-4B27-85F7-C2B13165FC6A}"
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox.2012", "sandbox\sandbox.2012.csproj", "{6197C4D9-94CA-4B27-85F7-C2B13165FC6A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "master", "master\master.csproj", "{B55693B1-3A6D-44BC-92F9-1E2F7018553F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "master.2012", "master\master.2012.csproj", "{B55693B1-3A6D-44BC-92F9-1E2F7018553F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox-native", "sandbox-native\sandbox-native.csproj", "{527FB2C7-7204-47A7-B752-B8EB28E0D2FB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox-native.2012", "sandbox-native\sandbox-native.2012.csproj", "{527FB2C7-7204-47A7-B752-B8EB28E0D2FB}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "native", "native\native.vcxproj", "{96F98DA9-3345-E4BC-4B8E-9C6225A45447}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "native.2012", "native\native.2012.vcxproj", "{96F98DA9-3345-E4BC-4B8E-9C6225A45447}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testing", "testing\testing.csproj", "{EF429A5B-1932-4F29-9120-7D036D0A1491}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testing.2012", "testing\testing.2012.csproj", "{EF429A5B-1932-4F29-9120-7D036D0A1491}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{855DCF58-B802-41AC-B98D-4CC9B6CD7FD9}"
 	ProjectSection(SolutionItems) = preProject
-		Local.testsettings = Local.testsettings
-		lzma.vsmdi = lzma.vsmdi
+		Local.2012.testsettings = Local.2012.testsettings
+		lzma.2012.vsmdi = lzma.2012.vsmdi
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox-7z", "sandbox-7z\sandbox-7z.csproj", "{D13E39CD-E54E-43AF-AC0C-1425B755024E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox-7z.2012", "sandbox-7z\sandbox-7z.2012.csproj", "{D13E39CD-E54E-43AF-AC0C-1425B755024E}"
 EndProject
 Global
+	GlobalSection(TestCaseManagementSettings) = postSolution
+		CategoryFile = lzma.2012.vsmdi
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -150,8 +151,5 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(TestCaseManagementSettings) = postSolution
-		CategoryFile = lzma.vsmdi
 	EndGlobalSection
 EndGlobal
