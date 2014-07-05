@@ -125,16 +125,12 @@ namespace ManagedLzma.LZMA.Master
                 this.mNumThreads = other.mNumThreads;
             }
 
-            #endregion
-
-            #region Internal Methods
-
-            internal static CLzmaEncProps LzmaEncProps_Init()
+            public static CLzmaEncProps LzmaEncProps_Init()
             {
                 return new CLzmaEncProps();
             }
 
-            internal void LzmaEncProps_Normalize()
+            public void LzmaEncProps_Normalize()
             {
                 int level = mLevel;
                 if(level < 0)
@@ -192,6 +188,10 @@ namespace ManagedLzma.LZMA.Master
                         1;
 #endif
             }
+
+            #endregion
+
+            #region Internal Methods
 
             internal uint LzmaEncProps_GetDictSize()
             {

@@ -1045,13 +1045,15 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private object mSyncObject;
             private LZMA.CSeqOutStream mOutputHelper;
             private LZMA.CSeqInStream mInputHelper;
+            private LZMA.CLzmaEncProps mEncoderProps;
             private byte[] mSettings;
 
-            public LzmaEncoder()
+            public LzmaEncoder(LZMA.CLzmaEncProps encoderProps=null)
             {
                 mSyncObject = new object();
                 mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
                 mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
+                mEncoderProps = (encoderProps!=null) ? encoderProps : LZMA.CLzmaEncProps.LzmaEncProps_Init();
                 StartThread("LZMA Stream Buffer Thread");
             }
 
@@ -1084,9 +1086,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             protected override void EncoderThreadLoop()
             {
-                var settings = LZMA.CLzmaEncProps.LzmaEncProps_Init();
                 var encoder = LZMA.LzmaEnc_Create(LZMA.ISzAlloc.SmallAlloc);
-                var res = encoder.LzmaEnc_SetProps(settings);
+                var res = encoder.LzmaEnc_SetProps(mEncoderProps);
                 if(res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
@@ -1127,15 +1128,22 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private object mSyncObject;
             private LZMA.CSeqOutStream mOutputHelper;
             private LZMA.CSeqInStream mInputHelper;
+            private LZMA.CLzma2EncProps mEncoderProps;
             private int? mThreadCount;
             private byte mSettings;
 
-            public Lzma2Encoder(int? threadCount)
+            public Lzma2Encoder(int? threadCount, LZMA.CLzma2EncProps encoderProps=null)
             {
                 mThreadCount = threadCount;
                 mSyncObject = new object();
                 mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
                 mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
+                if (encoderProps!=null){
+                    mEncoderProps = encoderProps;
+                }else {
+                    mEncoderProps = new LZMA.CLzma2EncProps();
+                    mEncoderProps.Lzma2EncProps_Init();
+                }
                 StartThread("LZMA 2 Stream Buffer Thread");
             }
 
@@ -1168,9 +1176,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             protected override void EncoderThreadLoop()
             {
-                var settings = new LZMA.CLzma2EncProps();
-                settings.Lzma2EncProps_Init();
-
+                var settings = new LZMA.CLzma2EncProps(mEncoderProps);
                 if(mThreadCount.HasValue)
                     settings.mNumBlockThreads = mThreadCount.Value;
 
