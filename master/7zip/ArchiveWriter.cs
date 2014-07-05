@@ -1214,7 +1214,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         private long mWrittenSync;
         private Stream mFileStream;
         private List<FileSet> mFileSets;
-        private Encoder mEncoder; // TODO: rename to mEncoder
+        private Encoder mEncoder;
 
         #endregion
 
