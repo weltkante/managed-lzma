@@ -29,8 +29,10 @@ namespace master._7zip.Legacy
             mStream = input;
             mLimit = limit;
 
+            // The 7z AES encoder/decoder classes do not perform padding, instead they require the input stream to provide a multiple of 16 bytes.
+            // If the exception below is thrown this means the 7z file is either corrupt or a newer 7z version has been published and we haven't updated yet.
             if(((uint)input.Length & 15) != 0)
-                throw new NotSupportedException("AES decoder does not support padding.");
+                throw new NotSupportedException("7z requires AES streams to be properly padded.");
 
             int numCyclesPower;
             byte[] salt, seed;
