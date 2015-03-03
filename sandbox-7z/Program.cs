@@ -31,9 +31,10 @@ namespace sandbox_7z
             Directory.CreateDirectory("_test");
 
             using(var stream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
+            using(var encoder = new ArchiveWriter.Lzma2Encoder(null))
             {
                 var writer = new ArchiveWriter(stream);
-                writer.ConnectEncoder(new ArchiveWriter.Lzma2Encoder(null));
+                writer.ConnectEncoder(encoder);
                 string path = Path.GetDirectoryName(typeof(Program).Assembly.Location);
                 var directory = new DirectoryInfo(path);
                 foreach(string filename in Directory.EnumerateFiles(path))
