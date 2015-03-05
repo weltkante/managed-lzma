@@ -821,7 +821,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private object mSyncObject;
             private Thread mEncoderThread;
-            private State mState;
+            private State mState = State.Idle;
             private byte[] mInputBuffer;
             private int mInputOffset;
             private int mInputEnding;
