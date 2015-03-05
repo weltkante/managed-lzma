@@ -930,6 +930,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                             Monitor.Pulse(mSyncObject);
                         }
 
+                        if(mState == State.Idle)
+                        {
+                            mState = State.Ready;
+                            Monitor.Pulse(mSyncObject);
+                        }
+
                         for(; ; )
                         {
                             if(mState != State.Ready)
