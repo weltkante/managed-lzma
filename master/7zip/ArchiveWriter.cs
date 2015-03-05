@@ -811,6 +811,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             private enum State
             {
+                Idle = -1,
                 Ready = 0,
                 Flush = 1,
                 Dispose = 2,
@@ -869,7 +870,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                         // If we are in flushed state the owner thread should be blocking inside FinishFileSet.
                         // So getting here in flushed state means some foreign thread called us, which is invalid.
-                        Utils.Assert(mState == State.Ready);
+                        Utils.Assert(mState == State.Idle);
                         mState = State.Dispose;
                         Monitor.Pulse(mSyncObject);
                     }
@@ -968,6 +969,18 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 for(; ; )
                 {
+                    lock(mSyncObject)
+                    {
+                        while(mState == State.Idle)
+                            Monitor.Wait(mSyncObject);
+
+                        if(mState == State.Dispose)
+                            return;
+
+                        mState = State.Ready;
+                        Monitor.Pulse(mSyncObject);
+                    }
+
                     EncoderThreadLoop();
 
                     lock(mSyncObject)
@@ -976,7 +989,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                             return;
 
                         Utils.Assert(mState == State.Flush);
-                        mState = State.Ready;
+                        mState = State.Idle;
                         Monitor.Pulse(mSyncObject);
                     }
                 }
