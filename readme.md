@@ -6,4 +6,4 @@ The current state is working but the semi-automatic translation is still showing
 
 The current API and implementation is not stable and subject to change during the cleanup process.
 
-[![Discussion of Implementation and Features](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/weltkante/managed-lzma) for discussions that don't warrant a github issue.
+[![Discussion of Implementation and Features at https://gitter.im/weltkante/managed-lzma](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/weltkante/managed-lzma?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) for discussions that don't warrant a github issue.
