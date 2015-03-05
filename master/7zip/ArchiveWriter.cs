@@ -688,7 +688,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(mFiles != null && mFiles.Count != 0)
                 {
                     PrepareFinishFileSet();
-                    var fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize);
+                    var fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize, null, null);
                     mFiles.Clear();
                     mInputSize = 0;
                     mOutputSize = 0;
@@ -733,7 +733,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
 
             internal virtual void PrepareFinishFileSet() { }
-            internal abstract FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize);
+            internal abstract FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize, uint? inputHash, uint? outputHash);
             internal abstract void OnWriteInput(byte[] buffer, int offset, int length);
 
             internal void WriteInput(byte[] buffer, int offset, int length)
@@ -789,19 +789,19 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 WriteOutput(buffer, offset, length);
             }
 
-            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
+            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize, uint? inputHash, uint? outputHash)
             {
                 Debug.Assert(inputSize == outputSize);
 
                 return new FileSet {
                     Files = entries,
                     DataStream = new InputStreamRef { PackedStreamIndex = 0 },
-                    InputStreams = new[] { new InputStream { Size = outputSize } },
+                    InputStreams = new[] { new InputStream { Size = outputSize, Hash = outputHash } },
                     Coders = new[] { new Coder {
                         MethodId = master._7zip.Legacy.CMethodId.kCopy,
                         Settings = null,
                         InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
-                        OutputStreams = new[] { new CoderStream { Size = inputSize } },
+                        OutputStreams = new[] { new CoderStream { Size = inputSize, Hash = inputHash } },
                     } },
                 };
             }
@@ -1106,17 +1106,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 encoder.LzmaEnc_Destroy(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
             }
 
-            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
+            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize, uint? inputHash, uint? outputHash)
             {
                 return new FileSet {
                     Files = entries,
                     DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
-                    InputStreams = new[] { new InputStream { Size = outputSize } },
+                    InputStreams = new[] { new InputStream { Size = outputSize, Hash = outputHash } },
                     Coders = new[] { new Coder {
                         MethodId = master._7zip.Legacy.CMethodId.kLzma,
                         Settings = mSettings,
                         InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
-                        OutputStreams = new[] { new CoderStream { Size = inputSize } },
+                        OutputStreams = new[] { new CoderStream { Size = inputSize, Hash = inputHash } },
                     } },
                 };
             }
@@ -1194,17 +1194,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 encoder.Lzma2Enc_Destroy();
             }
 
-            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize)
+            internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize, uint? inputHash, uint? outputHash)
             {
                 return new FileSet {
                     Files = entries,
                     DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
-                    InputStreams = new[] { new InputStream { Size = outputSize } },
+                    InputStreams = new[] { new InputStream { Size = outputSize, Hash = outputHash } },
                     Coders = new[] { new Coder {
                         MethodId = master._7zip.Legacy.CMethodId.kLzma2,
                         Settings = new byte[] { mSettings },
                         InputStreams = new[] { new InputStreamRef { PackedStreamIndex = 0 } },
-                        OutputStreams = new[] { new CoderStream { Size = inputSize } },
+                        OutputStreams = new[] { new CoderStream { Size = inputSize, Hash = inputHash } },
                     } },
                 };
             }
