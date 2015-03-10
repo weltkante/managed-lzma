@@ -1168,9 +1168,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 mSyncObject = new object();
                 mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
                 mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
-                if (encoderProps!=null){
+                if(encoderProps != null) {
                     mEncoderProps = encoderProps;
-                }else {
+                } else {
                     mEncoderProps = new LZMA.CLzma2EncProps();
                     mEncoderProps.Lzma2EncProps_Init();
                 }
