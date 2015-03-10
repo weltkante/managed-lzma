@@ -1402,6 +1402,46 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     WriteNumber(writer, BlockType.CodersUnpackSize);
                     foreach(var fileset in mFileSets)
                         WriteNumber(writer, fileset.DataStream.GetSize(fileset));
+                    {
+                        bool allHashes = true;
+                        bool anyHashes = false;
+                        // add padding so we can process blocks of 8 without running off the array
+                        // (all code needs to use the fileset count instead of the array length though)
+                        var hashes = new uint?[mFileSets.Count + 8];
+                        for(int i = 0; i < mFileSets.Count; i++)
+                        {
+                            if((hashes[i] = mFileSets[i].DataStream.GetHash(mFileSets[i])).HasValue)
+                                anyHashes = true;
+                            else
+                                allHashes = false;
+                        }
+                        if(anyHashes)
+                        {
+                            WriteNumber(writer, BlockType.CRC);
+                            if(allHashes)
+                            {
+                                writer.Write((byte)1);
+                            }
+                            else
+                            {
+                                writer.Write((byte)0);
+                                for(int i = 0; i < mFileSets.Count; i += 8)
+                                {
+                                    byte bt = 0;
+                                    for(int j = 0; j < 8; j++)
+                                    {
+                                        bt <<= 1;
+                                        if(hashes[i + j] != null)
+                                            bt |= (byte)1;
+                                    }
+                                    writer.Write(bt);
+                                }
+                            }
+                            for(int i = 0; i < mFileSets.Count; i++)
+                                if(hashes[i] != null)
+                                    writer.Write(hashes[i].Value);
+                        }
+                    }
                     WriteNumber(writer, BlockType.End);
                     WriteNumber(writer, BlockType.SubStreamsInfo);
                     WriteNumber(writer, BlockType.NumUnpackStream);
@@ -1740,6 +1780,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     limit += mFileSets.Count * kMaxNumberLen; // mFileSets: stream.Files.Length
                     limit += kBlockTypeLen; // BlockType.Size
                     limit += mFileSets.Sum(fileset => fileset.Files.Length - 1) * kMaxNumberLen; // mFileSets: fileset.Files[0..n-1]: stream.Files[i].Size
+                    limit += kBlockTypeLen; // BlockType.CRC
+                    limit += 1 + ((mFileSets.Count + 7) / 8) + mFileSets.Count * 4; // flag + bitmask + crc list
                     limit += kBlockTypeLen; // BlockType.End
                     limit += kBlockTypeLen; // BlockType.End
                 }
