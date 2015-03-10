@@ -582,6 +582,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private long mInputSize;
             private long mOutputSize;
+            private uint mInputHash;
+            private uint mOutputHash;
             private ArchiveWriter mWriter;
             private FragmentedMemoryStream mBuffer;
             private EncoderStream mCurrentStream;
@@ -691,10 +693,14 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(mFiles != null && mFiles.Count != 0)
                 {
                     PrepareFinishFileSet();
-                    var fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize, null, null);
+                    mInputHash = CRC.Finish(mInputHash);
+                    mOutputHash = CRC.Finish(mOutputHash);
+                    var fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize, mInputHash, mOutputHash);
                     mFiles.Clear();
                     mInputSize = 0;
                     mOutputSize = 0;
+                    mInputHash = CRC.kInitCRC;
+                    mOutputHash = CRC.kInitCRC;
 
                     if(IsConnected)
                     {
@@ -745,6 +751,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                 // If we didn't throw we assume the input was processed.
                 mInputSize += length;
+                mInputHash = CRC.Update(mInputHash, buffer, offset, length);
             }
 
             #region Protected Methods
@@ -768,6 +775,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                 // If we didn't throw we assume the output was processed.
                 mOutputSize += length;
+                mOutputHash = CRC.Update(mOutputHash, buffer, offset, length);
             }
 
             #endregion
