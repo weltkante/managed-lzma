@@ -471,7 +471,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(disposing && mEncoder != null)
                 {
                     mEncoder = null;
-                    mCRC = ~mCRC;
+                    mCRC = CRC.Finish(mCRC);
                 }
 
                 base.Dispose(disposing);
@@ -531,6 +531,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(count < 0 || count > buffer.Length - offset)
                     throw new ArgumentOutOfRangeException("count");
 
+                mCRC = CRC.Update(mCRC, buffer, offset, count);
                 mStreamSize += count;
 
                 mEncoder.WriteInput(buffer, offset, count);
@@ -539,6 +540,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             internal void Close(FileEntry file)
             {
                 Close();
+
+                Debug.Assert(mEncoder == null); // otherwise the CRC hasn't been finished
 
                 file.Hash = mCRC;
                 file.Size = mStreamSize;
