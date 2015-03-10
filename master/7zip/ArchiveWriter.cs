@@ -582,8 +582,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private long mInputSize;
             private long mOutputSize;
-            private uint mInputHash;
-            private uint mOutputHash;
+            private uint mInputHash = CRC.kInitCRC;
+            private uint mOutputHash = CRC.kInitCRC;
             private ArchiveWriter mWriter;
             private FragmentedMemoryStream mBuffer;
             private EncoderStream mCurrentStream;
