@@ -30,25 +30,28 @@ namespace sandbox_7z
         {
             Directory.CreateDirectory("_test");
 
-            using(var stream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
-            using(var encoder = new ArchiveWriter.Lzma2Encoder(null))
+            using (var stream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
+            using (var encryption = new AESEncryptionProvider("test"))
+            using (var encoder = new ArchiveWriter.Lzma2Encoder(null))
             {
                 var writer = new ArchiveWriter(stream);
+                writer.DefaultEncryptionProvider = encryption;
                 writer.ConnectEncoder(encoder);
                 string path = Path.GetDirectoryName(typeof(Program).Assembly.Location);
                 var directory = new DirectoryInfo(path);
-                foreach(string filename in Directory.EnumerateFiles(path))
+                foreach (string filename in Directory.EnumerateFiles(path))
                     writer.WriteFile(directory, new FileInfo(filename));
                 writer.WriteFinalHeader();
             }
 
             {
+                var pass = new Password("test");
                 var db = new master._7zip.Legacy.CArchiveDatabaseEx();
                 var x = new master._7zip.Legacy.ArchiveReader();
                 x.Open(new FileStream(@"_test\test.7z", FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete));
-                x.ReadDatabase(db, null);
+                x.ReadDatabase(db, pass);
                 db.Fill();
-                x.Extract(db, null, null);
+                x.Extract(db, null, pass);
             }
         }
     }

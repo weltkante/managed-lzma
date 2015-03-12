@@ -871,6 +871,7 @@ namespace master._7zip.Legacy
                         }
                     }
                     unpackSizes.Add(folders[i].GetUnpackSize() - sum);
+                    if(unpackSizes.Last() <= 0) throw new InvalidDataException();
                     Log.WriteLine("  -  rest: " + unpackSizes.Last());
                 }
                 if(type == BlockType.Size)

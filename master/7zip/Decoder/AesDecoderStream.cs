@@ -167,7 +167,7 @@ namespace master._7zip.Legacy
                 throw new NotSupportedException();
         }
 
-        private byte[] InitKey(int mNumCyclesPower, byte[] salt, byte[] pass)
+        internal static byte[] InitKey(int mNumCyclesPower, byte[] salt, byte[] pass)
         {
             if(mNumCyclesPower == 0x3F)
             {

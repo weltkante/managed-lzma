@@ -582,9 +582,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private long mInputSize;
             private long mOutputSize;
+            private long mOutputSize2;
             private uint mInputHash = CRC.kInitCRC;
             private uint mOutputHash = CRC.kInitCRC;
             private ArchiveWriter mWriter;
+            private EncryptionProvider mEncryption;
+            private EncryptionEncoder mEncryptionEncoder;
             private FragmentedMemoryStream mBuffer;
             private EncoderStream mCurrentStream;
             private List<FileEntry> mFiles;
@@ -606,6 +609,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 Debug.Assert(writer != null && mWriter == null);
 
                 mWriter = writer;
+                mEncryption = writer.DefaultEncryptionProvider;
 
                 if(mFlushed != null && mFlushed.Count != 0)
                 {
@@ -680,6 +684,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(mWriter == null && mBuffer == null)
                     mBuffer = new FragmentedMemoryStream();
 
+                if(mEncryption != null)
+                    mEncryptionEncoder = mEncryption.CreateEncoder();
+
                 return mCurrentStream = new EncoderStream(this);
             }
 
@@ -693,12 +700,33 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(mFiles != null && mFiles.Count != 0)
                 {
                     PrepareFinishFileSet();
+                    if(mEncryptionEncoder != null)
+                    {
+                        byte[] data;
+                        int offset, length;
+                        mEncryptionEncoder.FinishEncryption(out data, out offset, out length);
+                        WriteOutputInternal(data, offset, length);
+                    }
                     mInputHash = CRC.Finish(mInputHash);
                     mOutputHash = CRC.Finish(mOutputHash);
-                    var fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize, mInputHash, mOutputHash);
+                    FileSet fileset;
+                    if(mEncryptionEncoder != null)
+                    {
+                        // TODO: This is actually wrong, we pass the wrong mOutputSize. FinishFileSet puts the OutputSize
+                        //       as the original input stream size. However AdjustFilesetForEncryption doesn't properly
+                        //       redirect the input streams so these two bugs cancel each other out.
+                        fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize, mInputHash, null);
+                        AdjustFilesetForEncryption(fileset, mEncryption, mOutputSize2, null);
+                    }
+                    else
+                    {
+                        Debug.Assert(mOutputSize2 == 0);
+                        fileset = FinishFileSet(mFiles.ToArray(), mInputSize, mOutputSize, mInputHash, mOutputHash);
+                    }
                     mFiles.Clear();
                     mInputSize = 0;
                     mOutputSize = 0;
+                    mOutputSize2 = 0;
                     mInputHash = CRC.kInitCRC;
                     mOutputHash = CRC.kInitCRC;
 
@@ -716,6 +744,54 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         mBuffer = null;
                     }
                 }
+
+                if(mEncryptionEncoder != null)
+                {
+                    mEncryptionEncoder.Dispose();
+                    mEncryptionEncoder = null;
+                }
+            }
+
+            private static void AdjustFilesetForEncryption(FileSet fileset, EncryptionProvider encryption, long outputSize, uint? outputHash)
+            {
+                if(fileset.InputStreams.Length != 1)
+                    throw new NotSupportedException();
+
+                master._7zip.Legacy.CMethodId methodId;
+                byte[] settings;
+                encryption.GetCoderInfo(out methodId, out settings);
+
+                var encryptedStreamRef = new InputStreamRef { PackedStreamIndex = 0 };
+                var decryptedStreamRef = new CoderStreamRef { CoderIndex = fileset.Coders.Length, StreamIndex = 0 };
+
+                // TODO: this is wrong, outputSize/outputHash is the INPUT of the decoder,
+                //       however see comment at call site for why this works for now
+                //       (we also need to replace the filesets input stream with our own
+                //       input stream, namely outputSize/outputHash)
+                var decryptionCoder = new Coder {
+                    MethodId = methodId,
+                    Settings = settings,
+                    InputStreams = new[] { encryptedStreamRef },
+                    OutputStreams = new[] { new CoderStream { Size = outputSize, Hash = outputHash } },
+                };
+
+                fileset.Coders = fileset.Coders
+                    .Select(x => AdjustCoderForEncryption(x, decryptedStreamRef))
+                    .Concat(new[] { decryptionCoder })
+                    .ToArray();
+            }
+
+            private static Coder AdjustCoderForEncryption(Coder coder, StreamRef adjustedInputStream)
+            {
+                if(coder.InputStreams.Length != 1 || !(coder.InputStreams[0] is InputStreamRef) || ((InputStreamRef)coder.InputStreams[0]).PackedStreamIndex != 0)
+                    throw new NotSupportedException();
+
+                return new Coder {
+                    MethodId = coder.MethodId,
+                    Settings = coder.Settings,
+                    InputStreams = new[] { adjustedInputStream },
+                    OutputStreams = coder.OutputStreams,
+                };
             }
 
             /// <summary>
@@ -767,6 +843,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
 
             protected void WriteOutput(byte[] buffer, int offset, int length)
+            {
+                if(mEncryptionEncoder != null)
+                {
+                    mOutputSize2 += length;
+                    mEncryptionEncoder.EncryptBlock(ref buffer, ref offset, ref length);
+                }
+
+                WriteOutputInternal(buffer, offset, length);
+            }
+
+            private void WriteOutputInternal(byte[] buffer, int offset, int length)
             {
                 if(mWriter != null)
                     mWriter.mFileStream.Write(buffer, offset, length);
@@ -1251,6 +1338,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         private Stream mFileStream;
         private List<FileSet> mFileSets;
         private Encoder mEncoder;
+        private EncryptionProvider mDefaultEncryptionProvider;
 
         #endregion
 
@@ -1289,6 +1377,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             mFileSets = new List<FileSet>();
             mWrittenSync = mFileStream.Position;
+        }
+
+        public EncryptionProvider DefaultEncryptionProvider
+        {
+            get { return mDefaultEncryptionProvider; }
+            set { mDefaultEncryptionProvider = value; }
         }
 
         /// <summary>
@@ -1331,6 +1425,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public void WriteFinalHeader()
         {
+            WriteFinalHeader(mDefaultEncryptionProvider);
+        }
+
+        public void WriteFinalHeader(EncryptionProvider encryption)
+        {
             if(mEncoder != null)
                 mEncoder.Flush();
 
@@ -1362,6 +1461,16 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     foreach(var fileset in mFileSets)
                     {
                         WriteNumber(writer, fileset.Coders.Length);
+                        var coderOffsetMap = new int[fileset.Coders.Length];
+                        var outputStreamCount = 0;
+                        for(int i = 0; i < coderOffsetMap.Length; i++)
+                        {
+                            coderOffsetMap[i] = outputStreamCount;
+                            outputStreamCount += fileset.Coders[i].OutputStreams.Length;
+                        }
+                        var inputBindPairs = new List<Tuple<int, int>>();
+                        var coderBindPairs = new List<Tuple<int, int>>();
+                        var inputStreamCount = 0;
                         foreach(var coder in fileset.Coders)
                         {
                             int idlen = coder.MethodId.GetLength();
@@ -1394,14 +1503,48 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                                 writer.Write(coder.Settings);
                             }
 
-                            // TODO: Bind pairs and association to streams ...
-                            if(fileset.Coders.Length > 1 || coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
+                            if(coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
                                 throw new NotSupportedException();
+
+                            foreach(var streamRef in coder.InputStreams)
+                            {
+                                if(streamRef is InputStreamRef)
+                                {
+                                    var inputStreamRef = (InputStreamRef)streamRef;
+                                    inputBindPairs.Add(Tuple.Create(inputStreamCount++, inputStreamRef.PackedStreamIndex));
+                                }
+                                else
+                                {
+                                    var coderStreamRef = (CoderStreamRef)streamRef;
+                                    var index = coderOffsetMap[coderStreamRef.CoderIndex] + coderStreamRef.StreamIndex;
+                                    coderBindPairs.Add(Tuple.Create(inputStreamCount++, index));
+                                }
+                            }
+                        }
+                        Utils.Assert(coderBindPairs.Count == outputStreamCount - 1);
+                        Utils.Assert(inputBindPairs.Count == inputStreamCount - outputStreamCount + 1);
+                        foreach(var pair in coderBindPairs)
+                        {
+                            WriteNumber(writer, pair.Item1);
+                            WriteNumber(writer, pair.Item2);
+                        }
+                        if(inputBindPairs.Count > 1)
+                        {
+                            inputBindPairs.Sort((x, y) => x.Item2.CompareTo(y.Item2));
+                            for(int i = 0; i < inputBindPairs.Count; i++)
+                            {
+                                if(inputBindPairs[i].Item2 != i)
+                                    throw new Exception("Internal Error: mismatched coder bindings");
+
+                                WriteNumber(writer, inputBindPairs[i].Item1);
+                            }
                         }
                     }
                     WriteNumber(writer, BlockType.CodersUnpackSize);
                     foreach(var fileset in mFileSets)
-                        WriteNumber(writer, fileset.DataStream.GetSize(fileset));
+                        foreach(var coder in fileset.Coders)
+                            foreach(var outputInfo in coder.OutputStreams)
+                                WriteNumber(writer, outputInfo.Size);
                     {
                         bool allHashes = true;
                         bool anyHashes = false;
@@ -1857,5 +2000,179 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         }
 
         #endregion
+    }
+
+    public abstract class EncryptionProvider: IDisposable
+    {
+        public virtual void Dispose() { }
+        internal abstract EncryptionEncoder CreateEncoder();
+        internal abstract void GetCoderInfo(out master._7zip.Legacy.CMethodId id, out byte[] settings);
+    }
+
+    internal abstract class EncryptionEncoder: IDisposable
+    {
+        public abstract void Dispose();
+        internal abstract void EncryptBlock(ref byte[] data, ref int offset, ref int length);
+        internal abstract void FinishEncryption(out byte[] data, out int offset, out int length);
+    }
+
+    public sealed class AESEncryptionProvider: EncryptionProvider
+    {
+        private sealed class EncryptedStream: EncryptionEncoder
+        {
+            private MemoryStream mOutput = new MemoryStream();
+            private System.Security.Cryptography.ICryptoTransform mEncoder;
+            private byte[] mBuffer1 = new byte[16];
+            private byte[] mBuffer2 = new byte[16];
+            private int mOffset;
+
+            internal EncryptedStream(System.Security.Cryptography.ICryptoTransform encoder)
+            {
+                mEncoder = encoder;
+            }
+
+            public override void Dispose()
+            {
+                mEncoder.Dispose();
+            }
+
+            internal override void EncryptBlock(ref byte[] buffer, ref int offset, ref int length)
+            {
+                while(length > 0)
+                {
+                    if(mOffset == 16)
+                    {
+                        mEncoder.TransformBlock(mBuffer1, 0, 16, mBuffer2, 0);
+                        mOutput.Write(mBuffer2, 0, 16);
+                        mOffset = 0;
+                    }
+
+                    int copy = Math.Min(16 - mOffset, length);
+                    Buffer.BlockCopy(buffer, offset, mBuffer1, mOffset, copy);
+                    mOffset += copy;
+                    offset += copy;
+                    length -= copy;
+                }
+
+                buffer = mOutput.ToArray();
+                offset = 0;
+                length = buffer.Length;
+
+                mOutput.SetLength(0);
+            }
+
+            internal override void FinishEncryption(out byte[] data, out int offset, out int length)
+            {
+                Debug.Assert(mBuffer1 != null && mBuffer2 != null);
+
+                if(mOffset != 0)
+                {
+                    while(mOffset < 16)
+                        mBuffer1[mOffset++] = 0;
+
+                    Debug.Assert(mOffset == 16);
+                    mBuffer2 = mEncoder.TransformFinalBlock(mBuffer1, 0, 16);
+                    mOutput.Write(mBuffer2, 0, 16);
+                    mOffset = 0;
+                }
+
+                Debug.Assert(mOffset == 0);
+
+                data = mOutput.ToArray();
+                offset = 0;
+                length = data.Length;
+
+                mBuffer1 = null;
+                mBuffer2 = null;
+                mOutput = null;
+            }
+        }
+
+        private System.Security.Cryptography.Aes mAES;
+        private int mNumCyclesPower;
+        private byte[] mSalt;
+        private byte[] mKey;
+        private byte[] mSeed;
+        private byte[] mSeed16;
+
+        public AESEncryptionProvider(string password)
+        {
+            mAES = System.Security.Cryptography.Aes.Create();
+            mAES.Mode = System.Security.Cryptography.CipherMode.CBC;
+            mAES.Padding = System.Security.Cryptography.PaddingMode.None;
+
+            // NOTE: Following settings match the hardcoded 7z922 settings, which make some questionable choices:
+            //
+            // - The password salt is not used in the 7z encoder. Should not be a problem unless you create a huge
+            //   amount of 7z archives all using the same password.
+            //
+            // - The RNG for the seed (aka IV) has some questionable choices for seeding itself, but it does
+            //   include timing variations over a loop of 1k iterations, so it is not completely predictable.
+            //
+            // - The seed (aka IV) uses only 8 of 16 bytes, meaning 50% are zeroes. This does not make cracking
+            //   the password any easier but may cause problems in AES security, but I'm no expert here.
+            //
+            // - Setting the NumCyclesPower to a fixed value is ok, raising it just makes brute forcing the
+            //   password a bit more expensive, but doing half a million SHA1 iterations is reasonably slow.
+            //
+            // So while some choices are questionable they still don't allow any obvious attack. If you are going
+            // to store highly sensitive material you probably shouldn't rely on 7z encryption alone anyways.
+            // (Not to mention you shouldn't be using this library because its totally not finished ;-)
+            //
+
+            mNumCyclesPower = 19; // 7z922 has this parameter fixed
+            mSalt = new byte[0]; // 7z922 does not use a salt (?)
+            mSeed = new byte[8]; // 7z922 uses only 8 byte seeds (?)
+
+            // 7z922 uses a questionable RNG hack, we will just use the standard .NET cryptography RNG
+            using(var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(mSalt);
+                rng.GetBytes(mSeed);
+            }
+
+            mSeed16 = new byte[16];
+            Buffer.BlockCopy(mSeed, 0, mSeed16, 0, mSeed.Length);
+
+            mKey = master._7zip.Legacy.AesDecoderStream.InitKey(mNumCyclesPower, mSalt, Encoding.Unicode.GetBytes(password));
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            mAES.Dispose();
+            mSalt = null;
+            mKey = null;
+            mSeed = null;
+        }
+
+        internal override EncryptionEncoder CreateEncoder()
+        {
+            return new EncryptedStream(mAES.CreateEncryptor(mKey, mSeed16));
+        }
+
+        internal override void GetCoderInfo(out master._7zip.Legacy.CMethodId id, out byte[] settings)
+        {
+            var stream = new MemoryStream();
+            var writer = new BinaryWriter(stream);
+
+            writer.Write((byte)(mNumCyclesPower | ((mSalt.Length == 0 ? 0 : 1) << 7) | ((mSeed.Length == 0 ? 0 : 1) << 6)));
+
+            if(mSalt.Length > 0 || mSeed.Length > 0)
+            {
+                var saltSize = mSalt.Length == 0 ? 0 : mSalt.Length - 1;
+                var seedSize = mSeed.Length == 0 ? 0 : mSeed.Length - 1;
+                writer.Write((byte)((saltSize << 4) | seedSize));
+            }
+
+            if(mSalt.Length > 0)
+                writer.Write(mSalt);
+
+            if(mSeed.Length > 0)
+                writer.Write(mSeed);
+
+            settings = stream.ToArray();
+            id = master._7zip.Legacy.CMethodId.kAES;
+        }
     }
 }
