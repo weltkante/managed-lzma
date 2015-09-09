@@ -85,7 +85,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static SRes Lzma2Dec_GetOldProps(byte prop, P<byte> props)
             {
-                if(prop > 40)
+                if (prop > 40)
                     return SZ_ERROR_UNSUPPORTED;
 
                 uint dicSize = (prop == 40) ? 0xFFFFFFFF : DicSizeFromProp(prop);
@@ -99,85 +99,85 @@ namespace ManagedLzma.LZMA.Master
 
             private Lzma2State Lzma2Dec_UpdateState(byte b)
             {
-                switch(mState)
+                switch (mState)
                 {
-                case Lzma2State.Control:
-                    mControl = b;
-                    TR("Lzma2Dec_UpdateState:1", checked((int)mDecoder.mDicPos));
-                    TR("Lzma2Dec_UpdateState:2", b);
-                    DebugPrint("\n {0:X4} ", mDecoder.mDicPos);
-                    DebugPrint(" {0:X2}", b);
+                    case Lzma2State.Control:
+                        mControl = b;
+                        TR("Lzma2Dec_UpdateState:1", checked((int)mDecoder.mDicPos));
+                        TR("Lzma2Dec_UpdateState:2", b);
+                        DebugPrint("\n {0:X4} ", mDecoder.mDicPos);
+                        DebugPrint(" {0:X2}", b);
 
-                    if(mControl == 0)
-                        return Lzma2State.Finished;
+                        if (mControl == 0)
+                            return Lzma2State.Finished;
 
-                    if(IsUncompressedState())
-                    {
-                        if((mControl & 0x7F) > 2)
+                        if (IsUncompressedState())
+                        {
+                            if ((mControl & 0x7F) > 2)
+                                return Lzma2State.Error;
+
+                            mUnpackSize = 0;
+                        }
+                        else
+                        {
+                            mUnpackSize = (uint)(mControl & 0x1F) << 16;
+                        }
+
+                        return Lzma2State.Unpack0;
+
+                    case Lzma2State.Unpack0:
+                        mUnpackSize |= (uint)b << 8;
+                        return Lzma2State.Unpack1;
+
+                    case Lzma2State.Unpack1:
+                        mUnpackSize |= (uint)b;
+                        mUnpackSize++;
+
+                        TR("Lzma2Dec_UpdateState:3", mUnpackSize);
+                        DebugPrint(" {0:00000000}", mUnpackSize);
+
+                        if (IsUncompressedState())
+                            return Lzma2State.Data;
+                        else
+                            return Lzma2State.Pack0;
+
+                    case Lzma2State.Pack0:
+                        mPackSize = (uint)b << 8;
+                        return Lzma2State.Pack1;
+
+                    case Lzma2State.Pack1:
+                        mPackSize |= (uint)b;
+                        mPackSize++;
+
+                        TR("Lzma2Dec_UpdateState:4", mPackSize);
+                        DebugPrint(" {0:00000000}", mPackSize);
+
+                        if (IsThereProp(GetLzmaMode()))
+                            return Lzma2State.Prop;
+                        else if (mNeedInitProp)
+                            return Lzma2State.Error;
+                        else
+                            return Lzma2State.Data;
+
+                    case Lzma2State.Prop:
+                        if (b >= (9 * 5 * 5))
                             return Lzma2State.Error;
 
-                        mUnpackSize = 0;
-                    }
-                    else
-                    {
-                        mUnpackSize = (uint)(mControl & 0x1F) << 16;
-                    }
+                        int lc = b % 9;
+                        b /= 9;
+                        mDecoder.mProp.mPB = b / 5;
+                        int lp = b % 5;
 
-                    return Lzma2State.Unpack0;
+                        if (lc + lp > LZMA2_LCLP_MAX)
+                            return Lzma2State.Error;
 
-                case Lzma2State.Unpack0:
-                    mUnpackSize |= (uint)b << 8;
-                    return Lzma2State.Unpack1;
-
-                case Lzma2State.Unpack1:
-                    mUnpackSize |= (uint)b;
-                    mUnpackSize++;
-
-                    TR("Lzma2Dec_UpdateState:3", mUnpackSize);
-                    DebugPrint(" {0:00000000}", mUnpackSize);
-
-                    if(IsUncompressedState())
-                        return Lzma2State.Data;
-                    else
-                        return Lzma2State.Pack0;
-
-                case Lzma2State.Pack0:
-                    mPackSize = (uint)b << 8;
-                    return Lzma2State.Pack1;
-
-                case Lzma2State.Pack1:
-                    mPackSize |= (uint)b;
-                    mPackSize++;
-
-                    TR("Lzma2Dec_UpdateState:4", mPackSize);
-                    DebugPrint(" {0:00000000}", mPackSize);
-
-                    if(IsThereProp(GetLzmaMode()))
-                        return Lzma2State.Prop;
-                    else if(mNeedInitProp)
-                        return Lzma2State.Error;
-                    else
+                        mDecoder.mProp.mLC = lc;
+                        mDecoder.mProp.mLP = lp;
+                        mNeedInitProp = false;
                         return Lzma2State.Data;
 
-                case Lzma2State.Prop:
-                    if(b >= (9 * 5 * 5))
+                    default:
                         return Lzma2State.Error;
-
-                    int lc = b % 9;
-                    b /= 9;
-                    mDecoder.mProp.mPB = b / 5;
-                    int lp = b % 5;
-
-                    if(lc + lp > LZMA2_LCLP_MAX)
-                        return Lzma2State.Error;
-
-                    mDecoder.mProp.mLC = lc;
-                    mDecoder.mProp.mLP = lp;
-                    mNeedInitProp = false;
-                    return Lzma2State.Data;
-
-                default:
-                    return Lzma2State.Error;
                 }
             }
 
@@ -185,7 +185,7 @@ namespace ManagedLzma.LZMA.Master
             {
                 CUtils.memcpy(p.mDic + p.mDicPos, src, size);
                 p.mDicPos += size;
-                if(p.mCheckDicSize == 0 && p.mProp.mDicSize - p.mProcessedPos <= size)
+                if (p.mCheckDicSize == 0 && p.mProp.mDicSize - p.mProcessedPos <= size)
                     p.mCheckDicSize = p.mProp.mDicSize;
                 p.mProcessedPos += (uint)size;
             }
@@ -214,7 +214,7 @@ namespace ManagedLzma.LZMA.Master
                 byte[] props = new byte[LZMA_PROPS_SIZE];
 
                 SRes res;
-                if((res = Lzma2Dec_GetOldProps(prop, props)) != SZ_OK)
+                if ((res = Lzma2Dec_GetOldProps(prop, props)) != SZ_OK)
                     return res;
 
                 return mDecoder.LzmaDec_AllocateProbs(props, LZMA_PROPS_SIZE, alloc);
@@ -225,7 +225,7 @@ namespace ManagedLzma.LZMA.Master
                 byte[] props = new byte[LZMA_PROPS_SIZE];
 
                 SRes res;
-                if((res = Lzma2Dec_GetOldProps(prop, props)) != SZ_OK)
+                if ((res = Lzma2Dec_GetOldProps(prop, props)) != SZ_OK)
                     return res;
 
                 return mDecoder.LzmaDec_Allocate(props, LZMA_PROPS_SIZE, alloc);
@@ -261,21 +261,21 @@ namespace ManagedLzma.LZMA.Master
                 srcLen = 0;
                 status = ELzmaStatus.LZMA_STATUS_NOT_SPECIFIED;
 
-                while(mState != Lzma2State.Finished)
+                while (mState != Lzma2State.Finished)
                 {
                     long dicPos = mDecoder.mDicPos;
-                    if(mState == Lzma2State.Error)
+                    if (mState == Lzma2State.Error)
                         return SZ_ERROR_DATA;
 
-                    if(dicPos == dicLimit && finishMode == ELzmaFinishMode.LZMA_FINISH_ANY)
+                    if (dicPos == dicLimit && finishMode == ELzmaFinishMode.LZMA_FINISH_ANY)
                     {
                         status = ELzmaStatus.LZMA_STATUS_NOT_FINISHED;
                         return SZ_OK;
                     }
 
-                    if(mState != Lzma2State.Data && mState != Lzma2State.DataCont)
+                    if (mState != Lzma2State.Data && mState != Lzma2State.DataCont)
                     {
-                        if(srcLen == inSize)
+                        if (srcLen == inSize)
                         {
                             status = ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT;
                             return SZ_OK;
@@ -290,36 +290,36 @@ namespace ManagedLzma.LZMA.Master
                     long srcSizeCur = inSize - srcLen;
                     ELzmaFinishMode curFinishMode = ELzmaFinishMode.LZMA_FINISH_ANY;
 
-                    if(mUnpackSize <= destSizeCur)
+                    if (mUnpackSize <= destSizeCur)
                     {
                         destSizeCur = mUnpackSize;
                         curFinishMode = ELzmaFinishMode.LZMA_FINISH_END;
                     }
 
-                    if(IsUncompressedState())
+                    if (IsUncompressedState())
                     {
-                        if(srcLen == inSize)
+                        if (srcLen == inSize)
                         {
                             status = ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT;
                             return SZ_OK;
                         }
 
-                        if(mState == Lzma2State.Data)
+                        if (mState == Lzma2State.Data)
                         {
                             bool initDic = (mControl == LZMA2_CONTROL_COPY_RESET_DIC);
-                            if(initDic)
+                            if (initDic)
                                 mNeedInitProp = mNeedInitState = true;
-                            else if(mNeedInitDic)
+                            else if (mNeedInitDic)
                                 return SZ_ERROR_DATA;
 
                             mNeedInitDic = false;
                             mDecoder.LzmaDec_InitDicAndState(initDic, false);
                         }
 
-                        if(srcSizeCur > destSizeCur)
+                        if (srcSizeCur > destSizeCur)
                             srcSizeCur = destSizeCur;
 
-                        if(srcSizeCur == 0)
+                        if (srcSizeCur == 0)
                             return SZ_ERROR_DATA;
 
                         LzmaDec_UpdateWithUncompressed(mDecoder, src, srcSizeCur);
@@ -333,12 +333,12 @@ namespace ManagedLzma.LZMA.Master
                     {
                         long outSizeProcessed;
 
-                        if(mState == Lzma2State.Data)
+                        if (mState == Lzma2State.Data)
                         {
                             int mode = GetLzmaMode();
                             bool initDic = (mode == 3);
                             bool initState = (mode > 0);
-                            if((!initDic && mNeedInitDic) || (!initState && mNeedInitState))
+                            if ((!initDic && mNeedInitDic) || (!initState && mNeedInitState))
                                 return SZ_ERROR_DATA;
 
                             mDecoder.LzmaDec_InitDicAndState(initDic, initState);
@@ -347,7 +347,7 @@ namespace ManagedLzma.LZMA.Master
                             mState = Lzma2State.DataCont;
                         }
 
-                        if(srcSizeCur > mPackSize)
+                        if (srcSizeCur > mPackSize)
                             srcSizeCur = mPackSize;
 
                         SRes res = mDecoder.LzmaDec_DecodeToDic(dicPos + destSizeCur, src, ref srcSizeCur, curFinishMode, out status);
@@ -359,21 +359,21 @@ namespace ManagedLzma.LZMA.Master
                         outSizeProcessed = mDecoder.mDicPos - dicPos;
                         mUnpackSize -= (uint)outSizeProcessed;
 
-                        if(res != SZ_OK)
+                        if (res != SZ_OK)
                             return res;
 
-                        if(status == ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT)
+                        if (status == ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT)
                             return res;
 
-                        if(srcSizeCur == 0 && outSizeProcessed == 0)
+                        if (srcSizeCur == 0 && outSizeProcessed == 0)
                         {
-                            if(status != ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK || mUnpackSize != 0 || mPackSize != 0)
+                            if (status != ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK || mUnpackSize != 0 || mPackSize != 0)
                                 return SZ_ERROR_DATA;
 
                             mState = Lzma2State.Control;
                         }
 
-                        if(status == ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK)
+                        if (status == ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK)
                             status = ELzmaStatus.LZMA_STATUS_NOT_FINISHED;
                     }
                 }
@@ -389,15 +389,15 @@ namespace ManagedLzma.LZMA.Master
                 srcLen = 0;
                 destLen = 0;
 
-                for(; ; )
+                for (;;)
                 {
-                    if(mDecoder.mDicPos == mDecoder.mDicBufSize)
+                    if (mDecoder.mDicPos == mDecoder.mDicBufSize)
                         mDecoder.mDicPos = 0;
 
                     long outSizeCur;
                     ELzmaFinishMode curFinishMode;
                     long dicPos = mDecoder.mDicPos;
-                    if(outSize > mDecoder.mDicBufSize - dicPos)
+                    if (outSize > mDecoder.mDicBufSize - dicPos)
                     {
                         outSizeCur = mDecoder.mDicBufSize;
                         curFinishMode = ELzmaFinishMode.LZMA_FINISH_ANY;
@@ -419,10 +419,10 @@ namespace ManagedLzma.LZMA.Master
                     outSize -= outSizeCur;
                     destLen += outSizeCur;
 
-                    if(res != 0)
+                    if (res != 0)
                         return res;
 
-                    if(outSizeCur == 0 || outSize == 0)
+                    if (outSizeCur == 0 || outSize == 0)
                         return SZ_OK;
                 }
             }
@@ -459,7 +459,7 @@ namespace ManagedLzma.LZMA.Master
                 CLzma2Dec p = new CLzma2Dec();
                 p.Lzma2Dec_Construct();
                 SRes res;
-                if((res = p.Lzma2Dec_AllocateProbs(prop, alloc)) != SZ_OK)
+                if ((res = p.Lzma2Dec_AllocateProbs(prop, alloc)) != SZ_OK)
                     return res;
                 p.mDecoder.mDic = dest;
                 p.mDecoder.mDicBufSize = outSize;
@@ -467,7 +467,7 @@ namespace ManagedLzma.LZMA.Master
                 srcLen = inSize;
                 res = p.Lzma2Dec_DecodeToDic(outSize, src, ref srcLen, finishMode, out status);
                 destLen = p.mDecoder.mDicPos;
-                if(res == SZ_OK && status == ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT)
+                if (res == SZ_OK && status == ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT)
                     res = SZ_ERROR_INPUT_EOF;
                 p.Lzma2Dec_FreeProbs(alloc);
                 return res;

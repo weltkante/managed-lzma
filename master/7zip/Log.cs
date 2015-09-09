@@ -23,7 +23,7 @@ namespace master._7zip
 
         public static void PopIndent()
         {
-            if(_indent.Count == 1)
+            if (_indent.Count == 1)
                 throw new InvalidOperationException();
 
             _indent.Pop();
@@ -31,7 +31,7 @@ namespace master._7zip
 
         private static void EnsureIndent()
         {
-            if(_needsIndent)
+            if (_needsIndent)
             {
                 _needsIndent = false;
                 System.Diagnostics.Debug.Write(_indent.Peek());

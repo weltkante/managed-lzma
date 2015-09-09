@@ -74,7 +74,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal bool MatchFinder_NeedMove()
             {
-                if(mDirectInput)
+                if (mDirectInput)
                     return false;
 
                 // if (p.streamEndWasReached) return false;
@@ -95,13 +95,13 @@ namespace ManagedLzma.LZMA.Master
 
             internal void MatchFinder_ReadIfRequired()
             {
-                if(!mStreamEndWasReached && mKeepSizeAfter >= mStreamPos - mPos)
+                if (!mStreamEndWasReached && mKeepSizeAfter >= mStreamPos - mPos)
                     MatchFinder_ReadBlock();
             }
 
             private void LzInWindow_Free(ISzAlloc alloc)
             {
-                if(!mDirectInput)
+                if (!mDirectInput)
                 {
                     alloc.FreeBytes(alloc, mBufferBase.mBuffer);
                     mBufferBase = null;
@@ -113,13 +113,13 @@ namespace ManagedLzma.LZMA.Master
             {
                 uint blockSize = mKeepSizeBefore + mKeepSizeAfter + keepSizeReserv;
 
-                if(mDirectInput)
+                if (mDirectInput)
                 {
                     mBlockSize = blockSize;
                     return true;
                 }
 
-                if(mBufferBase == null || mBlockSize != blockSize)
+                if (mBufferBase == null || mBlockSize != blockSize)
                 {
                     LzInWindow_Free(alloc);
                     mBlockSize = blockSize;
@@ -148,49 +148,49 @@ namespace ManagedLzma.LZMA.Master
 
             private void MatchFinder_ReadBlock()
             {
-                if(mStreamEndWasReached || mResult != SZ_OK)
+                if (mStreamEndWasReached || mResult != SZ_OK)
                     return;
 
-                if(mDirectInput)
+                if (mDirectInput)
                 {
                     uint curSize = 0xFFFFFFFF - mStreamPos;
-                    if(curSize > mDirectInputRem)
+                    if (curSize > mDirectInputRem)
                         curSize = (uint)mDirectInputRem;
 
                     mDirectInputRem -= curSize;
                     mStreamPos += curSize;
-                    if(mDirectInputRem == 0)
+                    if (mDirectInputRem == 0)
                         mStreamEndWasReached = true;
 
                     return;
                 }
 
-                for(; ; )
+                for (;;)
                 {
                     P<byte> dest = mBuffer + (mStreamPos - mPos);
                     long size = mBufferBase + mBlockSize - dest;
-                    if(size == 0)
+                    if (size == 0)
                         return;
 
                     mResult = mStream.Read(dest, ref size);
-                    if(mResult != SZ_OK)
+                    if (mResult != SZ_OK)
                         return;
 
-                    if(size == 0)
+                    if (size == 0)
                     {
                         mStreamEndWasReached = true;
                         return;
                     }
 
                     mStreamPos += (uint)size;
-                    if(mStreamPos - mPos > mKeepSizeAfter)
+                    if (mStreamPos - mPos > mKeepSizeAfter)
                         return;
                 }
             }
 
             private void MatchFinder_CheckAndMoveAndRead()
             {
-                if(MatchFinder_NeedMove())
+                if (MatchFinder_NeedMove())
                     MatchFinder_MoveBlock();
 
                 MatchFinder_ReadBlock();
@@ -211,7 +211,7 @@ namespace ManagedLzma.LZMA.Master
             private static uint[] AllocRefs(uint num, ISzAlloc alloc)
             {
                 long sizeInBytes = (long)num * sizeof(uint);
-                if(sizeInBytes / sizeof(uint) != num)
+                if (sizeInBytes / sizeof(uint) != num)
                     return null;
 
                 return alloc.AllocUInt32(alloc, num);
@@ -222,14 +222,14 @@ namespace ManagedLzma.LZMA.Master
             //     keepAddBufferBefore + matchMaxLen + keepAddBufferAfter < 511MB
             internal bool MatchFinder_Create(uint historySize, uint keepAddBufferBefore, uint matchMaxLen, uint keepAddBufferAfter, ISzAlloc alloc)
             {
-                if(historySize > kMaxHistorySize)
+                if (historySize > kMaxHistorySize)
                 {
                     MatchFinder_Free(alloc);
                     return false;
                 }
 
                 uint sizeReserv = historySize >> 1;
-                if(historySize > ((uint)2 << 30))
+                if (historySize > ((uint)2 << 30))
                     sizeReserv = historySize >> 2;
                 sizeReserv += (keepAddBufferBefore + matchMaxLen + keepAddBufferAfter) / 2 + (1 << 19);
 
@@ -237,7 +237,7 @@ namespace ManagedLzma.LZMA.Master
                 mKeepSizeAfter = matchMaxLen + keepAddBufferAfter;
 
                 // we need one additional byte, since we use MoveBlock after pos++ and before dictionary using
-                if(LzInWindow_Create(sizeReserv, alloc))
+                if (LzInWindow_Create(sizeReserv, alloc))
                 {
                     uint newCyclicBufferSize = historySize + 1;
                     uint hs;
@@ -247,7 +247,7 @@ namespace ManagedLzma.LZMA.Master
                     {
                         mFixedHashSize = 0;
 
-                        if(mNumHashBytes == 2)
+                        if (mNumHashBytes == 2)
                         {
                             hs = (1 << 16) - 1;
                         }
@@ -260,9 +260,9 @@ namespace ManagedLzma.LZMA.Master
                             hs |= (hs >> 8);
                             hs >>= 1;
                             hs |= 0xFFFF; // don't change it! It's required for Deflate
-                            if(hs > (1 << 24))
+                            if (hs > (1 << 24))
                             {
-                                if(mNumHashBytes == 3)
+                                if (mNumHashBytes == 3)
                                     hs = (1 << 24) - 1;
                                 else
                                     hs >>= 1;
@@ -272,11 +272,11 @@ namespace ManagedLzma.LZMA.Master
                         mHashMask = hs;
                         hs++;
 
-                        if(mNumHashBytes > 2)
+                        if (mNumHashBytes > 2)
                             mFixedHashSize += kHash2Size;
-                        if(mNumHashBytes > 3)
+                        if (mNumHashBytes > 3)
                             mFixedHashSize += kHash3Size;
-                        if(mNumHashBytes > 4)
+                        if (mNumHashBytes > 4)
                             mFixedHashSize += kHash4Size;
 
                         hs += mFixedHashSize;
@@ -291,13 +291,13 @@ namespace ManagedLzma.LZMA.Master
                         mNumSons = (mBtMode ? newCyclicBufferSize * 2 : newCyclicBufferSize);
 
                         uint newSize = mHashSizeSum + mNumSons;
-                        if(mHash != null && prevSize == newSize)
+                        if (mHash != null && prevSize == newSize)
                             return true;
 
                         MatchFinder_FreeThisClassMemory(alloc);
 
                         mHash = AllocRefs(newSize, alloc);
-                        if(mHash != null)
+                        if (mHash != null)
                         {
                             mSon = P.From(mHash, mHashSizeSum);
                             return true;
@@ -313,22 +313,22 @@ namespace ManagedLzma.LZMA.Master
             {
                 uint limit = kMaxValForNormalize - mPos;
                 uint limit2 = mCyclicBufferSize - mCyclicBufferPos;
-                if(limit2 < limit)
+                if (limit2 < limit)
                     limit = limit2;
                 limit2 = mStreamPos - mPos;
-                if(limit2 <= mKeepSizeAfter)
+                if (limit2 <= mKeepSizeAfter)
                 {
-                    if(limit2 > 0)
+                    if (limit2 > 0)
                         limit2 = 1;
                 }
                 else
                 {
                     limit2 -= mKeepSizeAfter;
                 }
-                if(limit2 < limit)
+                if (limit2 < limit)
                     limit = limit2;
                 uint lenLimit = mStreamPos - mPos;
-                if(lenLimit > mMatchMaxLen)
+                if (lenLimit > mMatchMaxLen)
                     lenLimit = mMatchMaxLen;
                 mLenLimit = lenLimit;
                 mPosLimit = mPos + limit;
@@ -357,10 +357,10 @@ namespace ManagedLzma.LZMA.Master
 
             internal static void MatchFinder_Normalize3(uint subValue, P<uint> items, uint numItems)
             {
-                for(uint i = 0; i < numItems; i++)
+                for (uint i = 0; i < numItems; i++)
                 {
                     uint value = items[i];
-                    if(value <= subValue)
+                    if (value <= subValue)
                         value = kEmptyHashValue;
                     else
                         value -= subValue;
@@ -377,13 +377,13 @@ namespace ManagedLzma.LZMA.Master
 
             private void MatchFinder_CheckLimits()
             {
-                if(mPos == kMaxValForNormalize)
+                if (mPos == kMaxValForNormalize)
                     MatchFinder_Normalize();
 
-                if(!mStreamEndWasReached && mKeepSizeAfter == mStreamPos - mPos)
+                if (!mStreamEndWasReached && mKeepSizeAfter == mStreamPos - mPos)
                     MatchFinder_CheckAndMoveAndRead();
 
-                if(mCyclicBufferPos == mCyclicBufferSize)
+                if (mCyclicBufferPos == mCyclicBufferSize)
                     mCyclicBufferPos = 0;
 
                 MatchFinder_SetLimits();
@@ -393,28 +393,28 @@ namespace ManagedLzma.LZMA.Master
             {
                 son[_cyclicBufferPos] = curMatch;
 
-                for(; ; )
+                for (;;)
                 {
                     uint delta = pos - curMatch;
-                    if(cutValue-- == 0 || delta >= _cyclicBufferSize)
+                    if (cutValue-- == 0 || delta >= _cyclicBufferSize)
                         return distances;
 
                     P<byte> pb = cur - delta;
                     curMatch = son[_cyclicBufferPos - delta + ((delta > _cyclicBufferPos) ? _cyclicBufferSize : 0)];
-                    if(pb[maxLen] == cur[maxLen] && pb[0] == cur[0])
+                    if (pb[maxLen] == cur[maxLen] && pb[0] == cur[0])
                     {
                         uint len = 0;
-                        while(++len != lenLimit)
-                            if(pb[len] != cur[len])
+                        while (++len != lenLimit)
+                            if (pb[len] != cur[len])
                                 break;
 
-                        if(maxLen < len)
+                        if (maxLen < len)
                         {
                             distances[0] = maxLen = len;
                             distances++;
                             distances[0] = delta - 1;
                             distances++;
-                            if(len == lenLimit)
+                            if (len == lenLimit)
                                 return distances;
                         }
                     }
@@ -428,10 +428,10 @@ namespace ManagedLzma.LZMA.Master
                 uint len0 = 0;
                 uint len1 = 0;
 
-                for(; ; )
+                for (;;)
                 {
                     uint delta = pos - curMatch;
-                    if(cutValue-- == 0 || delta >= _cyclicBufferSize)
+                    if (cutValue-- == 0 || delta >= _cyclicBufferSize)
                     {
                         ptr0[0] = ptr1[0] = CMatchFinder.kEmptyHashValue;
                         return distances;
@@ -441,21 +441,21 @@ namespace ManagedLzma.LZMA.Master
                     P<byte> pb = cur - delta;
                     uint len = (len0 < len1 ? len0 : len1);
 
-                    if(pb[len] == cur[len])
+                    if (pb[len] == cur[len])
                     {
-                        if(++len != lenLimit && pb[len] == cur[len])
-                            while(++len != lenLimit)
-                                if(pb[len] != cur[len])
+                        if (++len != lenLimit && pb[len] == cur[len])
+                            while (++len != lenLimit)
+                                if (pb[len] != cur[len])
                                     break;
 
-                        if(maxLen < len)
+                        if (maxLen < len)
                         {
                             distances[0] = maxLen = len;
                             distances++;
                             distances[0] = delta - 1;
                             distances++;
 
-                            if(len == lenLimit)
+                            if (len == lenLimit)
                             {
                                 ptr1[0] = pair[0];
                                 ptr0[0] = pair[1];
@@ -464,7 +464,7 @@ namespace ManagedLzma.LZMA.Master
                         }
                     }
 
-                    if(pb[len] < cur[len])
+                    if (pb[len] < cur[len])
                     {
                         ptr1[0] = curMatch;
                         ptr1 = pair + 1;
@@ -488,10 +488,10 @@ namespace ManagedLzma.LZMA.Master
                 uint len0 = 0;
                 uint len1 = 0;
 
-                for(; ; )
+                for (;;)
                 {
                     uint delta = pos - curMatch;
-                    if(cutValue-- == 0 || delta >= _cyclicBufferSize)
+                    if (cutValue-- == 0 || delta >= _cyclicBufferSize)
                     {
                         ptr0[0] = ptr1[0] = CMatchFinder.kEmptyHashValue;
                         return;
@@ -501,13 +501,13 @@ namespace ManagedLzma.LZMA.Master
                     P<byte> pb = cur - delta;
                     uint len = (len0 < len1 ? len0 : len1);
 
-                    if(pb[len] == cur[len])
+                    if (pb[len] == cur[len])
                     {
-                        while(++len != lenLimit)
-                            if(pb[len] != cur[len])
+                        while (++len != lenLimit)
+                            if (pb[len] != cur[len])
                                 break;
 
-                        if(len == lenLimit)
+                        if (len == lenLimit)
                         {
                             ptr1[0] = pair[0];
                             ptr0[0] = pair[1];
@@ -515,7 +515,7 @@ namespace ManagedLzma.LZMA.Master
                         }
                     }
 
-                    if(pb[len] < cur[len])
+                    if (pb[len] < cur[len])
                     {
                         ptr1[0] = curMatch;
                         ptr1 = pair + 1;
@@ -538,14 +538,14 @@ namespace ManagedLzma.LZMA.Master
                 mBuffer++;
                 mPos++;
 
-                if(mPos == mPosLimit)
+                if (mPos == mPosLimit)
                     MatchFinder_CheckLimits();
             }
 
             internal uint Bt2_MatchFinder_GetMatches(P<uint> distances)
             {
                 uint lenLimit = mLenLimit;
-                if(lenLimit < 2)
+                if (lenLimit < 2)
                 {
                     MatchFinder_MovePos();
                     return 0;
@@ -562,7 +562,7 @@ namespace ManagedLzma.LZMA.Master
                 mCyclicBufferPos++;
                 mBuffer++;
 
-                if(++mPos == mPosLimit)
+                if (++mPos == mPosLimit)
                     MatchFinder_CheckLimits();
 
                 return offset;
@@ -571,7 +571,7 @@ namespace ManagedLzma.LZMA.Master
             internal uint Bt3_MatchFinder_GetMatches(P<uint> distances)
             {
                 uint lenLimit = mLenLimit;
-                if(lenLimit < 3)
+                if (lenLimit < 3)
                 {
                     MatchFinder_MovePos();
                     return 0;
@@ -592,11 +592,11 @@ namespace ManagedLzma.LZMA.Master
                 uint maxLen = 2;
                 uint offset = 0;
 
-                if(delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
+                if (delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
                 {
-                    while(maxLen != lenLimit)
+                    while (maxLen != lenLimit)
                     {
-                        if(cur[maxLen - delta2] != cur[maxLen])
+                        if (cur[maxLen - delta2] != cur[maxLen])
                             break;
 
                         maxLen++;
@@ -606,14 +606,14 @@ namespace ManagedLzma.LZMA.Master
                     distances[1] = delta2 - 1;
                     offset = 2;
 
-                    if(maxLen == lenLimit)
+                    if (maxLen == lenLimit)
                     {
                         SkipMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue);
 
                         mCyclicBufferPos++;
                         mBuffer++;
 
-                        if(++mPos == mPosLimit)
+                        if (++mPos == mPosLimit)
                             MatchFinder_CheckLimits();
 
                         return offset;
@@ -625,7 +625,7 @@ namespace ManagedLzma.LZMA.Master
                 mCyclicBufferPos++;
                 mBuffer++;
 
-                if(++mPos == mPosLimit)
+                if (++mPos == mPosLimit)
                     MatchFinder_CheckLimits();
 
                 return offset;
@@ -634,7 +634,7 @@ namespace ManagedLzma.LZMA.Master
             internal uint Bt4_MatchFinder_GetMatches(P<uint> distances)
             {
                 uint lenLimit = mLenLimit;
-                if(lenLimit < 4)
+                if (lenLimit < 4)
                 {
                     MatchFinder_MovePos();
                     return 0;
@@ -658,14 +658,14 @@ namespace ManagedLzma.LZMA.Master
                 uint maxLen = 1;
                 uint offset = 0;
 
-                if(delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
+                if (delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
                 {
                     distances[0] = maxLen = 2;
                     distances[1] = delta2 - 1;
                     offset = 2;
                 }
 
-                if(delta2 != delta3 && delta3 < mCyclicBufferSize && cur[-delta3] == cur[0])
+                if (delta2 != delta3 && delta3 < mCyclicBufferSize && cur[-delta3] == cur[0])
                 {
                     maxLen = 3;
                     distances[offset + 1] = delta3 - 1;
@@ -673,27 +673,27 @@ namespace ManagedLzma.LZMA.Master
                     delta2 = delta3;
                 }
 
-                if(offset != 0)
+                if (offset != 0)
                 {
-                    while(maxLen != lenLimit && cur[maxLen - delta2] == cur[maxLen])
+                    while (maxLen != lenLimit && cur[maxLen - delta2] == cur[maxLen])
                         maxLen++;
 
                     distances[offset - 2] = maxLen;
 
-                    if(maxLen == lenLimit)
+                    if (maxLen == lenLimit)
                     {
                         SkipMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue);
                         mCyclicBufferPos++;
                         mBuffer++;
 
-                        if(++mPos == mPosLimit)
+                        if (++mPos == mPosLimit)
                             MatchFinder_CheckLimits();
 
                         return offset;
                     }
                 }
 
-                if(maxLen < 3)
+                if (maxLen < 3)
                     maxLen = 3;
 
                 offset = (uint)(GetMatchesSpec1(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue, distances + offset, maxLen) - distances);
@@ -701,7 +701,7 @@ namespace ManagedLzma.LZMA.Master
                 mCyclicBufferPos++;
                 mBuffer++;
 
-                if(++mPos == mPosLimit)
+                if (++mPos == mPosLimit)
                     MatchFinder_CheckLimits();
 
                 return offset;
@@ -710,7 +710,7 @@ namespace ManagedLzma.LZMA.Master
             internal uint Hc4_MatchFinder_GetMatches(P<uint> distances)
             {
                 uint lenLimit = mLenLimit;
-                if(lenLimit < 4)
+                if (lenLimit < 4)
                 {
                     MatchFinder_MovePos();
                     return 0;
@@ -734,7 +734,7 @@ namespace ManagedLzma.LZMA.Master
                 uint maxLen = 1;
                 uint offset = 0;
 
-                if(delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
+                if (delta2 < mCyclicBufferSize && cur[-delta2] == cur[0])
                 {
                     TR("Hc4_MatchFinder_GetMatches:a1", maxLen);
                     TR("Hc4_MatchFinder_GetMatches:a2", delta2);
@@ -743,7 +743,7 @@ namespace ManagedLzma.LZMA.Master
                     offset = 2;
                 }
 
-                if(delta2 != delta3 && delta3 < mCyclicBufferSize && cur[-delta3] == cur[0])
+                if (delta2 != delta3 && delta3 < mCyclicBufferSize && cur[-delta3] == cur[0])
                 {
                     TR("Hc4_MatchFinder_GetMatches:b1", offset);
                     TR("Hc4_MatchFinder_GetMatches:b2", delta3);
@@ -753,9 +753,9 @@ namespace ManagedLzma.LZMA.Master
                     delta2 = delta3;
                 }
 
-                if(offset != 0)
+                if (offset != 0)
                 {
-                    while(maxLen != lenLimit && cur[maxLen - delta2] == cur[maxLen])
+                    while (maxLen != lenLimit && cur[maxLen - delta2] == cur[maxLen])
                         maxLen++;
 
                     TR("Hc4_MatchFinder_GetMatches:c1", offset);
@@ -763,20 +763,20 @@ namespace ManagedLzma.LZMA.Master
 
                     distances[offset - 2] = maxLen;
 
-                    if(maxLen == lenLimit)
+                    if (maxLen == lenLimit)
                     {
                         TR("Hc4_MatchFinder_GetMatches:d", curMatch);
                         mSon[mCyclicBufferPos] = curMatch;
                         mCyclicBufferPos++;
                         mBuffer++;
                         mPos++;
-                        if(mPos == mPosLimit)
+                        if (mPos == mPosLimit)
                             MatchFinder_CheckLimits();
                         return offset;
                     }
                 }
 
-                if(maxLen < 3)
+                if (maxLen < 3)
                     maxLen = 3;
 
                 offset = (uint)(Hc_GetMatchesSpec(lenLimit, curMatch, mPos, mBuffer, mSon, mCyclicBufferPos, mCyclicBufferSize, mCutValue, distances + offset, maxLen) - distances);
@@ -785,7 +785,7 @@ namespace ManagedLzma.LZMA.Master
                 mBuffer++;
                 mPos++;
 
-                if(mPos == mPosLimit)
+                if (mPos == mPosLimit)
                     MatchFinder_CheckLimits();
 
                 return offset;
@@ -796,7 +796,7 @@ namespace ManagedLzma.LZMA.Master
                 do
                 {
                     uint lenLimit = mLenLimit;
-                    if(lenLimit < 2)
+                    if (lenLimit < 2)
                     {
                         MatchFinder_MovePos();
                         continue;
@@ -814,10 +814,10 @@ namespace ManagedLzma.LZMA.Master
                     mCyclicBufferPos++;
                     mBuffer++;
 
-                    if(++mPos == mPosLimit)
+                    if (++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
-                while(--num != 0);
+                while (--num != 0);
             }
 
             internal void Bt3_MatchFinder_Skip(uint num)
@@ -825,7 +825,7 @@ namespace ManagedLzma.LZMA.Master
                 do
                 {
                     uint lenLimit = mLenLimit;
-                    if(lenLimit < 3)
+                    if (lenLimit < 3)
                     {
                         MatchFinder_MovePos();
                         continue;
@@ -846,10 +846,10 @@ namespace ManagedLzma.LZMA.Master
                     mCyclicBufferPos++;
                     mBuffer++;
 
-                    if(++mPos == mPosLimit)
+                    if (++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
-                while(--num != 0);
+                while (--num != 0);
             }
 
             internal void Bt4_MatchFinder_Skip(uint num)
@@ -857,7 +857,7 @@ namespace ManagedLzma.LZMA.Master
                 do
                 {
                     uint lenLimit = mLenLimit;
-                    if(lenLimit < 4)
+                    if (lenLimit < 4)
                     {
                         MatchFinder_MovePos();
                         continue;
@@ -880,10 +880,10 @@ namespace ManagedLzma.LZMA.Master
                     mCyclicBufferPos++;
                     mBuffer++;
 
-                    if(++mPos == mPosLimit)
+                    if (++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
-                while(--num != 0);
+                while (--num != 0);
             }
 
             internal void Hc4_MatchFinder_Skip(uint num)
@@ -891,7 +891,7 @@ namespace ManagedLzma.LZMA.Master
                 do
                 {
                     uint lenLimit = mLenLimit;
-                    if(lenLimit < 4)
+                    if (lenLimit < 4)
                     {
                         MatchFinder_MovePos();
                         continue;
@@ -914,10 +914,10 @@ namespace ManagedLzma.LZMA.Master
                     mCyclicBufferPos++;
                     mBuffer++;
 
-                    if(++mPos == mPosLimit)
+                    if (++mPos == mPosLimit)
                         MatchFinder_CheckLimits();
                 }
-                while(--num != 0);
+                while (--num != 0);
             }
         }
 
@@ -938,17 +938,17 @@ namespace ManagedLzma.LZMA.Master
         internal static void MatchFinder_CreateVTable(CMatchFinder p, out IMatchFinder vTable)
         {
             TR("MatchFinder_CreateVTable", p.mNumHashBytes);
-            if(!p.mBtMode)
+            if (!p.mBtMode)
                 vTable = new MatchFinderHc4();
-            else if(p.mNumHashBytes == 2)
+            else if (p.mNumHashBytes == 2)
                 vTable = new MatchFinderBt2();
-            else if(p.mNumHashBytes == 3)
+            else if (p.mNumHashBytes == 3)
                 vTable = new MatchFinderBt3();
             else
                 vTable = new MatchFinderBt4();
         }
 
-        private abstract class MatchFinderBase: IMatchFinder
+        private abstract class MatchFinderBase : IMatchFinder
         {
             public void Init(object p)
             {
@@ -974,7 +974,7 @@ namespace ManagedLzma.LZMA.Master
             public abstract void Skip(object p, uint num);
         }
 
-        private sealed class MatchFinderHc4: MatchFinderBase
+        private sealed class MatchFinderHc4 : MatchFinderBase
         {
             public override uint GetMatches(object p, P<uint> distances)
             {
@@ -987,7 +987,7 @@ namespace ManagedLzma.LZMA.Master
             }
         }
 
-        private sealed class MatchFinderBt2: MatchFinderBase
+        private sealed class MatchFinderBt2 : MatchFinderBase
         {
             public override uint GetMatches(object p, P<uint> distances)
             {
@@ -1000,7 +1000,7 @@ namespace ManagedLzma.LZMA.Master
             }
         }
 
-        private sealed class MatchFinderBt3: MatchFinderBase
+        private sealed class MatchFinderBt3 : MatchFinderBase
         {
             public override uint GetMatches(object p, P<uint> distances)
             {
@@ -1013,7 +1013,7 @@ namespace ManagedLzma.LZMA.Master
             }
         }
 
-        private sealed class MatchFinderBt4: MatchFinderBase
+        private sealed class MatchFinderBt4 : MatchFinderBase
         {
             public override uint GetMatches(object p, P<uint> distances)
             {

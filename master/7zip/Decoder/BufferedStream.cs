@@ -6,7 +6,7 @@ using System.Text;
 
 namespace ManagedLzma._7zip.Decoder
 {
-    internal class FileBufferedDecoderStream: Stream
+    internal class FileBufferedDecoderStream : Stream
     {
         // Extracted from non-public System.IO.FileStream.DefaultBufferSize via reflection because all FileStream
         // constructors taking FileOptions also take a buffer size, but we don't really want to specify one.
@@ -21,10 +21,10 @@ namespace ManagedLzma._7zip.Decoder
 
         internal FileBufferedDecoderStream(Stream stream)
         {
-            if(stream == null)
+            if (stream == null)
                 throw new ArgumentNullException("stream");
 
-            if(!stream.CanRead)
+            if (!stream.CanRead)
                 throw new ArgumentException("Stream must support reading.", "stream");
 
             mStream = stream;
@@ -32,13 +32,13 @@ namespace ManagedLzma._7zip.Decoder
 
             string tempFileName = Path.GetTempFileName();
             mBuffer = new FileStream(tempFileName, FileMode.Open, FileAccess.ReadWrite, FileShare.Delete, kStreamBufferSize, FileOptions.DeleteOnClose);
-            if(mBuffer.Length != 0) // if this happens some other process tries to mess with our files - same if above ctor throws an exception
+            if (mBuffer.Length != 0) // if this happens some other process tries to mess with our files - same if above ctor throws an exception
                 throw new InvalidOperationException("Someone else took control of our temporary file while we were creating it.");
         }
 
         protected override void Dispose(bool disposing)
         {
-            if(disposing)
+            if (disposing)
             {
                 mBuffer.Dispose();
                 mStream.Dispose();
@@ -50,7 +50,7 @@ namespace ManagedLzma._7zip.Decoder
         private void Fetch()
         {
             int size = mStream.Read(mTemp, 0, mTemp.Length);
-            if(size <= 0 || size > mLength - mEnding)
+            if (size <= 0 || size > mLength - mEnding)
                 throw new InvalidDataException("Decoded stream has been corrupted.");
 
             mBuffer.Position = mEnding;
@@ -73,7 +73,7 @@ namespace ManagedLzma._7zip.Decoder
             get { return mOffset; }
             set
             {
-                if(value < 0 || value > mLength)
+                if (value < 0 || value > mLength)
                     throw new ArgumentOutOfRangeException("value");
 
                 mOffset = (int)value;
@@ -82,16 +82,16 @@ namespace ManagedLzma._7zip.Decoder
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            switch(origin)
+            switch (origin)
             {
-            case SeekOrigin.Begin:
-                return Position = offset;
-            case SeekOrigin.Current:
-                return Position = checked(mOffset + offset);
-            case SeekOrigin.End:
-                return Position = checked(mLength + offset);
-            default:
-                throw new ArgumentOutOfRangeException("origin");
+                case SeekOrigin.Begin:
+                    return Position = offset;
+                case SeekOrigin.Current:
+                    return Position = checked(mOffset + offset);
+                case SeekOrigin.End:
+                    return Position = checked(mLength + offset);
+                default:
+                    throw new ArgumentOutOfRangeException("origin");
             }
         }
 
@@ -102,19 +102,19 @@ namespace ManagedLzma._7zip.Decoder
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if(buffer == null)
+            if (buffer == null)
                 throw new ArgumentNullException("buffer");
 
-            if(offset < 0 || offset > buffer.Length)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException("offset");
 
-            if(count < 0 || count > buffer.Length - offset)
+            if (count < 0 || count > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("count");
 
-            if(count == 0 || mOffset == mLength)
+            if (count == 0 || mOffset == mLength)
                 return 0;
 
-            while(mOffset >= mEnding)
+            while (mOffset >= mEnding)
                 Fetch();
 
             mBuffer.Position = mOffset;

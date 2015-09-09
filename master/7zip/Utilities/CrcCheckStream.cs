@@ -8,7 +8,7 @@ using CRC = ManagedLzma.LZMA.Master.SevenZip.CRC;
 
 namespace master._7zip.Legacy
 {
-    class CrcCheckStream: Stream
+    class CrcCheckStream : Stream
     {
         private readonly uint mExpectedCRC;
         private uint mCurrentCRC;
@@ -27,12 +27,12 @@ namespace master._7zip.Legacy
         {
             try
             {
-                if(disposing && !mClosed)
+                if (disposing && !mClosed)
                 {
                     mClosed = true;
                     mCurrentCRC = CRC.Finish(mCurrentCRC);
 #if DEBUG
-                    if(mCurrentCRC == mExpectedCRC)
+                    if (mCurrentCRC == mExpectedCRC)
                         System.Diagnostics.Debug.WriteLine("CRC ok: " + mExpectedCRC.ToString("x8"));
                     else
                     {
@@ -42,9 +42,9 @@ namespace master._7zip.Legacy
 
                     double lengthInv = 1.0 / mLength;
                     double entropy = 0;
-                    for(int i = 0; i < 256; i++)
+                    for (int i = 0; i < 256; i++)
                     {
-                        if(mBytes[i] != 0)
+                        if (mBytes[i] != 0)
                         {
                             double p = lengthInv * mBytes[i];
                             entropy -= p * Math.Log(p, 256);
@@ -64,7 +64,7 @@ namespace master._7zip.Legacy
         {
             base.Close();
 
-            if(mCurrentCRC != mExpectedCRC)
+            if (mCurrentCRC != mExpectedCRC)
                 throw new InvalidDataException();
         }
 
@@ -116,7 +116,7 @@ namespace master._7zip.Legacy
         public override void Write(byte[] buffer, int offset, int count)
         {
             mLength += count;
-            for(int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
                 mBytes[buffer[offset + i]]++;
 
             mCurrentCRC = CRC.Update(mCurrentCRC, buffer, offset, count);

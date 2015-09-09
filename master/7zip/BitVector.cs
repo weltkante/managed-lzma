@@ -22,23 +22,23 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             mLength = length;
             mBits = new uint[(length + 31) >> 5];
 
-            if(initValue)
-                for(int i = 0; i < mBits.Length; i++)
+            if (initValue)
+                for (int i = 0; i < mBits.Length; i++)
                     mBits[i] = ~0u;
         }
 
         public BitVector(List<bool> bits)
             : this(bits.Count)
         {
-            for(int i = 0; i < bits.Count; i++)
-                if(bits[i])
+            for (int i = 0; i < bits.Count; i++)
+                if (bits[i])
                     SetBit(i);
         }
 
         public bool[] ToArray()
         {
             bool[] bits = new bool[mLength];
-            for(int i = 0; i < bits.Length; i++)
+            for (int i = 0; i < bits.Length; i++)
                 bits[i] = this[i];
             return bits;
         }
@@ -52,7 +52,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             get
             {
-                if(index < 0 || index >= mLength)
+                if (index < 0 || index >= mLength)
                     throw new ArgumentOutOfRangeException("index");
 
                 return (mBits[index >> 5] & (1u << (index & 31))) != 0;
@@ -61,7 +61,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public void SetBit(int index)
         {
-            if(index < 0 || index >= mLength)
+            if (index < 0 || index >= mLength)
                 throw new ArgumentOutOfRangeException("index");
 
             mBits[index >> 5] |= 1u << (index & 31);
@@ -69,7 +69,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         internal bool GetAndSet(int index)
         {
-            if(index < 0 || index >= mLength)
+            if (index < 0 || index >= mLength)
                 throw new ArgumentOutOfRangeException("index");
 
             uint bits = mBits[index >> 5];
@@ -81,7 +81,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder(mLength);
-            for(int i = 0; i < mLength; i++)
+            for (int i = 0; i < mLength; i++)
                 sb.Append(this[i] ? 'x' : '.');
             return sb.ToString();
         }

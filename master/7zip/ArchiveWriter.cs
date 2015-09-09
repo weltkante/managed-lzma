@@ -35,33 +35,33 @@ namespace ManagedLzma.LZMA.Master.SevenZip
     {
         public static string CalculateName(DirectoryInfo root, DirectoryInfo folder)
         {
-            if(root.Root.FullName != folder.Root.FullName)
+            if (root.Root.FullName != folder.Root.FullName)
                 throw new InvalidOperationException("Unrelated directories.");
 
             Stack<DirectoryInfo> rootList = new Stack<DirectoryInfo>();
-            while(root.FullName != root.Root.FullName)
+            while (root.FullName != root.Root.FullName)
             {
                 rootList.Push(root);
                 root = root.Parent;
             }
 
             Stack<DirectoryInfo> itemList = new Stack<DirectoryInfo>();
-            while(folder.FullName != folder.Root.FullName)
+            while (folder.FullName != folder.Root.FullName)
             {
                 itemList.Push(folder);
                 folder = folder.Parent;
             }
 
-            while(rootList.Count != 0 && itemList.Count != 0 && rootList.Peek().Name == itemList.Peek().Name)
+            while (rootList.Count != 0 && itemList.Count != 0 && rootList.Peek().Name == itemList.Peek().Name)
             {
                 rootList.Pop();
                 itemList.Pop();
             }
 
-            if(rootList.Count != 0)
+            if (rootList.Count != 0)
                 throw new InvalidOperationException("Item is not contained in root.");
 
-            if(itemList.Count == 0)
+            if (itemList.Count == 0)
                 return null;
 
             return String.Join("/", itemList.Select(item => item.Name));
@@ -74,7 +74,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         }
     }
 
-    internal sealed class FileBasedArchiveWriterEntry: IArchiveWriterEntry
+    internal sealed class FileBasedArchiveWriterEntry : IArchiveWriterEntry
     {
         private FileInfo mFile;
         private string mName;
@@ -114,7 +114,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
     /// <summary>
     /// MemoryStream which uses chunks of memory instead of one big byte array.
     /// </summary>
-    internal sealed class FragmentedMemoryStream: Stream
+    internal sealed class FragmentedMemoryStream : Stream
     {
         #region Constants
 
@@ -157,37 +157,37 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             int requiredChunks = (mEnding + kChunkMask) >> kChunkShift;
 
-            if(mChunks.Count > requiredChunks)
+            if (mChunks.Count > requiredChunks)
                 mChunks.RemoveRange(requiredChunks, mChunks.Count - requiredChunks);
         }
 
         public void ReduceCapacity(int capacity)
         {
-            if(capacity < 0)
+            if (capacity < 0)
                 throw new ArgumentOutOfRangeException("capacity");
 
             // Limit stream size to prevent overflows in calculations.
-            if(capacity > Int32.MaxValue - kChunkMask)
+            if (capacity > Int32.MaxValue - kChunkMask)
                 throw new NotSupportedException("Large streams are not supported.");
 
             int requiredChunks = (capacity + kChunkMask) >> kChunkShift;
 
-            if(mChunks.Count > requiredChunks)
+            if (mChunks.Count > requiredChunks)
                 mChunks.RemoveRange(requiredChunks, mChunks.Count - requiredChunks);
         }
 
         public void EnsureCapacity(int capacity)
         {
-            if(capacity < 0)
+            if (capacity < 0)
                 throw new ArgumentOutOfRangeException("capacity");
 
             // Limit stream size to prevent overflows in calculations.
-            if(capacity > Int32.MaxValue - kChunkMask)
+            if (capacity > Int32.MaxValue - kChunkMask)
                 throw new NotSupportedException("Large streams are not supported.");
 
             int requiredChunks = (capacity + kChunkMask) >> kChunkShift;
 
-            while(mChunks.Count < requiredChunks)
+            while (mChunks.Count < requiredChunks)
                 mChunks.Add(new byte[kChunkSize]);
         }
 
@@ -196,11 +196,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         public void FullCopyTo(Stream destination)
         {
             int fullCount = mEnding >> kChunkShift;
-            for(int i = 0; i < fullCount; i++)
+            for (int i = 0; i < fullCount; i++)
                 destination.Write(mChunks[i], 0, kChunkSize);
 
             int remaining = mEnding & kChunkMask;
-            if(remaining != 0)
+            if (remaining != 0)
                 destination.Write(mChunks[fullCount], 0, remaining);
         }
 
@@ -208,7 +208,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         protected override void Dispose(bool disposing)
         {
-            if(disposing)
+            if (disposing)
                 mChunks = null;
 
             base.Dispose(disposing);
@@ -224,7 +224,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             get { return mOffset; }
             set
             {
-                if(value < 0 || value > mEnding)
+                if (value < 0 || value > mEnding)
                     throw new ArgumentOutOfRangeException("value");
 
                 mOffset = (int)value;
@@ -238,16 +238,16 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            switch(origin)
+            switch (origin)
             {
-            case SeekOrigin.Begin:
-                return Position = offset;
-            case SeekOrigin.Current:
-                return Position += offset;
-            case SeekOrigin.End:
-                return Position = Length + offset;
-            default:
-                throw new ArgumentOutOfRangeException("origin");
+                case SeekOrigin.Begin:
+                    return Position = offset;
+                case SeekOrigin.Current:
+                    return Position += offset;
+                case SeekOrigin.End:
+                    return Position = Length + offset;
+                default:
+                    throw new ArgumentOutOfRangeException("origin");
             }
         }
 
@@ -258,20 +258,20 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if(buffer == null)
+            if (buffer == null)
                 throw new ArgumentNullException("buffer");
 
-            if(offset < 0 || offset > buffer.Length)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException("offset");
 
-            if(count < 0 || count > buffer.Length - offset)
+            if (count < 0 || count > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("count");
 
             int remaining = mEnding - mOffset;
-            if(count > remaining)
+            if (count > remaining)
                 count = remaining;
 
-            if(count == 0)
+            if (count == 0)
                 return 0;
 
             byte[] chunk = mChunks[mOffset >> kChunkShift];
@@ -284,7 +284,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public override int ReadByte()
         {
-            if(mOffset == mEnding)
+            if (mOffset == mEnding)
                 return -1;
 
             byte value = mChunks[mOffset >> kChunkShift][mOffset & kChunkMask];
@@ -301,23 +301,23 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if(buffer == null)
+            if (buffer == null)
                 throw new ArgumentNullException("buffer");
 
-            if(offset < 0 || offset > buffer.Length)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException("offset");
 
-            if(count < 0 || count > buffer.Length - offset)
+            if (count < 0 || count > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("count");
 
             int remaining = mEnding - mOffset;
-            if(count > remaining)
+            if (count > remaining)
             {
                 SetLength((long)mOffset + (long)count);
                 remaining = mEnding - mOffset;
             }
 
-            while(count > 0)
+            while (count > 0)
             {
                 byte[] chunk = mChunks[mOffset >> kChunkShift];
                 int chunkOffset = mOffset & kChunkMask;
@@ -331,7 +331,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public override void WriteByte(byte value)
         {
-            if(mOffset == mEnding)
+            if (mOffset == mEnding)
                 SetLength(mEnding + 1);
 
             mChunks[mOffset >> kChunkShift][mOffset & kChunkMask] = value;
@@ -340,16 +340,16 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public override void SetLength(long value)
         {
-            if(value < 0)
+            if (value < 0)
                 throw new ArgumentOutOfRangeException("value");
 
             // Limit stream size to prevent overflows in calculations.
-            if(value > Int32.MaxValue - kChunkMask)
+            if (value > Int32.MaxValue - kChunkMask)
                 throw new NotSupportedException("Large streams are not supported.");
 
             mEnding = (int)value;
 
-            if(mOffset > mEnding)
+            if (mOffset > mEnding)
                 mOffset = mEnding;
 
             int requiredChunks = (mEnding + kChunkMask) >> kChunkShift;
@@ -364,7 +364,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             //    return;
             //}
 
-            while(mChunks.Count < requiredChunks)
+            while (mChunks.Count < requiredChunks)
                 mChunks.Add(new byte[kChunkSize]);
         }
 
@@ -381,7 +381,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             public abstract uint? GetHash(FileSet fileset);
         }
 
-        internal class InputStreamRef: StreamRef
+        internal class InputStreamRef : StreamRef
         {
             public int PackedStreamIndex;
 
@@ -396,7 +396,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
-        internal class CoderStreamRef: StreamRef
+        internal class CoderStreamRef : StreamRef
         {
             public int CoderIndex;
             public int StreamIndex;
@@ -455,7 +455,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         #region Encoders
 
-        internal sealed class EncoderStream: Stream
+        internal sealed class EncoderStream : Stream
         {
             private long mStreamSize;
             private Encoder mEncoder;
@@ -468,7 +468,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             protected override void Dispose(bool disposing)
             {
-                if(disposing && mEncoder != null)
+                if (disposing && mEncoder != null)
                 {
                     mEncoder = null;
                     mCRC = CRC.Finish(mCRC);
@@ -522,13 +522,13 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             public override void Write(byte[] buffer, int offset, int count)
             {
-                if(buffer == null)
+                if (buffer == null)
                     throw new ArgumentNullException("buffer");
 
-                if(offset < 0 || offset > buffer.Length)
+                if (offset < 0 || offset > buffer.Length)
                     throw new ArgumentOutOfRangeException("offset");
 
-                if(count < 0 || count > buffer.Length - offset)
+                if (count < 0 || count > buffer.Length - offset)
                     throw new ArgumentOutOfRangeException("count");
 
                 mCRC = CRC.Update(mCRC, buffer, offset, count);
@@ -570,11 +570,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
-        public abstract class Encoder: IDisposable
+        public abstract class Encoder : IDisposable
         {
             private static DateTime? EnsureUTC(DateTime? value)
             {
-                if(value.HasValue)
+                if (value.HasValue)
                     return value.Value.ToUniversalTime();
                 else
                     return null;
@@ -611,15 +611,15 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 mWriter = writer;
                 mEncryption = writer.DefaultEncryptionProvider;
 
-                if(mFlushed != null && mFlushed.Count != 0)
+                if (mFlushed != null && mFlushed.Count != 0)
                 {
-                    foreach(var item in mFlushed)
+                    foreach (var item in mFlushed)
                         mWriter.Encoder_WriteFileSet(item);
 
                     mFlushed.Clear();
                 }
 
-                if(mBuffer != null)
+                if (mBuffer != null)
                 {
                     mBuffer.FullCopyTo(writer.mFileStream);
                     mBuffer.SetLength(0);
@@ -628,7 +628,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             public void Disconnect()
             {
-                if(IsConnected)
+                if (IsConnected)
                 {
                     Flush();
 
@@ -640,12 +640,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private void FinishCurrentFile()
             {
-                if(mCurrentFile != null)
+                if (mCurrentFile != null)
                 {
                     mCurrentStream.Close(mCurrentFile);
                     mCurrentStream = null;
 
-                    if(mFiles == null)
+                    if (mFiles == null)
                         mFiles = new List<FileEntry>();
 
                     mFiles.Add(mCurrentFile);
@@ -667,7 +667,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 FinishCurrentFile();
 
-                if(file == null)
+                if (file == null)
                     throw new ArgumentNullException("file");
 
                 mCurrentFile = new FileEntry
@@ -679,13 +679,13 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 };
 
                 var attributes = file.Attributes;
-                if(attributes.HasValue)
+                if (attributes.HasValue)
                     mCurrentFile.Flags = (uint)attributes.Value;
 
-                if(mWriter == null && mBuffer == null)
+                if (mWriter == null && mBuffer == null)
                     mBuffer = new FragmentedMemoryStream();
 
-                if(mEncryption != null)
+                if (mEncryption != null)
                     mEncryptionEncoder = mEncryption.CreateEncoder();
 
                 return mCurrentStream = new EncoderStream(this);
@@ -698,10 +698,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 FinishCurrentFile();
 
-                if(mFiles != null && mFiles.Count != 0)
+                if (mFiles != null && mFiles.Count != 0)
                 {
                     PrepareFinishFileSet();
-                    if(mEncryptionEncoder != null)
+                    if (mEncryptionEncoder != null)
                     {
                         byte[] data;
                         int offset, length;
@@ -711,7 +711,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     mInputHash = CRC.Finish(mInputHash);
                     mOutputHash = CRC.Finish(mOutputHash);
                     FileSet fileset;
-                    if(mEncryptionEncoder != null)
+                    if (mEncryptionEncoder != null)
                     {
                         // TODO: This is actually wrong, we pass the wrong mOutputSize. FinishFileSet puts the OutputSize
                         //       as the original input stream size. However AdjustFilesetForEncryption doesn't properly
@@ -731,13 +731,13 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     mInputHash = CRC.kInitCRC;
                     mOutputHash = CRC.kInitCRC;
 
-                    if(IsConnected)
+                    if (IsConnected)
                     {
                         mWriter.Encoder_FinishFileSet(fileset);
                     }
                     else
                     {
-                        if(mFlushed == null)
+                        if (mFlushed == null)
                             mFlushed = new List<BufferedFileSet>();
 
                         Debug.Assert(mBuffer != null);
@@ -746,7 +746,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     }
                 }
 
-                if(mEncryptionEncoder != null)
+                if (mEncryptionEncoder != null)
                 {
                     mEncryptionEncoder.Dispose();
                     mEncryptionEncoder = null;
@@ -755,7 +755,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private static void AdjustFilesetForEncryption(FileSet fileset, EncryptionProvider encryption, long outputSize, uint? outputHash)
             {
-                if(fileset.InputStreams.Length != 1)
+                if (fileset.InputStreams.Length != 1)
                     throw new NotSupportedException();
 
                 master._7zip.Legacy.CMethodId methodId;
@@ -785,7 +785,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private static Coder AdjustCoderForEncryption(Coder coder, StreamRef adjustedInputStream)
             {
-                if(coder.InputStreams.Length != 1 || !(coder.InputStreams[0] is InputStreamRef) || ((InputStreamRef)coder.InputStreams[0]).PackedStreamIndex != 0)
+                if (coder.InputStreams.Length != 1 || !(coder.InputStreams[0] is InputStreamRef) || ((InputStreamRef)coder.InputStreams[0]).PackedStreamIndex != 0)
                     throw new NotSupportedException();
 
                 return new Coder
@@ -804,16 +804,16 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             /// </summary>
             public void WriteFlushedData(ArchiveWriter writer)
             {
-                if(writer == null)
+                if (writer == null)
                     throw new ArgumentNullException("writer");
 
                 // If the writer has a connected encoder we need to flush that one.
-                if(writer.mEncoder != null)
+                if (writer.mEncoder != null)
                     writer.mEncoder.Flush();
 
-                if(mFlushed != null && mFlushed.Count != 0)
+                if (mFlushed != null && mFlushed.Count != 0)
                 {
-                    foreach(var item in mFlushed)
+                    foreach (var item in mFlushed)
                         writer.Encoder_WriteFileSet(item);
 
                     mFlushed.Clear();
@@ -847,7 +847,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             protected void WriteOutput(byte[] buffer, int offset, int length)
             {
-                if(mEncryptionEncoder != null)
+                if (mEncryptionEncoder != null)
                 {
                     mOutputSize2 += length;
                     mEncryptionEncoder.EncryptBlock(ref buffer, ref offset, ref length);
@@ -858,7 +858,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             private void WriteOutputInternal(byte[] buffer, int offset, int length)
             {
-                if(mWriter != null)
+                if (mWriter != null)
                     mWriter.mFileStream.Write(buffer, offset, length);
                 else
                     mBuffer.Write(buffer, offset, length);
@@ -871,7 +871,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             #endregion
         }
 
-        public sealed class PlainEncoder: Encoder
+        public sealed class PlainEncoder : Encoder
         {
             public PlainEncoder() { }
 
@@ -909,7 +909,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
-        public abstract class ThreadedEncoder: Encoder
+        public abstract class ThreadedEncoder : Encoder
         {
             private enum State
             {
@@ -936,7 +936,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             public event EventHandler OnOutputThresholdReached;
             public void SetOutputThreshold(int threshold)
             {
-                lock(mSyncObject)
+                lock (mSyncObject)
                 {
                     mTriggerOutputThreshold = false;
                     mOutputThreshold = threshold;
@@ -965,9 +965,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 }
                 finally
                 {
-                    lock(mSyncObject)
+                    lock (mSyncObject)
                     {
-                        if(mState == State.Dispose)
+                        if (mState == State.Dispose)
                             goto skip;
 
                         // If we are in flushed state the owner thread should be blocking inside FinishFileSet.
@@ -985,38 +985,38 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             internal sealed override void OnWriteInput(byte[] buffer, int offset, int count)
             {
-                if(mInputBuffer == null)
+                if (mInputBuffer == null)
                     throw new ObjectDisposedException(null);
 
                 // HACK: this is really ugly and probably hurts performance, but whatever, don't have a better solution currently
                 //       it must be done at this place because at the place where we calculate the threshold we are on the wrong thread
                 bool trigger = false;
-                lock(mSyncObject)
+                lock (mSyncObject)
                 {
-                    if(mTriggerOutputThreshold)
+                    if (mTriggerOutputThreshold)
                     {
                         mTriggerOutputThreshold = false;
                         trigger = true;
                         System.Diagnostics.Debug.WriteLine("output threshold triggered");
                     }
                 }
-                if(trigger)
+                if (trigger)
                 {
                     var handler = OnOutputThresholdReached;
-                    if(handler != null)
+                    if (handler != null)
                         handler(this, EventArgs.Empty);
                 }
                 // HACK END
 
-                while(count > 0)
+                while (count > 0)
                 {
                     int copy;
-                    if(mBufferOffset <= mBufferEnding)
+                    if (mBufferOffset <= mBufferEnding)
                         copy = Math.Min(count, mBufferEnding - mBufferOffset);
                     else
                         copy = Math.Min(count, kBufferLength - mBufferOffset);
 
-                    if(copy > 0)
+                    if (copy > 0)
                     {
                         Buffer.BlockCopy(buffer, offset, mInputBuffer, mBufferOffset, copy);
                         count -= copy;
@@ -1024,27 +1024,27 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         mBufferOffset = (mBufferOffset + copy) % kBufferLength;
                     }
 
-                    lock(mSyncObject)
+                    lock (mSyncObject)
                     {
-                        if(copy > 0)
+                        if (copy > 0)
                         {
                             mInputEnding = mBufferOffset;
                             Monitor.Pulse(mSyncObject);
                         }
 
-                        if(mState == State.Idle)
+                        if (mState == State.Idle)
                         {
                             mState = State.Ready;
                             Monitor.Pulse(mSyncObject);
                         }
 
-                        for(; ; )
+                        for (;;)
                         {
-                            if(mState != State.Ready)
+                            if (mState != State.Ready)
                                 throw new ObjectDisposedException(null);
 
                             int offsetMinusOne = (mInputOffset + kBufferLength - 1) % kBufferLength;
-                            if(mInputEnding != offsetMinusOne)
+                            if (mInputEnding != offsetMinusOne)
                             {
                                 mBufferEnding = offsetMinusOne;
                                 break;
@@ -1058,31 +1058,31 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             internal override void PrepareFinishFileSet()
             {
-                lock(mSyncObject)
+                lock (mSyncObject)
                 {
                     Utils.Assert(mState == State.Ready);
 
-                    while(mInputOffset != mInputEnding)
+                    while (mInputOffset != mInputEnding)
                         Monitor.Wait(mSyncObject);
 
                     mState = State.Flush;
                     Monitor.Pulse(mSyncObject);
 
                     do { Monitor.Wait(mSyncObject); }
-                    while(mState == State.Flush);
+                    while (mState == State.Flush);
                 }
             }
 
             private void EncoderThread()
             {
-                for(; ; )
+                for (;;)
                 {
-                    lock(mSyncObject)
+                    lock (mSyncObject)
                     {
-                        while(mState == State.Idle)
+                        while (mState == State.Idle)
                             Monitor.Wait(mSyncObject);
 
-                        if(mState == State.Dispose)
+                        if (mState == State.Dispose)
                             return;
 
                         mState = State.Ready;
@@ -1091,9 +1091,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                     EncoderThreadLoop();
 
-                    lock(mSyncObject)
+                    lock (mSyncObject)
                     {
-                        if(mState == State.Dispose)
+                        if (mState == State.Dispose)
                             return;
 
                         Utils.Assert(mState == State.Flush);
@@ -1107,17 +1107,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             protected int ReadInputAsync(byte[] buffer, int offset, int length)
             {
-                lock(mSyncObject)
+                lock (mSyncObject)
                 {
-                    for(; ; )
+                    for (;;)
                     {
-                        if(mState != State.Ready)
+                        if (mState != State.Ready)
                             return 0;
 
-                        if(mInputOffset != mInputEnding)
+                        if (mInputOffset != mInputEnding)
                         {
                             int size;
-                            if(mInputOffset <= mInputEnding)
+                            if (mInputOffset <= mInputEnding)
                                 size = Math.Min(length, mInputEnding - mInputOffset);
                             else
                                 size = Math.Min(length, kBufferLength - mInputOffset);
@@ -1145,12 +1145,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 // HACK: this doesn't really belong here, but I don't have any idea how to provide equivalent functionality
                 //       maybe let the caller provide the buffer stream so the caller can hook into it through subclassing
                 //       (note that we are on the wrong thread and can't call the event handler directly)
-                lock(mSyncObject)
+                lock (mSyncObject)
                 {
-                    if(mOutputThreshold > 0)
+                    if (mOutputThreshold > 0)
                     {
                         mOutputThreshold -= length;
-                        if(mOutputThreshold <= 0)
+                        if (mOutputThreshold <= 0)
                         {
                             mTriggerOutputThreshold = true;
                             System.Diagnostics.Debug.WriteLine("output threshold reached");
@@ -1160,7 +1160,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
-        public sealed class LzmaEncoder: ThreadedEncoder
+        public sealed class LzmaEncoder : ThreadedEncoder
         {
             private long mLowerBound;
             private object mSyncObject;
@@ -1169,12 +1169,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private LZMA.CLzmaEncProps mEncoderProps;
             private byte[] mSettings;
 
-            public LzmaEncoder(LZMA.CLzmaEncProps encoderProps=null)
+            public LzmaEncoder(LZMA.CLzmaEncProps encoderProps = null)
             {
                 mSyncObject = new object();
                 mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
                 mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
-                mEncoderProps = (encoderProps!=null) ? encoderProps : LZMA.CLzmaEncProps.LzmaEncProps_Init();
+                mEncoderProps = (encoderProps != null) ? encoderProps : LZMA.CLzmaEncProps.LzmaEncProps_Init();
                 StartThread("LZMA Stream Buffer Thread");
             }
 
@@ -1182,7 +1182,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 get
                 {
-                    lock(mSyncObject)
+                    lock (mSyncObject)
                         return mLowerBound;
                 }
             }
@@ -1201,7 +1201,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private void WriteOutputHelper(P<byte> buf, long sz)
             {
                 WriteOutputAsync(buf.mBuffer, buf.mOffset, checked((int)sz));
-                lock(mSyncObject)
+                lock (mSyncObject)
                     mLowerBound += sz;
             }
 
@@ -1209,19 +1209,19 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 var encoder = LZMA.LzmaEnc_Create(LZMA.ISzAlloc.SmallAlloc);
                 var res = encoder.LzmaEnc_SetProps(mEncoderProps);
-                if(res != LZMA.SZ_OK)
+                if (res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
                 mSettings = new byte[LZMA.LZMA_PROPS_SIZE];
                 long binarySettingsSize = LZMA.LZMA_PROPS_SIZE;
                 res = encoder.LzmaEnc_WriteProperties(mSettings, ref binarySettingsSize);
-                if(res != LZMA.SZ_OK)
+                if (res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
-                if(binarySettingsSize != LZMA.LZMA_PROPS_SIZE)
+                if (binarySettingsSize != LZMA.LZMA_PROPS_SIZE)
                     throw new NotSupportedException();
 
                 res = encoder.LzmaEnc_Encode(mOutputHelper, mInputHelper, null, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
-                if(res != LZMA.SZ_OK)
+                if (res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
                 encoder.LzmaEnc_Destroy(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
@@ -1244,7 +1244,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             }
         }
 
-        public sealed class Lzma2Encoder: ThreadedEncoder
+        public sealed class Lzma2Encoder : ThreadedEncoder
         {
             private long mLowerBound;
             private object mSyncObject;
@@ -1254,13 +1254,13 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private int? mThreadCount;
             private byte mSettings;
 
-            public Lzma2Encoder(int? threadCount, LZMA.CLzma2EncProps encoderProps=null)
+            public Lzma2Encoder(int? threadCount, LZMA.CLzma2EncProps encoderProps = null)
             {
                 mThreadCount = threadCount;
                 mSyncObject = new object();
                 mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
                 mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
-                if(encoderProps != null)
+                if (encoderProps != null)
                 {
                     mEncoderProps = encoderProps;
                 }
@@ -1276,7 +1276,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 get
                 {
-                    lock(mSyncObject)
+                    lock (mSyncObject)
                         return mLowerBound;
                 }
             }
@@ -1295,25 +1295,25 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private void WriteOutputHelper(P<byte> buf, long sz)
             {
                 WriteOutputAsync(buf.mBuffer, buf.mOffset, checked((int)sz));
-                lock(mSyncObject)
+                lock (mSyncObject)
                     mLowerBound += sz;
             }
 
             protected override void EncoderThreadLoop()
             {
                 var settings = new LZMA.CLzma2EncProps(mEncoderProps);
-                if(mThreadCount.HasValue)
+                if (mThreadCount.HasValue)
                     settings.mNumBlockThreads = mThreadCount.Value;
 
                 var encoder = new LZMA.CLzma2Enc(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
                 var res = encoder.Lzma2Enc_SetProps(settings);
-                if(res != LZMA.SZ_OK)
+                if (res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
                 mSettings = encoder.Lzma2Enc_WriteProperties();
 
                 res = encoder.Lzma2Enc_Encode(mOutputHelper, mInputHelper, null);
-                if(res != LZMA.SZ_OK)
+                if (res != LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
                 encoder.Lzma2Enc_Destroy();
@@ -1355,20 +1355,20 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public ArchiveWriter(Stream stream)
         {
-            if(stream == null)
+            if (stream == null)
                 throw new ArgumentNullException("stream");
 
-            if(!stream.CanWrite)
+            if (!stream.CanWrite)
                 throw new ArgumentException("Stream must support writing.", "stream");
 
             // Seeking is required only because we need to go back to the start of the stream
             // and fix up a reference to the header data. Possible solution: If we fix filesize
             // ahead of time we could reserve space for the header and output a fixed offset.
-            if(!stream.CanSeek)
+            if (!stream.CanSeek)
                 throw new ArgumentException("Stream must support seeking.", "stream");
 
             // TODO: Implement the encoding independant of BinaryWriter endianess.
-            if(!BitConverter.IsLittleEndian)
+            if (!BitConverter.IsLittleEndian)
                 throw new NotSupportedException("BinaryWriter must be little endian.");
 
             mFileStream = stream;
@@ -1406,7 +1406,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                 long size = mWrittenSync;
 
-                if(mEncoder != null)
+                if (mEncoder != null)
                     size += mEncoder.LowerBound;
 
                 return size;
@@ -1425,7 +1425,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 // TODO: CalculateHeaderLimit does not include the metadata from the active encoder!
                 long size = mWrittenSync + CalculateHeaderLimit();
 
-                if(mEncoder != null)
+                if (mEncoder != null)
                     size += mEncoder.UpperBound;
 
                 return size;
@@ -1439,11 +1439,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public void WriteFinalHeader(EncryptionProvider encryption)
         {
-            if(mEncoder != null)
+            if (mEncoder != null)
                 mEncoder.Flush();
 
             var files = mFileSets.SelectMany(stream => stream.Files).ToArray();
-            if(files.Length != 0)
+            if (files.Length != 0)
             {
                 long headerOffset = mFileStream.Position;
 
@@ -1453,26 +1453,26 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 WriteNumber(writer, BlockType.Header);
 
                 var inputStreams = mFileSets.SelectMany(fileset => fileset.InputStreams).ToArray();
-                if(inputStreams.Any(stream => stream.Size != 0))
+                if (inputStreams.Any(stream => stream.Size != 0))
                 {
                     WriteNumber(writer, BlockType.MainStreamsInfo);
                     WriteNumber(writer, BlockType.PackInfo);
                     WriteNumber(writer, (ulong)0); // offset to input streams
                     WriteNumber(writer, inputStreams.Length);
                     WriteNumber(writer, BlockType.Size);
-                    foreach(var stream in inputStreams)
+                    foreach (var stream in inputStreams)
                         WriteNumber(writer, stream.Size);
                     WriteNumber(writer, BlockType.End);
                     WriteNumber(writer, BlockType.UnpackInfo);
                     WriteNumber(writer, BlockType.Folder);
                     WriteNumber(writer, mFileSets.Count);
                     writer.Write((byte)0); // inline data
-                    foreach(var fileset in mFileSets)
+                    foreach (var fileset in mFileSets)
                     {
                         WriteNumber(writer, fileset.Coders.Length);
                         var coderOffsetMap = new int[fileset.Coders.Length];
                         var outputStreamCount = 0;
-                        for(int i = 0; i < coderOffsetMap.Length; i++)
+                        for (int i = 0; i < coderOffsetMap.Length; i++)
                         {
                             coderOffsetMap[i] = outputStreamCount;
                             outputStreamCount += fileset.Coders[i].OutputStreams.Length;
@@ -1480,44 +1480,44 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         var inputBindPairs = new List<Tuple<int, int>>();
                         var coderBindPairs = new List<Tuple<int, int>>();
                         var inputStreamCount = 0;
-                        foreach(var coder in fileset.Coders)
+                        foreach (var coder in fileset.Coders)
                         {
                             int idlen = coder.MethodId.GetLength();
-                            if(idlen >= 8)
+                            if (idlen >= 8)
                                 throw new NotSupportedException();
 
                             int flags = idlen;
 
-                            if(coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
+                            if (coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
                                 flags |= 0x10;
 
-                            if(coder.Settings != null)
+                            if (coder.Settings != null)
                                 flags |= 0x20;
 
                             writer.Write((byte)flags);
 
                             ulong id = coder.MethodId.Id;
-                            for(int i = idlen - 1; i >= 0; i--)
+                            for (int i = idlen - 1; i >= 0; i--)
                                 writer.Write((byte)(id >> (i * 8)));
 
-                            if((flags & 0x10) != 0)
+                            if ((flags & 0x10) != 0)
                             {
                                 WriteNumber(writer, coder.InputStreams.Length);
                                 WriteNumber(writer, coder.OutputStreams.Length);
                             }
 
-                            if((flags & 0x20) != 0)
+                            if ((flags & 0x20) != 0)
                             {
                                 WriteNumber(writer, coder.Settings.Length);
                                 writer.Write(coder.Settings);
                             }
 
-                            if(coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
+                            if (coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
                                 throw new NotSupportedException();
 
-                            foreach(var streamRef in coder.InputStreams)
+                            foreach (var streamRef in coder.InputStreams)
                             {
-                                if(streamRef is InputStreamRef)
+                                if (streamRef is InputStreamRef)
                                 {
                                     var inputStreamRef = (InputStreamRef)streamRef;
                                     inputBindPairs.Add(Tuple.Create(inputStreamCount++, inputStreamRef.PackedStreamIndex));
@@ -1532,17 +1532,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         }
                         Utils.Assert(coderBindPairs.Count == outputStreamCount - 1);
                         Utils.Assert(inputBindPairs.Count == inputStreamCount - outputStreamCount + 1);
-                        foreach(var pair in coderBindPairs)
+                        foreach (var pair in coderBindPairs)
                         {
                             WriteNumber(writer, pair.Item1);
                             WriteNumber(writer, pair.Item2);
                         }
-                        if(inputBindPairs.Count > 1)
+                        if (inputBindPairs.Count > 1)
                         {
                             inputBindPairs.Sort((x, y) => x.Item2.CompareTo(y.Item2));
-                            for(int i = 0; i < inputBindPairs.Count; i++)
+                            for (int i = 0; i < inputBindPairs.Count; i++)
                             {
-                                if(inputBindPairs[i].Item2 != i)
+                                if (inputBindPairs[i].Item2 != i)
                                     throw new Exception("Internal Error: mismatched coder bindings");
 
                                 WriteNumber(writer, inputBindPairs[i].Item1);
@@ -1550,9 +1550,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         }
                     }
                     WriteNumber(writer, BlockType.CodersUnpackSize);
-                    foreach(var fileset in mFileSets)
-                        foreach(var coder in fileset.Coders)
-                            foreach(var outputInfo in coder.OutputStreams)
+                    foreach (var fileset in mFileSets)
+                        foreach (var coder in fileset.Coders)
+                            foreach (var outputInfo in coder.OutputStreams)
                                 WriteNumber(writer, outputInfo.Size);
                     {
                         bool allHashes = true;
@@ -1560,48 +1560,48 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         // add padding so we can process blocks of 8 without running off the array
                         // (all code needs to use the fileset count instead of the array length though)
                         var hashes = new uint?[mFileSets.Count + 8];
-                        for(int i = 0; i < mFileSets.Count; i++)
+                        for (int i = 0; i < mFileSets.Count; i++)
                         {
-                            if((hashes[i] = mFileSets[i].DataStream.GetHash(mFileSets[i])).HasValue)
+                            if ((hashes[i] = mFileSets[i].DataStream.GetHash(mFileSets[i])).HasValue)
                                 anyHashes = true;
                             else
                                 allHashes = false;
                         }
-                        if(anyHashes)
+                        if (anyHashes)
                         {
                             WriteNumber(writer, BlockType.CRC);
-                            if(allHashes)
+                            if (allHashes)
                             {
                                 writer.Write((byte)1);
                             }
                             else
                             {
                                 writer.Write((byte)0);
-                                for(int i = 0; i < mFileSets.Count; i += 8)
+                                for (int i = 0; i < mFileSets.Count; i += 8)
                                 {
                                     byte bt = 0;
-                                    for(int j = 0; j < 8; j++)
+                                    for (int j = 0; j < 8; j++)
                                     {
                                         bt <<= 1;
-                                        if(hashes[i + j] != null)
+                                        if (hashes[i + j] != null)
                                             bt |= (byte)1;
                                     }
                                     writer.Write(bt);
                                 }
                             }
-                            for(int i = 0; i < mFileSets.Count; i++)
-                                if(hashes[i] != null)
+                            for (int i = 0; i < mFileSets.Count; i++)
+                                if (hashes[i] != null)
                                     writer.Write(hashes[i].Value);
                         }
                     }
                     WriteNumber(writer, BlockType.End);
                     WriteNumber(writer, BlockType.SubStreamsInfo);
                     WriteNumber(writer, BlockType.NumUnpackStream);
-                    foreach(var stream in mFileSets)
+                    foreach (var stream in mFileSets)
                         WriteNumber(writer, stream.Files.Length);
                     WriteNumber(writer, BlockType.Size);
-                    foreach(var stream in mFileSets)
-                        for(int i = 0; i < stream.Files.Length - 1; i++)
+                    foreach (var stream in mFileSets)
+                        for (int i = 0; i < stream.Files.Length - 1; i++)
                             WriteNumber(writer, stream.Files[i].Size);
                     WriteNumber(writer, BlockType.End);
                     WriteNumber(writer, BlockType.End);
@@ -1613,10 +1613,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 WriteNumber(writer, BlockType.Name);
                 WriteNumber(writer, 1 + files.Sum(file => file.Name.Length + 1) * 2);
                 writer.Write((byte)0); // inline names
-                for(int i = 0; i < files.Length; i++)
+                for (int i = 0; i < files.Length; i++)
                 {
                     string name = files[i].Name;
-                    for(int j = 0; j < name.Length; j++)
+                    for (int j = 0; j < name.Length; j++)
                         writer.Write(name[j]);
                     writer.Write('\0');
                 }
@@ -1658,11 +1658,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 */
 
                 int ctimeCount = files.Count(file => file.CTime.HasValue);
-                if(ctimeCount != 0)
+                if (ctimeCount != 0)
                 {
                     WriteNumber(writer, BlockType.CTime);
 
-                    if(ctimeCount == files.Length)
+                    if (ctimeCount == files.Length)
                     {
                         WriteNumber(writer, 2 + ctimeCount * 8);
                         writer.Write((byte)1);
@@ -1672,11 +1672,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         WriteNumber(writer, (ctimeCount + 7) / 8 + 2 + ctimeCount * 8);
                         writer.Write((byte)0);
 
-                        for(int i = 0; i < files.Length; i += 8)
+                        for (int i = 0; i < files.Length; i += 8)
                         {
                             int mask = 0;
-                            for(int j = 0; j < 8; j++)
-                                if(i + j < files.Length && files[i + j].CTime.HasValue)
+                            for (int j = 0; j < 8; j++)
+                                if (i + j < files.Length && files[i + j].CTime.HasValue)
                                     mask |= 1 << (7 - j);
 
                             writer.Write((byte)mask);
@@ -1685,17 +1685,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                     writer.Write((byte)0); // inline data
 
-                    for(int i = 0; i < files.Length; i++)
-                        if(files[i].CTime.HasValue)
+                    for (int i = 0; i < files.Length; i++)
+                        if (files[i].CTime.HasValue)
                             writer.Write(files[i].CTime.Value.ToFileTimeUtc());
                 }
 
                 int atimeCount = files.Count(file => file.ATime.HasValue);
-                if(atimeCount != 0)
+                if (atimeCount != 0)
                 {
                     WriteNumber(writer, BlockType.ATime);
 
-                    if(atimeCount == files.Length)
+                    if (atimeCount == files.Length)
                     {
                         WriteNumber(writer, 2 + atimeCount * 8);
                         writer.Write((byte)1);
@@ -1705,11 +1705,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         WriteNumber(writer, (atimeCount + 7) / 8 + 2 + atimeCount * 8);
                         writer.Write((byte)0);
 
-                        for(int i = 0; i < files.Length; i += 8)
+                        for (int i = 0; i < files.Length; i += 8)
                         {
                             int mask = 0;
-                            for(int j = 0; j < 8; j++)
-                                if(i + j < files.Length && files[i + j].ATime.HasValue)
+                            for (int j = 0; j < 8; j++)
+                                if (i + j < files.Length && files[i + j].ATime.HasValue)
                                     mask |= 1 << (7 - j);
 
                             writer.Write((byte)mask);
@@ -1718,17 +1718,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                     writer.Write((byte)0); // inline data
 
-                    for(int i = 0; i < files.Length; i++)
-                        if(files[i].ATime.HasValue)
+                    for (int i = 0; i < files.Length; i++)
+                        if (files[i].ATime.HasValue)
                             writer.Write(files[i].ATime.Value.ToFileTimeUtc());
                 }
 
                 int mtimeCount = files.Count(file => file.MTime.HasValue);
-                if(mtimeCount != 0)
+                if (mtimeCount != 0)
                 {
                     WriteNumber(writer, BlockType.MTime);
 
-                    if(mtimeCount == files.Length)
+                    if (mtimeCount == files.Length)
                     {
                         WriteNumber(writer, 2 + mtimeCount * 8);
                         writer.Write((byte)1);
@@ -1738,11 +1738,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                         WriteNumber(writer, (mtimeCount + 7) / 8 + 2 + mtimeCount * 8);
                         writer.Write((byte)0);
 
-                        for(int i = 0; i < files.Length; i += 8)
+                        for (int i = 0; i < files.Length; i += 8)
                         {
                             int mask = 0;
-                            for(int j = 0; j < 8; j++)
-                                if(i + j < files.Length && files[i + j].MTime.HasValue)
+                            for (int j = 0; j < 8; j++)
+                                if (i + j < files.Length && files[i + j].MTime.HasValue)
                                     mask |= 1 << (7 - j);
 
                             writer.Write((byte)mask);
@@ -1751,8 +1751,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
                     writer.Write((byte)0); // inline data
 
-                    for(int i = 0; i < files.Length; i++)
-                        if(files[i].MTime.HasValue)
+                    for (int i = 0; i < files.Length; i++)
+                        if (files[i].MTime.HasValue)
                             writer.Write(files[i].MTime.Value.ToFileTimeUtc());
                 }
 
@@ -1802,7 +1802,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         /// </summary>
         public void DisconnectEncoder()
         {
-            if(mEncoder != null)
+            if (mEncoder != null)
             {
                 mEncoder.Disconnect();
 
@@ -1816,19 +1816,19 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         /// </summary>
         public void ConnectEncoder(Encoder encoder)
         {
-            if(encoder == null)
+            if (encoder == null)
                 throw new ArgumentNullException("encoder");
 
-            if(mEncoder == encoder)
+            if (mEncoder == encoder)
             {
                 mEncoder.Flush();
             }
             else
             {
-                if(encoder.IsConnected)
+                if (encoder.IsConnected)
                     throw new InvalidOperationException("The given encoder is already connected to another ArchiveWriter.");
 
-                if(mEncoder != null)
+                if (mEncoder != null)
                     mEncoder.Disconnect();
 
                 mEncoder = encoder;
@@ -1881,12 +1881,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             long limit = 0;
 
             var files = mFileSets.SelectMany(stream => stream.Files).ToArray();
-            if(files.Length != 0)
+            if (files.Length != 0)
             {
                 limit += kBlockTypeLen; // BlockType.Header
 
                 var inputStreams = mFileSets.SelectMany(fileset => fileset.InputStreams).ToArray();
-                if(inputStreams.Any(stream => stream.Size != 0))
+                if (inputStreams.Any(stream => stream.Size != 0))
                 {
                     limit += kBlockTypeLen; // BlockType.MainStreamsInfo
                     limit += kBlockTypeLen; // BlockType.PackInfo
@@ -1899,28 +1899,28 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                     limit += kBlockTypeLen; // BlockType.Folder
                     limit += kMaxNumberLen; // mFileSets.Count
                     limit += kZeroNumberLen; // zero = inline data
-                    foreach(var fileset in mFileSets)
+                    foreach (var fileset in mFileSets)
                     {
                         limit += kMaxNumberLen; // fileset.Coders.Length
-                        foreach(var coder in fileset.Coders)
+                        foreach (var coder in fileset.Coders)
                         {
                             limit += 1; // flags
                             limit += coder.MethodId.GetLength(); // coder.MethodId
 
-                            if(coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
+                            if (coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
                             {
                                 limit += kMaxNumberLen; // coder.InputStreams.Length
                                 limit += kMaxNumberLen; // coder.OutputStreams.Length
                             }
 
-                            if(coder.Settings != null)
+                            if (coder.Settings != null)
                             {
                                 limit += kMaxNumberLen; // coder.Settings.Length
                                 limit += coder.Settings.Length; // coder.Settings
                             }
 
                             // TODO: Bind pairs and association to streams ...
-                            if(fileset.Coders.Length > 1 || coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
+                            if (fileset.Coders.Length > 1 || coder.InputStreams.Length != 1 || coder.OutputStreams.Length != 1)
                                 throw new NotSupportedException();
                         }
                     }
@@ -1944,10 +1944,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 limit += kBlockTypeLen; // BlockType.Name
                 limit += kMaxNumberLen; // 1 + files.Sum(file => file.Name.Length + 1) * 2
                 limit += kZeroNumberLen; // zero = inline names
-                for(int i = 0; i < files.Length; i++)
+                for (int i = 0; i < files.Length; i++)
                     limit += (files[i].Name.Length + 1) * 2;
 
-                if(files.Any(file => file.Size == 0))
+                if (files.Any(file => file.Size == 0))
                 {
                     limit += kBlockTypeLen; // BlockType.EmptyStream
                     limit += kMaxNumberLen; // (files.Length + 7) / 8
@@ -1984,22 +1984,22 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public static void WriteFile(this ArchiveWriter writer, IArchiveWriterEntry metadata, Stream content)
         {
-            if(writer.CurrentEncoder == null)
+            if (writer.CurrentEncoder == null)
                 throw new InvalidOperationException("No current encoder configured.");
 
-            using(var stream = writer.CurrentEncoder.BeginWriteFile(metadata))
+            using (var stream = writer.CurrentEncoder.BeginWriteFile(metadata))
                 content.CopyTo(stream);
         }
 
         public static void WriteFile(this ArchiveWriter writer, DirectoryInfo root, FileInfo file)
         {
-            using(var content = file.OpenRead())
+            using (var content = file.OpenRead())
                 writer.WriteFile(new FileBasedArchiveWriterEntry(root, file), content);
         }
 
         public static void WriteFiles(this ArchiveWriter writer, DirectoryInfo root, IEnumerable<FileInfo> files)
         {
-            foreach(var file in files)
+            foreach (var file in files)
                 writer.WriteFile(root, file);
         }
 
@@ -2011,23 +2011,23 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         #endregion
     }
 
-    public abstract class EncryptionProvider: IDisposable
+    public abstract class EncryptionProvider : IDisposable
     {
         public virtual void Dispose() { }
         internal abstract EncryptionEncoder CreateEncoder();
         internal abstract void GetCoderInfo(out master._7zip.Legacy.CMethodId id, out byte[] settings);
     }
 
-    internal abstract class EncryptionEncoder: IDisposable
+    internal abstract class EncryptionEncoder : IDisposable
     {
         public abstract void Dispose();
         internal abstract void EncryptBlock(ref byte[] data, ref int offset, ref int length);
         internal abstract void FinishEncryption(out byte[] data, out int offset, out int length);
     }
 
-    public sealed class AESEncryptionProvider: EncryptionProvider
+    public sealed class AESEncryptionProvider : EncryptionProvider
     {
-        private sealed class EncryptedStream: EncryptionEncoder
+        private sealed class EncryptedStream : EncryptionEncoder
         {
             private MemoryStream mOutput = new MemoryStream();
             private System.Security.Cryptography.ICryptoTransform mEncoder;
@@ -2047,9 +2047,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             internal override void EncryptBlock(ref byte[] buffer, ref int offset, ref int length)
             {
-                while(length > 0)
+                while (length > 0)
                 {
-                    if(mOffset == 16)
+                    if (mOffset == 16)
                     {
                         mEncoder.TransformBlock(mBuffer1, 0, 16, mBuffer2, 0);
                         mOutput.Write(mBuffer2, 0, 16);
@@ -2074,9 +2074,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 Debug.Assert(mBuffer1 != null && mBuffer2 != null);
 
-                if(mOffset != 0)
+                if (mOffset != 0)
                 {
-                    while(mOffset < 16)
+                    while (mOffset < 16)
                         mBuffer1[mOffset++] = 0;
 
                     Debug.Assert(mOffset == 16);
@@ -2134,7 +2134,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             mSeed = new byte[8]; // 7z922 uses only 8 byte seeds (?)
 
             // 7z922 uses a questionable RNG hack, we will just use the standard .NET cryptography RNG
-            using(var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+            using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
             {
                 rng.GetBytes(mSalt);
                 rng.GetBytes(mSeed);
@@ -2167,17 +2167,17 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             writer.Write((byte)(mNumCyclesPower | ((mSalt.Length == 0 ? 0 : 1) << 7) | ((mSeed.Length == 0 ? 0 : 1) << 6)));
 
-            if(mSalt.Length > 0 || mSeed.Length > 0)
+            if (mSalt.Length > 0 || mSeed.Length > 0)
             {
                 var saltSize = mSalt.Length == 0 ? 0 : mSalt.Length - 1;
                 var seedSize = mSeed.Length == 0 ? 0 : mSeed.Length - 1;
                 writer.Write((byte)((saltSize << 4) | seedSize));
             }
 
-            if(mSalt.Length > 0)
+            if (mSalt.Length > 0)
                 writer.Write(mSalt);
 
-            if(mSeed.Length > 0)
+            if (mSeed.Length > 0)
                 writer.Write(mSeed);
 
             settings = stream.ToArray();

@@ -46,33 +46,33 @@ namespace ManagedLzma.LZMA.Master
                 int tempBlockThreads = mNumBlockThreads;
                 int tempTotalThreads = mNumTotalThreads;
 
-                if(tempBlockThreads > NUM_MT_CODER_THREADS_MAX)
+                if (tempBlockThreads > NUM_MT_CODER_THREADS_MAX)
                     tempBlockThreads = NUM_MT_CODER_THREADS_MAX;
 
-                if(tempTotalThreads <= 0)
+                if (tempTotalThreads <= 0)
                 {
-                    if(tempBlockThreads <= 0)
+                    if (tempBlockThreads <= 0)
                         tempBlockThreads = 1;
 
                     tempTotalThreads = tempThreadsNormalized * tempBlockThreads;
                 }
-                else if(tempBlockThreads <= 0)
+                else if (tempBlockThreads <= 0)
                 {
                     tempBlockThreads = tempTotalThreads / tempThreadsNormalized;
 
-                    if(tempBlockThreads == 0)
+                    if (tempBlockThreads == 0)
                     {
                         tempThreads = 1;
                         tempBlockThreads = tempTotalThreads;
                     }
 
-                    if(tempBlockThreads > NUM_MT_CODER_THREADS_MAX)
+                    if (tempBlockThreads > NUM_MT_CODER_THREADS_MAX)
                         tempBlockThreads = NUM_MT_CODER_THREADS_MAX;
                 }
-                else if(tempThreads <= 0)
+                else if (tempThreads <= 0)
                 {
                     tempThreads = tempTotalThreads / tempBlockThreads;
-                    if(tempThreads == 0)
+                    if (tempThreads == 0)
                         tempThreads = 1;
                 }
                 else
@@ -85,7 +85,7 @@ namespace ManagedLzma.LZMA.Master
                 mNumTotalThreads = tempTotalThreads;
                 mLzmaProps.LzmaEncProps_Normalize();
 
-                if(mBlockSize == 0)
+                if (mBlockSize == 0)
                 {
                     uint dictSize = mLzmaProps.mDictSize;
                     long blockSize = (long)dictSize << 2;
@@ -93,13 +93,13 @@ namespace ManagedLzma.LZMA.Master
                     const uint kMinSize = 1 << 20;
                     const uint kMaxSize = 1 << 28;
 
-                    if(blockSize < kMinSize)
+                    if (blockSize < kMinSize)
                         blockSize = kMinSize;
 
-                    if(blockSize > kMaxSize)
+                    if (blockSize > kMaxSize)
                         blockSize = kMaxSize;
 
-                    if(blockSize < dictSize)
+                    if (blockSize < dictSize)
                         blockSize = dictSize;
 
                     mBlockSize = blockSize;
@@ -145,10 +145,10 @@ namespace ManagedLzma.LZMA.Master
                 long propsSize = LZMA_PROPS_SIZE;
 
                 SRes res;
-                if((res = mEnc.LzmaEnc_SetProps(props.mLzmaProps)) != SZ_OK)
+                if ((res = mEnc.LzmaEnc_SetProps(props.mLzmaProps)) != SZ_OK)
                     return res;
 
-                if((res = mEnc.LzmaEnc_WriteProperties(propsEncoded, ref propsSize)) != SZ_OK)
+                if ((res = mEnc.LzmaEnc_WriteProperties(propsEncoded, ref propsSize)) != SZ_OK)
                     return res;
 
                 mSrcPos = 0;
@@ -166,7 +166,7 @@ namespace ManagedLzma.LZMA.Master
                 uint lzHeaderSize = 5u + (mNeedInitProp ? 1u : 0u);
 
                 packSizeRes = 0;
-                if(packSize < lzHeaderSize)
+                if (packSize < lzHeaderSize)
                     return SZ_ERROR_OUTPUT_EOF;
                 packSize -= lzHeaderSize;
 
@@ -177,29 +177,29 @@ namespace ManagedLzma.LZMA.Master
                 TR("Lzma2EncInt_EncodeSubblock:unpackSize", unpackSize);
                 DebugPrint("\npackSize = {0:0000000} unpackSize = {1:0000000}  ", packSize, unpackSize);
 
-                if(unpackSize == 0)
+                if (unpackSize == 0)
                     return res;
 
                 bool useCopyBlock;
-                if(res == SZ_OK)
+                if (res == SZ_OK)
                     useCopyBlock = (packSize + 2 >= unpackSize || packSize > (1 << 16));
                 else
                 {
-                    if(res != SZ_ERROR_OUTPUT_EOF)
+                    if (res != SZ_ERROR_OUTPUT_EOF)
                         return res;
                     res = SZ_OK;
                     useCopyBlock = true;
                 }
 
-                if(useCopyBlock)
+                if (useCopyBlock)
                 {
                     long destPos = 0;
                     DebugPrint("################# COPY           ");
 
-                    while(unpackSize > 0)
+                    while (unpackSize > 0)
                     {
                         uint u = (unpackSize < LZMA2_COPY_CHUNK_SIZE) ? unpackSize : LZMA2_COPY_CHUNK_SIZE;
-                        if(packSizeLimit - destPos < u + 3)
+                        if (packSizeLimit - destPos < u + 3)
                             return SZ_ERROR_OUTPUT_EOF;
 
                         outBuf[destPos++] = (byte)(mSrcPos == 0 ? LZMA2_CONTROL_COPY_RESET_DIC : LZMA2_CONTROL_COPY_NO_RESET);
@@ -212,10 +212,10 @@ namespace ManagedLzma.LZMA.Master
                         destPos += u;
                         mSrcPos += u;
 
-                        if(outStream != null)
+                        if (outStream != null)
                         {
                             packSizeRes += destPos;
-                            if(outStream.Write(outBuf, destPos) != destPos)
+                            if (outStream.Write(outBuf, destPos) != destPos)
                                 return SZ_ERROR_WRITE;
                             destPos = 0;
                         }
@@ -237,11 +237,11 @@ namespace ManagedLzma.LZMA.Master
                     uint pm = (uint)(packSize - 1);
 
                     uint mode;
-                    if(mSrcPos == 0)
+                    if (mSrcPos == 0)
                         mode = 3;
-                    else if(!mNeedInitState)
+                    else if (!mNeedInitState)
                         mode = 0;
-                    else if(!mNeedInitProp)
+                    else if (!mNeedInitProp)
                         mode = 1;
                     else
                         mode = 2;
@@ -254,7 +254,7 @@ namespace ManagedLzma.LZMA.Master
                     outBuf[destPos++] = (byte)(pm >> 8);
                     outBuf[destPos++] = (byte)pm;
 
-                    if(mNeedInitProp)
+                    if (mNeedInitProp)
                         outBuf[destPos++] = mProps;
 
                     mNeedInitProp = false;
@@ -262,7 +262,7 @@ namespace ManagedLzma.LZMA.Master
                     destPos += packSize;
                     mSrcPos += unpackSize;
 
-                    if(outStream != null && outStream.Write(outBuf, destPos) != destPos)
+                    if (outStream != null && outStream.Write(outBuf, destPos) != destPos)
                         return SZ_ERROR_WRITE;
 
                     packSizeRes = destPos;
@@ -280,38 +280,38 @@ namespace ManagedLzma.LZMA.Master
                 ulong packTotal = 0;
                 SRes res = SZ_OK;
 
-                if(mainEncoder.mOutBuf == null)
+                if (mainEncoder.mOutBuf == null)
                 {
                     mainEncoder.mOutBuf = IAlloc_AllocBytes(mainEncoder.mAlloc, LZMA2_CHUNK_SIZE_COMPRESSED_MAX);
-                    if(mainEncoder.mOutBuf == null)
+                    if (mainEncoder.mOutBuf == null)
                         return SZ_ERROR_MEM;
                 }
 
-                if((res = Lzma2EncInt_Init(mainEncoder.mProps)) != SZ_OK)
+                if ((res = Lzma2EncInt_Init(mainEncoder.mProps)) != SZ_OK)
                     return res;
 
-                if((res = mEnc.LzmaEnc_PrepareForLzma2(inStream, LZMA2_KEEP_WINDOW_SIZE, mainEncoder.mAlloc, mainEncoder.mAllocBig)) != SZ_OK)
+                if ((res = mEnc.LzmaEnc_PrepareForLzma2(inStream, LZMA2_KEEP_WINDOW_SIZE, mainEncoder.mAlloc, mainEncoder.mAllocBig)) != SZ_OK)
                     return res;
 
-                for(; ; )
+                for (;;)
                 {
                     long packSize = LZMA2_CHUNK_SIZE_COMPRESSED_MAX;
                     res = Lzma2EncInt_EncodeSubblock(mainEncoder.mOutBuf, ref packSize, outStream);
-                    if(res != SZ_OK)
+                    if (res != SZ_OK)
                         break;
                     packTotal += (ulong)packSize;
                     res = Progress(progress, mSrcPos, packTotal);
-                    if(res != SZ_OK)
+                    if (res != SZ_OK)
                         break;
-                    if(packSize == 0)
+                    if (packSize == 0)
                         break;
                 }
 
                 mEnc.LzmaEnc_Finish();
 
-                if(res == SZ_OK)
+                if (res == SZ_OK)
                 {
-                    if(outStream.Write(new byte[] { 0 }, 1) != 1)
+                    if (outStream.Write(new byte[] { 0 }, 1) != 1)
                         return SZ_ERROR_WRITE;
                 }
 
@@ -367,7 +367,7 @@ namespace ManagedLzma.LZMA.Master
                 mAllocBig = allocBig;
 
                 mCoders = new CLzma2EncInternal[NUM_MT_CODER_THREADS_MAX];
-                for(int i = 0; i < mCoders.Length; i++)
+                for (int i = 0; i < mCoders.Length; i++)
                 {
                     mCoders[i] = new CLzma2EncInternal();
                     mCoders[i].mEnc = null;
@@ -380,10 +380,10 @@ namespace ManagedLzma.LZMA.Master
 
             public void Lzma2Enc_Destroy()
             {
-                for(uint i = 0; i < mCoders.Length; i++)
+                for (uint i = 0; i < mCoders.Length; i++)
                 {
                     CLzma2EncInternal t = mCoders[i];
-                    if(t.mEnc != null)
+                    if (t.mEnc != null)
                     {
                         t.mEnc.LzmaEnc_Destroy(mAlloc, mAllocBig);
                         t.mEnc = null;
@@ -418,7 +418,7 @@ namespace ManagedLzma.LZMA.Master
 
                 CLzmaEncProps lzmaProps = new CLzmaEncProps(props.mLzmaProps);
                 lzmaProps.LzmaEncProps_Normalize();
-                if(lzmaProps.mLC + lzmaProps.mLP > LZMA2_LCLP_MAX)
+                if (lzmaProps.mLC + lzmaProps.mLP > LZMA2_LCLP_MAX)
                     return SZ_ERROR_PARAM;
 
                 mProps = new CLzma2EncProps(props);
@@ -436,7 +436,7 @@ namespace ManagedLzma.LZMA.Master
                 uint dicSize = mProps.mLzmaProps.LzmaEncProps_GetDictSize();
 
                 int i = 0;
-                while(i < 40 && dicSize > LZMA2_DIC_SIZE_FROM_PROP(i))
+                while (i < 40 && dicSize > LZMA2_DIC_SIZE_FROM_PROP(i))
                     i++;
 
                 TR("Lzma2Enc_WriteProperties", i);
@@ -445,19 +445,19 @@ namespace ManagedLzma.LZMA.Master
 
             public SRes Lzma2Enc_Encode(ISeqOutStream outStream, ISeqInStream inStream, ICompressProgress progress)
             {
-                for(int i = 0; i < mProps.mNumBlockThreads; i++)
+                for (int i = 0; i < mProps.mNumBlockThreads; i++)
                 {
                     CLzma2EncInternal t = mCoders[i];
-                    if(t.mEnc == null)
+                    if (t.mEnc == null)
                     {
                         t.mEnc = LzmaEnc_Create(mAlloc);
-                        if(t.mEnc == null)
+                        if (t.mEnc == null)
                             return SZ_ERROR_MEM;
                     }
                 }
 
 #if !_7ZIP_ST
-                if(mProps.mNumBlockThreads <= 1)
+                if (mProps.mNumBlockThreads <= 1)
 #endif
                     return mCoders[0].Lzma2Enc_EncodeMt1(this, outStream, inStream, progress);
 
@@ -499,31 +499,31 @@ namespace ManagedLzma.LZMA.Master
                 long destLim = destSize;
                 destSize = 0;
 
-                if(srcSize != 0)
+                if (srcSize != 0)
                 {
-                    if((res = p.Lzma2EncInt_Init(mLzma2Enc.mProps)) != SZ_OK)
+                    if ((res = p.Lzma2EncInt_Init(mLzma2Enc.mProps)) != SZ_OK)
                         return res;
 
-                    if((res = p.mEnc.LzmaEnc_MemPrepare(src, srcSize, CLzma2EncInternal.LZMA2_KEEP_WINDOW_SIZE, mLzma2Enc.mAlloc, mLzma2Enc.mAllocBig)) != SZ_OK)
+                    if ((res = p.mEnc.LzmaEnc_MemPrepare(src, srcSize, CLzma2EncInternal.LZMA2_KEEP_WINDOW_SIZE, mLzma2Enc.mAlloc, mLzma2Enc.mAllocBig)) != SZ_OK)
                         return res;
 
-                    while(p.mSrcPos < (ulong)srcSize)
+                    while (p.mSrcPos < (ulong)srcSize)
                     {
                         long packSize = destLim - destSize;
 
                         res = p.Lzma2EncInt_EncodeSubblock(dest + destSize, ref packSize, null);
-                        if(res != SZ_OK)
+                        if (res != SZ_OK)
                             break;
 
                         destSize += packSize;
 
-                        if(packSize == 0)
+                        if (packSize == 0)
                         {
                             res = SZ_ERROR_FAIL;
                             break;
                         }
 
-                        if(mLzma2Enc.mMtCoder.mMtProgress.MtProgress_Set(index, p.mSrcPos, (ulong)destSize) != SZ_OK)
+                        if (mLzma2Enc.mMtCoder.mMtProgress.MtProgress_Set(index, p.mSrcPos, (ulong)destSize) != SZ_OK)
                         {
                             res = SZ_ERROR_PROGRESS;
                             break;
@@ -531,13 +531,13 @@ namespace ManagedLzma.LZMA.Master
                     }
 
                     p.mEnc.LzmaEnc_Finish();
-                    if(res != SZ_OK)
+                    if (res != SZ_OK)
                         return res;
                 }
 
-                if(finished)
+                if (finished)
                 {
-                    if(destSize == destLim)
+                    if (destSize == destLim)
                         return SZ_ERROR_OUTPUT_EOF;
 
                     dest[destSize++] = 0;

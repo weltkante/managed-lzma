@@ -41,16 +41,16 @@ namespace ManagedLzma.LZMA.Master
 
             public SRes LzmaProps_Decode(P<byte> data, uint size)
             {
-                if(size < LZMA_PROPS_SIZE)
+                if (size < LZMA_PROPS_SIZE)
                     return SZ_ERROR_UNSUPPORTED;
 
                 uint dicSize = data[1] | ((uint)data[2] << 8) | ((uint)data[3] << 16) | ((uint)data[4] << 24);
-                if(dicSize < LZMA_DIC_MIN)
+                if (dicSize < LZMA_DIC_MIN)
                     dicSize = LZMA_DIC_MIN;
                 mDicSize = dicSize;
 
                 byte d = data[0];
-                if(d >= (9 * 5 * 5))
+                if (d >= (9 * 5 * 5))
                     return SZ_ERROR_UNSUPPORTED;
 
                 mLC = d % 9;
@@ -211,8 +211,8 @@ namespace ManagedLzma.LZMA.Master
             {
                 SRes res;
                 CLzmaProps propNew = new CLzmaProps();
-                if((res = propNew.LzmaProps_Decode(props, propsSize)) != SZ_OK) return res;
-                if((res = LzmaDec_AllocateProbs2(propNew, alloc)) != SZ_OK) return res;
+                if ((res = propNew.LzmaProps_Decode(props, propsSize)) != SZ_OK) return res;
+                if ((res = LzmaDec_AllocateProbs2(propNew, alloc)) != SZ_OK) return res;
                 mProp = new CLzmaProps(propNew);
                 return SZ_OK;
             }
@@ -228,18 +228,18 @@ namespace ManagedLzma.LZMA.Master
                 CLzmaProps propNew = new CLzmaProps();
 
                 SRes res;
-                if((res = propNew.LzmaProps_Decode(props, propsSize)) != SZ_OK)
+                if ((res = propNew.LzmaProps_Decode(props, propsSize)) != SZ_OK)
                     return res;
 
-                if((res = LzmaDec_AllocateProbs2(propNew, alloc)) != SZ_OK)
+                if ((res = LzmaDec_AllocateProbs2(propNew, alloc)) != SZ_OK)
                     return res;
 
                 long dicBufSize = propNew.mDicSize;
-                if(mDic == null || dicBufSize != mDicBufSize)
+                if (mDic == null || dicBufSize != mDicBufSize)
                 {
                     LzmaDec_FreeDict(alloc);
                     mDic = alloc.AllocBytes(alloc, dicBufSize);
-                    if(mDic == null)
+                    if (mDic == null)
                     {
                         LzmaDec_FreeProbs(alloc);
                         return SZ_ERROR_MEM;
@@ -307,11 +307,11 @@ namespace ManagedLzma.LZMA.Master
 
                 status = ELzmaStatus.LZMA_STATUS_NOT_SPECIFIED;
 
-                while(mRemainLen != kMatchSpecLenStart)
+                while (mRemainLen != kMatchSpecLenStart)
                 {
-                    if(mNeedFlush)
+                    if (mNeedFlush)
                     {
-                        while(inSize > 0 && mTempBufSize < RC_INIT_SIZE)
+                        while (inSize > 0 && mTempBufSize < RC_INIT_SIZE)
                         {
                             mTempBuf[mTempBufSize] = src[0];
                             mTempBufSize++;
@@ -320,13 +320,13 @@ namespace ManagedLzma.LZMA.Master
                             inSize--;
                         }
 
-                        if(mTempBufSize < RC_INIT_SIZE)
+                        if (mTempBufSize < RC_INIT_SIZE)
                         {
                             status = ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT;
                             return SZ_OK;
                         }
 
-                        if(mTempBuf[0] != 0)
+                        if (mTempBuf[0] != 0)
                             return SZ_ERROR_DATA;
 
                         LzmaDec_InitRc(mTempBuf);
@@ -335,21 +335,21 @@ namespace ManagedLzma.LZMA.Master
 
                     bool checkEndMarkNow = false;
 
-                    if(mDicPos >= dicLimit)
+                    if (mDicPos >= dicLimit)
                     {
-                        if(mRemainLen == 0 && mCode == 0)
+                        if (mRemainLen == 0 && mCode == 0)
                         {
                             status = ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK;
                             return SZ_OK;
                         }
 
-                        if(finishMode == ELzmaFinishMode.LZMA_FINISH_ANY)
+                        if (finishMode == ELzmaFinishMode.LZMA_FINISH_ANY)
                         {
                             status = ELzmaStatus.LZMA_STATUS_NOT_FINISHED;
                             return SZ_OK;
                         }
 
-                        if(mRemainLen != 0)
+                        if (mRemainLen != 0)
                         {
                             status = ELzmaStatus.LZMA_STATUS_NOT_FINISHED;
                             return SZ_ERROR_DATA;
@@ -358,17 +358,17 @@ namespace ManagedLzma.LZMA.Master
                         checkEndMarkNow = true;
                     }
 
-                    if(mNeedInitState)
+                    if (mNeedInitState)
                         LzmaDec_InitStateReal();
 
-                    if(mTempBufSize == 0)
+                    if (mTempBufSize == 0)
                     {
                         P<byte> bufLimit;
-                        if(inSize < LZMA_REQUIRED_INPUT_MAX || checkEndMarkNow)
+                        if (inSize < LZMA_REQUIRED_INPUT_MAX || checkEndMarkNow)
                         {
                             ELzmaDummy dummyRes = LzmaDec_TryDummy(src, inSize);
 
-                            if(dummyRes == ELzmaDummy.DUMMY_ERROR)
+                            if (dummyRes == ELzmaDummy.DUMMY_ERROR)
                             {
                                 CUtils.memcpy(mTempBuf, src, inSize);
                                 mTempBufSize = (uint)inSize;
@@ -377,7 +377,7 @@ namespace ManagedLzma.LZMA.Master
                                 return SZ_OK;
                             }
 
-                            if(checkEndMarkNow && dummyRes != ELzmaDummy.DUMMY_MATCH)
+                            if (checkEndMarkNow && dummyRes != ELzmaDummy.DUMMY_MATCH)
                             {
                                 status = ELzmaStatus.LZMA_STATUS_NOT_FINISHED;
                                 return SZ_ERROR_DATA;
@@ -392,7 +392,7 @@ namespace ManagedLzma.LZMA.Master
 
                         mBuf = src;
 
-                        if(LzmaDec_DecodeReal2(dicLimit, bufLimit) != 0)
+                        if (LzmaDec_DecodeReal2(dicLimit, bufLimit) != 0)
                             return SZ_ERROR_DATA;
 
                         long processed = mBuf - src;
@@ -405,23 +405,23 @@ namespace ManagedLzma.LZMA.Master
                         uint rem = mTempBufSize;
                         uint lookAhead = 0;
 
-                        while(rem < LZMA_REQUIRED_INPUT_MAX && lookAhead < inSize)
+                        while (rem < LZMA_REQUIRED_INPUT_MAX && lookAhead < inSize)
                             mTempBuf[rem++] = src[lookAhead++];
 
                         mTempBufSize = rem;
 
-                        if(rem < LZMA_REQUIRED_INPUT_MAX || checkEndMarkNow)
+                        if (rem < LZMA_REQUIRED_INPUT_MAX || checkEndMarkNow)
                         {
                             ELzmaDummy dummyRes = LzmaDec_TryDummy(mTempBuf, rem);
 
-                            if(dummyRes == ELzmaDummy.DUMMY_ERROR)
+                            if (dummyRes == ELzmaDummy.DUMMY_ERROR)
                             {
                                 srcLen += lookAhead;
                                 status = ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT;
                                 return SZ_OK;
                             }
 
-                            if(checkEndMarkNow && dummyRes != ELzmaDummy.DUMMY_MATCH)
+                            if (checkEndMarkNow && dummyRes != ELzmaDummy.DUMMY_MATCH)
                             {
                                 status = ELzmaStatus.LZMA_STATUS_NOT_FINISHED;
                                 return SZ_ERROR_DATA;
@@ -430,7 +430,7 @@ namespace ManagedLzma.LZMA.Master
 
                         mBuf = mTempBuf;
 
-                        if(LzmaDec_DecodeReal2(dicLimit, mBuf) != 0)
+                        if (LzmaDec_DecodeReal2(dicLimit, mBuf) != 0)
                             return SZ_ERROR_DATA;
 
                         lookAhead -= rem - (uint)(mBuf - mTempBuf);
@@ -441,7 +441,7 @@ namespace ManagedLzma.LZMA.Master
                     }
                 }
 
-                if(mCode != 0)
+                if (mCode != 0)
                     return SZ_ERROR_DATA;
 
                 status = ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK;
@@ -467,17 +467,17 @@ namespace ManagedLzma.LZMA.Master
                 long outSize = destLen;
                 long inSize = srcLen;
                 srcLen = destLen = 0;
-                for(; ; )
+                for (;;)
                 {
                     long inSizeCur = inSize;
 
-                    if(mDicPos == mDicBufSize)
+                    if (mDicPos == mDicBufSize)
                         mDicPos = 0;
                     long dicPos = mDicPos;
 
                     long outSizeCur;
                     ELzmaFinishMode curFinishMode;
-                    if(outSize > mDicBufSize - dicPos)
+                    if (outSize > mDicBufSize - dicPos)
                     {
                         outSizeCur = mDicBufSize;
                         curFinishMode = ELzmaFinishMode.LZMA_FINISH_ANY;
@@ -497,9 +497,9 @@ namespace ManagedLzma.LZMA.Master
                     dest += outSizeCur;
                     outSize -= outSizeCur;
                     destLen += outSizeCur;
-                    if(res != SZ_OK)
+                    if (res != SZ_OK)
                         return res;
-                    if(outSizeCur == 0 || outSize == 0)
+                    if (outSizeCur == 0 || outSize == 0)
                         return SZ_OK;
                 }
             }
@@ -534,14 +534,14 @@ namespace ManagedLzma.LZMA.Master
                 srcLen = 0;
                 status = ELzmaStatus.LZMA_STATUS_NOT_SPECIFIED;
 
-                if(inSize < RC_INIT_SIZE)
+                if (inSize < RC_INIT_SIZE)
                     return SZ_ERROR_INPUT_EOF;
 
                 CLzmaDec decoder = new CLzmaDec();
                 decoder.LzmaDec_Construct();
 
                 SRes res;
-                if((res = decoder.LzmaDec_AllocateProbs(propData, propSize, alloc)) != SZ_OK)
+                if ((res = decoder.LzmaDec_AllocateProbs(propData, propSize, alloc)) != SZ_OK)
                     return res;
 
                 decoder.mDic = dest;
@@ -553,7 +553,7 @@ namespace ManagedLzma.LZMA.Master
 
                 destLen = decoder.mDicPos;
 
-                if(res == SZ_OK && status == ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT)
+                if (res == SZ_OK && status == ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT)
                     res = SZ_ERROR_INPUT_EOF;
 
                 decoder.LzmaDec_FreeProbs(alloc);
@@ -570,14 +570,14 @@ namespace ManagedLzma.LZMA.Master
                 mRemainLen = 0;
                 mTempBufSize = 0;
 
-                if(initDic)
+                if (initDic)
                 {
                     mProcessedPos = 0;
                     mCheckDicSize = 0;
                     mNeedInitState = true;
                 }
 
-                if(initState)
+                if (initState)
                     mNeedInitState = true;
             }
 
@@ -630,21 +630,21 @@ namespace ManagedLzma.LZMA.Master
                     uint posState = processedPos & pbMask;
 
                     P<ushort> prob = probs + kIsMatch + (state << kNumPosBitsMax) + posState;
-                    if(_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
+                    if (_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
                     {
                         _UPDATE_0(prob, ttt, bound, ref range);
                         prob = probs + kLiteral;
-                        if(checkDicSize != 0 || processedPos != 0)
+                        if (checkDicSize != 0 || processedPos != 0)
                             prob += (LZMA_LIT_SIZE * (((processedPos & lpMask) << lc)
                                 + (dic[(dicPos == 0 ? dicBufSize : dicPos) - 1] >> (8 - lc))));
 
                         uint symbol;
-                        if(state < kNumLitStates)
+                        if (state < kNumLitStates)
                         {
                             state -= (state < 4) ? state : 3;
                             symbol = 1;
                             do { _GET_BIT(prob + symbol, ref symbol, out ttt, out bound, ref range, ref code, ref buf); }
-                            while(symbol < 0x100);
+                            while (symbol < 0x100);
                         }
                         else
                         {
@@ -659,12 +659,12 @@ namespace ManagedLzma.LZMA.Master
                                 matchByte <<= 1;
                                 bit = (matchByte & offs);
                                 probLit = prob + offs + bit + symbol;
-                                if(_GET_BIT2(probLit, ref symbol, out ttt, out bound, ref range, ref code, ref buf))
+                                if (_GET_BIT2(probLit, ref symbol, out ttt, out bound, ref range, ref code, ref buf))
                                     offs &= bit;
                                 else
                                     offs &= ~bit;
                             }
-                            while(symbol < 0x100);
+                            while (symbol < 0x100);
                         }
                         dic[dicPos++] = (byte)symbol;
                         processedPos++;
@@ -674,7 +674,7 @@ namespace ManagedLzma.LZMA.Master
                     {
                         _UPDATE_1(prob, ttt, bound, ref range, ref code);
                         prob = probs + kIsRep + state;
-                        if(_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
+                        if (_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
                         {
                             _UPDATE_0(prob, ttt, bound, ref range);
                             state += kNumStates;
@@ -683,14 +683,14 @@ namespace ManagedLzma.LZMA.Master
                         else
                         {
                             _UPDATE_1(prob, ttt, bound, ref range, ref code);
-                            if(checkDicSize == 0 && processedPos == 0)
+                            if (checkDicSize == 0 && processedPos == 0)
                                 return SZ_ERROR_DATA;
                             prob = probs + kIsRepG0 + state;
-                            if(_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
+                            if (_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
                             {
                                 _UPDATE_0(prob, ttt, bound, ref range);
                                 prob = probs + kIsRep0Long + (state << kNumPosBitsMax) + posState;
-                                if(_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
+                                if (_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
                                 {
                                     _UPDATE_0(prob, ttt, bound, ref range);
                                     dic[dicPos] = dic[(dicPos - rep0) + ((dicPos < rep0) ? dicBufSize : 0)];
@@ -706,7 +706,7 @@ namespace ManagedLzma.LZMA.Master
                                 uint distance;
                                 _UPDATE_1(prob, ttt, bound, ref range, ref code);
                                 prob = probs + kIsRepG1 + state;
-                                if(_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
+                                if (_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
                                 {
                                     _UPDATE_0(prob, ttt, bound, ref range);
                                     distance = rep1;
@@ -715,7 +715,7 @@ namespace ManagedLzma.LZMA.Master
                                 {
                                     _UPDATE_1(prob, ttt, bound, ref range, ref code);
                                     prob = probs + kIsRepG2 + state;
-                                    if(_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
+                                    if (_IF_BIT_0(prob, out ttt, out bound, ref range, ref code, ref buf))
                                     {
                                         _UPDATE_0(prob, ttt, bound, ref range);
                                         distance = rep2;
@@ -737,7 +737,7 @@ namespace ManagedLzma.LZMA.Master
                         {
                             uint limit2, offset;
                             P<ushort> probLen = prob + kLenChoice;
-                            if(_IF_BIT_0(probLen, out ttt, out bound, ref range, ref code, ref buf))
+                            if (_IF_BIT_0(probLen, out ttt, out bound, ref range, ref code, ref buf))
                             {
                                 _UPDATE_0(probLen, ttt, bound, ref range);
                                 probLen = prob + kLenLow + (posState << kLenNumLowBits);
@@ -748,7 +748,7 @@ namespace ManagedLzma.LZMA.Master
                             {
                                 _UPDATE_1(probLen, ttt, bound, ref range, ref code);
                                 probLen = prob + kLenChoice2;
-                                if(_IF_BIT_0(probLen, out ttt, out bound, ref range, ref code, ref buf))
+                                if (_IF_BIT_0(probLen, out ttt, out bound, ref range, ref code, ref buf))
                                 {
                                     _UPDATE_0(probLen, ttt, bound, ref range);
                                     probLen = prob + kLenMid + (posState << kLenNumMidBits);
@@ -767,18 +767,18 @@ namespace ManagedLzma.LZMA.Master
                             len += offset;
                         }
 
-                        if(state >= kNumStates)
+                        if (state >= kNumStates)
                         {
                             uint distance;
                             prob = probs + kPosSlot +
                                 ((len < kNumLenToPosStates ? len : kNumLenToPosStates - 1) << kNumPosSlotBits);
                             _TREE_6_DECODE(prob, out distance, out ttt, out bound, ref range, ref code, ref buf);
-                            if(distance >= kStartPosModelIndex)
+                            if (distance >= kStartPosModelIndex)
                             {
                                 uint posSlot = (uint)distance;
                                 int numDirectBits = (int)(((distance >> 1) - 1));
                                 distance = (2 | (distance & 1));
-                                if(posSlot < kEndPosModelIndex)
+                                if (posSlot < kEndPosModelIndex)
                                 {
                                     distance <<= numDirectBits;
                                     prob = probs + kSpecPos + distance - posSlot - 1;
@@ -787,11 +787,11 @@ namespace ManagedLzma.LZMA.Master
                                         uint i = 1;
                                         do
                                         {
-                                            if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf))
+                                            if (_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf))
                                                 distance |= mask;
                                             mask <<= 1;
                                         }
-                                        while(--numDirectBits != 0);
+                                        while (--numDirectBits != 0);
                                     }
                                 }
                                 else
@@ -818,17 +818,17 @@ namespace ManagedLzma.LZMA.Master
                                         }
                                         */
                                     }
-                                    while(--numDirectBits != 0);
+                                    while (--numDirectBits != 0);
                                     prob = probs + kAlign;
                                     distance <<= kNumAlignBits;
                                     {
                                         uint i = 1;
-                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 1;
-                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 2;
-                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 4;
-                                        if(_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 8;
+                                        if (_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 1;
+                                        if (_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 2;
+                                        if (_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 4;
+                                        if (_GET_BIT2(prob + i, ref i, out ttt, out bound, ref range, ref code, ref buf)) distance |= 8;
                                     }
-                                    if(distance == (uint)0xFFFFFFFF)
+                                    if (distance == (uint)0xFFFFFFFF)
                                     {
                                         len += kMatchSpecLenStart;
                                         state -= kNumStates;
@@ -840,19 +840,19 @@ namespace ManagedLzma.LZMA.Master
                             rep2 = rep1;
                             rep1 = rep0;
                             rep0 = distance + 1;
-                            if(checkDicSize == 0)
+                            if (checkDicSize == 0)
                             {
-                                if(distance >= processedPos)
+                                if (distance >= processedPos)
                                     return SZ_ERROR_DATA;
                             }
-                            else if(distance >= checkDicSize)
+                            else if (distance >= checkDicSize)
                                 return SZ_ERROR_DATA;
                             state = (state < kNumStates + kNumLitStates) ? kNumLitStates : kNumLitStates + 3u;
                         }
 
                         len += kMatchMinLen;
 
-                        if(limit == dicPos)
+                        if (limit == dicPos)
                             return SZ_ERROR_DATA;
                         {
                             long rem = limit - dicPos;
@@ -862,29 +862,29 @@ namespace ManagedLzma.LZMA.Master
                             processedPos += curLen;
 
                             len -= curLen;
-                            if(pos + curLen <= dicBufSize)
+                            if (pos + curLen <= dicBufSize)
                             {
                                 P<byte> dest = dic + dicPos;
                                 long src = (long)pos - (long)dicPos;
                                 P<byte> lim = dest + curLen;
                                 dicPos += curLen;
                                 do { dest[0] = dest[src]; }
-                                while(++dest != lim);
+                                while (++dest != lim);
                             }
                             else
                             {
                                 do
                                 {
                                     dic[dicPos++] = dic[pos];
-                                    if(++pos == dicBufSize)
+                                    if (++pos == dicBufSize)
                                         pos = 0;
                                 }
-                                while(--curLen != 0);
+                                while (--curLen != 0);
                             }
                         }
                     }
                 }
-                while(dicPos < limit && buf < bufLimit);
+                while (dicPos < limit && buf < bufLimit);
                 _NORMALIZE(ref range, ref code, ref buf);
                 mBuf = buf;
                 mRange = range;
@@ -903,23 +903,23 @@ namespace ManagedLzma.LZMA.Master
 
             private void LzmaDec_WriteRem(long limit)
             {
-                if(mRemainLen != 0 && mRemainLen < kMatchSpecLenStart)
+                if (mRemainLen != 0 && mRemainLen < kMatchSpecLenStart)
                 {
                     P<byte> dic = mDic;
                     long dicPos = mDicPos;
                     long dicBufSize = mDicBufSize;
                     uint len = mRemainLen;
                     uint rep0 = mReps[0];
-                    if(limit - dicPos < len)
+                    if (limit - dicPos < len)
                         len = (uint)(limit - dicPos);
 
-                    if(mCheckDicSize == 0 && mProp.mDicSize - mProcessedPos <= len)
+                    if (mCheckDicSize == 0 && mProp.mDicSize - mProcessedPos <= len)
                         mCheckDicSize = mProp.mDicSize;
 
                     mProcessedPos += len;
                     mRemainLen -= len;
 
-                    while(len != 0)
+                    while (len != 0)
                     {
                         len--;
                         dic[dicPos] = dic[(dicPos - rep0) + ((dicPos < rep0) ? dicBufSize : 0)];
@@ -935,25 +935,25 @@ namespace ManagedLzma.LZMA.Master
                 do
                 {
                     long limit2 = limit;
-                    if(mCheckDicSize == 0)
+                    if (mCheckDicSize == 0)
                     {
                         uint rem = mProp.mDicSize - mProcessedPos;
-                        if(limit - mDicPos > rem)
+                        if (limit - mDicPos > rem)
                             limit2 = mDicPos + rem;
                     }
 
                     SRes res;
-                    if((res = LzmaDec_DecodeReal(limit2, bufLimit)) != SZ_OK)
+                    if ((res = LzmaDec_DecodeReal(limit2, bufLimit)) != SZ_OK)
                         return res;
 
-                    if(mProcessedPos >= mProp.mDicSize)
+                    if (mProcessedPos >= mProp.mDicSize)
                         mCheckDicSize = mProp.mDicSize;
 
                     LzmaDec_WriteRem(limit);
                 }
-                while(mDicPos < limit && mBuf < bufLimit && mRemainLen < kMatchSpecLenStart);
+                while (mDicPos < limit && mBuf < bufLimit && mRemainLen < kMatchSpecLenStart);
 
-                if(mRemainLen > kMatchSpecLenStart)
+                if (mRemainLen > kMatchSpecLenStart)
                     mRemainLen = kMatchSpecLenStart;
 
                 return SZ_OK;
@@ -976,29 +976,29 @@ namespace ManagedLzma.LZMA.Master
                     uint posState = mProcessedPos & ((1u << mProp.mPB) - 1);
 
                     P<ushort> prob = probs + kIsMatch + (state << kNumPosBitsMax) + posState;
-                    if(!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                    if (!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                         return ELzmaDummy.DUMMY_ERROR;
-                    if(xxx)
+                    if (xxx)
                     {
                         _UPDATE_0_CHECK(bound, ref range);
 
                         /* if (bufLimit - buf >= 7) return DUMMY_LIT; */
 
                         prob = probs + kLiteral;
-                        if(mCheckDicSize != 0 || mProcessedPos != 0)
+                        if (mCheckDicSize != 0 || mProcessedPos != 0)
                             prob += LZMA_LIT_SIZE *
                                 (((mProcessedPos & ((1 << mProp.mLP) - 1)) << mProp.mLC) +
                                 (mDic[(mDicPos == 0 ? mDicBufSize : mDicPos) - 1] >> (8 - mProp.mLC)));
 
-                        if(state < kNumLitStates)
+                        if (state < kNumLitStates)
                         {
                             uint symbol = 1;
                             do
                             {
-                                if(!_GET_BIT_CHECK(prob + symbol, ref symbol, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
+                                if (!_GET_BIT_CHECK(prob + symbol, ref symbol, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
                                     return ELzmaDummy.DUMMY_ERROR;
                             }
-                            while(symbol < 0x100);
+                            while (symbol < 0x100);
                         }
                         else
                         {
@@ -1010,10 +1010,10 @@ namespace ManagedLzma.LZMA.Master
                                 matchByte <<= 1;
                                 uint bit = matchByte & offs;
                                 P<ushort> probLit = prob + offs + bit + symbol;
-                                if(!_GET_BIT2_CHECK(probLit, ref symbol, delegate { offs &= ~bit; }, delegate { offs &= bit; }, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
+                                if (!_GET_BIT2_CHECK(probLit, ref symbol, delegate { offs &= ~bit; }, delegate { offs &= bit; }, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
                                     return ELzmaDummy.DUMMY_ERROR;
                             }
-                            while(symbol < 0x100);
+                            while (symbol < 0x100);
                         }
                         res = ELzmaDummy.DUMMY_LIT;
                     }
@@ -1023,9 +1023,9 @@ namespace ManagedLzma.LZMA.Master
                         _UPDATE_1_CHECK(bound, ref range, ref code);
 
                         prob = probs + kIsRep + state;
-                        if(!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                        if (!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                             return ELzmaDummy.DUMMY_ERROR;
-                        if(xxx)
+                        if (xxx)
                         {
                             _UPDATE_0_CHECK(bound, ref range);
                             state = 0;
@@ -1037,18 +1037,18 @@ namespace ManagedLzma.LZMA.Master
                             _UPDATE_1_CHECK(bound, ref range, ref code);
                             res = ELzmaDummy.DUMMY_REP;
                             prob = probs + kIsRepG0 + state;
-                            if(!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                            if (!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                                 return ELzmaDummy.DUMMY_ERROR;
-                            if(xxx)
+                            if (xxx)
                             {
                                 _UPDATE_0_CHECK(bound, ref range);
                                 prob = probs + kIsRep0Long + (state << kNumPosBitsMax) + posState;
-                                if(!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                                if (!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                                     return ELzmaDummy.DUMMY_ERROR;
-                                if(xxx)
+                                if (xxx)
                                 {
                                     _UPDATE_0_CHECK(bound, ref range);
-                                    if(!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
+                                    if (!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
                                         return ELzmaDummy.DUMMY_ERROR;
                                     return ELzmaDummy.DUMMY_REP;
                                 }
@@ -1061,9 +1061,9 @@ namespace ManagedLzma.LZMA.Master
                             {
                                 _UPDATE_1_CHECK(bound, ref range, ref code);
                                 prob = probs + kIsRepG1 + state;
-                                if(!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                                if (!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                                     return ELzmaDummy.DUMMY_ERROR;
-                                if(xxx)
+                                if (xxx)
                                 {
                                     _UPDATE_0_CHECK(bound, ref range);
                                 }
@@ -1071,9 +1071,9 @@ namespace ManagedLzma.LZMA.Master
                                 {
                                     _UPDATE_1_CHECK(bound, ref range, ref code);
                                     prob = probs + kIsRepG2 + state;
-                                    if(!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                                    if (!_IF_BIT_0_CHECK(out xxx, prob, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                                         return ELzmaDummy.DUMMY_ERROR;
-                                    if(xxx)
+                                    if (xxx)
                                     {
                                         _UPDATE_0_CHECK(bound, ref range);
                                     }
@@ -1089,9 +1089,9 @@ namespace ManagedLzma.LZMA.Master
                         {
                             uint limit, offset;
                             P<ushort> probLen = prob + kLenChoice;
-                            if(!_IF_BIT_0_CHECK(out xxx, probLen, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                            if (!_IF_BIT_0_CHECK(out xxx, probLen, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                                 return ELzmaDummy.DUMMY_ERROR;
-                            if(xxx)
+                            if (xxx)
                             {
                                 _UPDATE_0_CHECK(bound, ref range);
                                 probLen = prob + kLenLow + (posState << kLenNumLowBits);
@@ -1102,9 +1102,9 @@ namespace ManagedLzma.LZMA.Master
                             {
                                 _UPDATE_1_CHECK(bound, ref range, ref code);
                                 probLen = prob + kLenChoice2;
-                                if(!_IF_BIT_0_CHECK(out xxx, probLen, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                                if (!_IF_BIT_0_CHECK(out xxx, probLen, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                                     return ELzmaDummy.DUMMY_ERROR;
-                                if(xxx)
+                                if (xxx)
                                 {
                                     _UPDATE_0_CHECK(bound, ref range);
                                     probLen = prob + kLenMid + (posState << kLenNumMidBits);
@@ -1119,24 +1119,24 @@ namespace ManagedLzma.LZMA.Master
                                     limit = 1 << kLenNumHighBits;
                                 }
                             }
-                            if(!_TREE_DECODE_CHECK(probLen, limit, out len, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
+                            if (!_TREE_DECODE_CHECK(probLen, limit, out len, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
                                 return ELzmaDummy.DUMMY_ERROR;
                             len += offset;
                         }
 
-                        if(state < 4)
+                        if (state < 4)
                         {
                             prob = probs + kPosSlot + ((len < kNumLenToPosStates ? len : kNumLenToPosStates - 1) << kNumPosSlotBits);
                             uint posSlot;
-                            if(!_TREE_DECODE_CHECK(prob, 1 << kNumPosSlotBits, out posSlot, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
+                            if (!_TREE_DECODE_CHECK(prob, 1 << kNumPosSlotBits, out posSlot, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
                                 return ELzmaDummy.DUMMY_ERROR;
-                            if(posSlot >= kStartPosModelIndex)
+                            if (posSlot >= kStartPosModelIndex)
                             {
                                 int numDirectBits = (((int)posSlot >> 1) - 1);
 
                                 /* if (bufLimit - buf >= 8) return DUMMY_MATCH; */
 
-                                if(posSlot < kEndPosModelIndex)
+                                if (posSlot < kEndPosModelIndex)
                                 {
                                     prob = probs + kSpecPos + ((2 | (posSlot & 1)) << numDirectBits) - posSlot - 1;
                                 }
@@ -1145,16 +1145,16 @@ namespace ManagedLzma.LZMA.Master
                                     numDirectBits -= kNumAlignBits;
                                     do
                                     {
-                                        if(!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
+                                        if (!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
                                             return ELzmaDummy.DUMMY_ERROR;
 
                                         range >>= 1;
 
                                         //code -= range & (((code - range) >> 31) - 1);
-                                        if(code >= range)
+                                        if (code >= range)
                                             code -= range;
                                     }
-                                    while(--numDirectBits != 0);
+                                    while (--numDirectBits != 0);
                                     prob = probs + kAlign;
                                     numDirectBits = kNumAlignBits;
                                 }
@@ -1162,16 +1162,16 @@ namespace ManagedLzma.LZMA.Master
                                     uint i = 1;
                                     do
                                     {
-                                        if(!_GET_BIT_CHECK(prob + i, ref i, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
+                                        if (!_GET_BIT_CHECK(prob + i, ref i, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
                                             return ELzmaDummy.DUMMY_ERROR;
                                     }
-                                    while(--numDirectBits != 0);
+                                    while (--numDirectBits != 0);
                                 }
                             }
                         }
                     }
                 }
-                if(!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
+                if (!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
                     return ELzmaDummy.DUMMY_ERROR;
                 return res;
             }
@@ -1186,7 +1186,7 @@ namespace ManagedLzma.LZMA.Master
             private void LzmaDec_InitStateReal()
             {
                 uint numProbs = kLiteral + (LZMA_LIT_SIZE << (mProp.mLC + mProp.mLP));
-                for(uint i = 0; i < numProbs; i++)
+                for (uint i = 0; i < numProbs; i++)
                     mProbs[i] = kBitModelTotal >> 1;
                 mReps[0] = 1;
                 mReps[1] = 1;
@@ -1205,12 +1205,12 @@ namespace ManagedLzma.LZMA.Master
             private SRes LzmaDec_AllocateProbs2(CLzmaProps propNew, ISzAlloc alloc)
             {
                 uint numProbs = LzmaProps_GetNumProbs(propNew);
-                if(mProbs == null || numProbs != mNumProbs)
+                if (mProbs == null || numProbs != mNumProbs)
                 {
                     LzmaDec_FreeProbs(alloc);
                     mProbs = alloc.AllocUInt16(alloc, numProbs);
                     mNumProbs = numProbs;
-                    if(mProbs == null)
+                    if (mProbs == null)
                         return SZ_ERROR_MEM;
                 }
                 return SZ_OK;
@@ -1222,7 +1222,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static void _NORMALIZE(ref uint range, ref uint code, ref P<byte> buf)
             {
-                if(range < kTopValue)
+                if (range < kTopValue)
                 {
                     range <<= 8;
                     code = (code << 8) | buf[0];
@@ -1253,7 +1253,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static bool _GET_BIT2(P<ushort> p, ref uint i, out uint ttt, out uint bound, ref uint range, ref uint code, ref P<byte> buf)
             {
-                if(_IF_BIT_0(p, out ttt, out bound, ref range, ref code, ref buf))
+                if (_IF_BIT_0(p, out ttt, out bound, ref range, ref code, ref buf))
                 {
                     _UPDATE_0(p, ttt, bound, ref range);
                     i = (i + i);
@@ -1281,7 +1281,7 @@ namespace ManagedLzma.LZMA.Master
             {
                 i = 1;
                 do { _TREE_GET_BIT(probs, ref i, out ttt, out bound, ref range, ref code, ref buf); }
-                while(i < limit);
+                while (i < limit);
                 i -= limit;
             }
 
@@ -1308,9 +1308,9 @@ namespace ManagedLzma.LZMA.Master
 
             private static bool _NORMALIZE_CHECK(ref uint range, ref uint code, ref P<byte> buf, P<byte> bufLimit)
             {
-                if(range < kTopValue)
+                if (range < kTopValue)
                 {
-                    if(buf >= bufLimit)
+                    if (buf >= bufLimit)
                         return false; // ELzmaDummy.DUMMY_ERROR;
 
                     range <<= 8;
@@ -1324,7 +1324,7 @@ namespace ManagedLzma.LZMA.Master
             private static bool _IF_BIT_0_CHECK(out bool result, P<ushort> p, out uint ttt, out uint bound, ref uint range, ref uint code, ref P<byte> buf, P<byte> bufLimit)
             {
                 ttt = p[0];
-                if(!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
+                if (!_NORMALIZE_CHECK(ref range, ref code, ref buf, bufLimit))
                 {
                     result = false;
                     bound = 0;
@@ -1349,9 +1349,9 @@ namespace ManagedLzma.LZMA.Master
             private static bool _GET_BIT2_CHECK(P<ushort> p, ref uint i, Action A0, Action A1, out uint ttt, ref uint bound, ref uint range, ref uint code, ref P<byte> buf, P<byte> bufLimit)
             {
                 bool xxx;
-                if(!_IF_BIT_0_CHECK(out xxx, p, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
+                if (!_IF_BIT_0_CHECK(out xxx, p, out ttt, out bound, ref range, ref code, ref buf, bufLimit))
                     return false;
-                if(xxx)
+                if (xxx)
                 {
                     _UPDATE_0_CHECK(bound, ref range);
                     i = (i + i);
@@ -1376,10 +1376,10 @@ namespace ManagedLzma.LZMA.Master
                 i = 1;
                 do
                 {
-                    if(!_GET_BIT_CHECK(probs + i, ref i, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
+                    if (!_GET_BIT_CHECK(probs + i, ref i, out ttt, ref bound, ref range, ref code, ref buf, bufLimit))
                         return false;
                 }
-                while(i < limit);
+                while (i < limit);
                 i -= limit;
                 return true;
             }

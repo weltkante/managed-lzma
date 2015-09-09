@@ -14,7 +14,7 @@ using System.Threading;
 
 namespace ManagedLzma.LZMA
 {
-    internal sealed class RemoteManager: MarshalByRefObject
+    internal sealed class RemoteManager : MarshalByRefObject
     {
         // TODO: Is this really necessary?!
         public override object InitializeLifetimeService()
@@ -50,7 +50,7 @@ namespace ManagedLzma.LZMA
         }
     }
 
-    internal sealed class RemoteResult: MarshalByRefObject, IAsyncResult
+    internal sealed class RemoteResult : MarshalByRefObject, IAsyncResult
     {
         internal IAsyncResult mResult;
         internal Func<object> mHandler;
@@ -86,7 +86,7 @@ namespace ManagedLzma.LZMA
         #endregion
     }
 
-    internal sealed class LocalManager: IDisposable
+    internal sealed class LocalManager : IDisposable
     {
         private static HashSet<string> mChannelIdPool = new HashSet<string>();
 
@@ -96,15 +96,15 @@ namespace ManagedLzma.LZMA
 
         public static void RegisterRemote(string channelId)
         {
-            if(String.IsNullOrEmpty(channelId))
+            if (String.IsNullOrEmpty(channelId))
                 throw new ArgumentException("Invalid channel id.", "channelId");
 
-            if(!mChannelIdPool.Add(channelId))
+            if (!mChannelIdPool.Add(channelId))
                 throw new InvalidOperationException("Duplicate channel id.");
 
             bool newSig1, newSig2;
-            using(var signal1 = new Semaphore(0, 1, channelId + "/signal1", out newSig1))
-            using(var signal2 = new Semaphore(0, 1, channelId + "/signal2", out newSig2))
+            using (var signal1 = new Semaphore(0, 1, channelId + "/signal1", out newSig1))
+            using (var signal2 = new Semaphore(0, 1, channelId + "/signal2", out newSig2))
             {
                 signal1.WaitOne();
                 signal2.Release();
@@ -113,10 +113,10 @@ namespace ManagedLzma.LZMA
 
         public static void ShutdownRemote(string channelId)
         {
-            if(String.IsNullOrEmpty(channelId))
+            if (String.IsNullOrEmpty(channelId))
                 throw new ArgumentException("Invalid channel id.", "channelId");
 
-            if(!mChannelIdPool.Remove(channelId))
+            if (!mChannelIdPool.Remove(channelId))
                 throw new InvalidOperationException("Channel id not registered.");
 
             var type = typeof(RemoteManager);
@@ -127,9 +127,9 @@ namespace ManagedLzma.LZMA
 
         internal static void EnsureServer(string channelId)
         {
-            lock(mSync)
+            lock (mSync)
             {
-                if(mChannelId == null)
+                if (mChannelId == null)
                 {
                     mChannelId = channelId ?? Guid.NewGuid().ToString("N");
 
@@ -148,20 +148,20 @@ namespace ManagedLzma.LZMA
                     // NOTE: Assigning the manager should be the very last thing done in here.
                     mLocalManager = manager;
 
-                    if(channelId != null)
+                    if (channelId != null)
                     {
                         bool newSig1, newSig2;
-                        using(var signal1 = new Semaphore(0, 1, channelId + "/signal1", out newSig1))
-                        using(var signal2 = new Semaphore(0, 1, channelId + "/signal2", out newSig2))
+                        using (var signal1 = new Semaphore(0, 1, channelId + "/signal1", out newSig1))
+                        using (var signal2 = new Semaphore(0, 1, channelId + "/signal2", out newSig2))
                         {
                             signal1.Release();
                             signal2.WaitOne();
                         }
                     }
                 }
-                else if(channelId != null)
+                else if (channelId != null)
                 {
-                    if(channelId != mChannelId)
+                    if (channelId != mChannelId)
                         throw new NotSupportedException("Multiple server channels are not supported.");
                 }
             }
@@ -175,7 +175,7 @@ namespace ManagedLzma.LZMA
         {
             EnsureServer(null);
             Type type = typeof(RemoteManager);
-            if(mChannelIdPool.Count != 0)
+            if (mChannelIdPool.Count != 0)
             {
                 mRemoteChannelId = mChannelIdPool.First();
                 mChannelIdPool.Remove(mRemoteChannelId);
@@ -188,8 +188,8 @@ namespace ManagedLzma.LZMA
                 string remoteChannelId = Guid.NewGuid().ToString("N");
                 mRemoteProcess = new ChildProcess(path, "-ipc " + remoteChannelId);
                 bool newSig1, newSig2;
-                using(var signal1 = new Semaphore(0, 1, remoteChannelId + "/signal1", out newSig1))
-                using(var signal2 = new Semaphore(0, 1, remoteChannelId + "/signal2", out newSig2))
+                using (var signal1 = new Semaphore(0, 1, remoteChannelId + "/signal1", out newSig1))
+                using (var signal2 = new Semaphore(0, 1, remoteChannelId + "/signal2", out newSig2))
                 {
                     signal1.WaitOne();
                     signal2.Release();
@@ -201,10 +201,10 @@ namespace ManagedLzma.LZMA
 
         public void Dispose()
         {
-            if(mRemoteProcess != null)
+            if (mRemoteProcess != null)
                 mRemoteProcess.Dispose();
 
-            if(mRemoteChannelId != null)
+            if (mRemoteChannelId != null)
             {
                 mChannelIdPool.Add(mRemoteChannelId);
                 mRemoteChannelId = null;
@@ -227,7 +227,7 @@ namespace ManagedLzma.LZMA
         }
     }
 
-    internal sealed class InprocManager: IDisposable
+    internal sealed class InprocManager : IDisposable
     {
         private object mSync;
         private Thread mThread;
@@ -247,7 +247,7 @@ namespace ManagedLzma.LZMA
 
         public void Dispose()
         {
-            lock(mSync)
+            lock (mSync)
             {
                 mShutdown = true;
                 Monitor.Pulse(mSync);
@@ -258,17 +258,17 @@ namespace ManagedLzma.LZMA
 
         private void ThreadProc()
         {
-            for(; ; )
+            for (;;)
             {
                 Type type;
                 string method;
                 object[] args;
-                lock(mSync)
+                lock (mSync)
                 {
-                    while(mType == null && !mShutdown)
+                    while (mType == null && !mShutdown)
                         Monitor.Wait(mSync);
 
-                    if(mShutdown)
+                    if (mShutdown)
                         break;
 
                     type = mType;
@@ -290,7 +290,7 @@ namespace ManagedLzma.LZMA
 
                         result = type.InvokeMember(method, flags, null, null, args);
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
                         result = null;
                         error = ex;
@@ -298,7 +298,7 @@ namespace ManagedLzma.LZMA
                 }
                 finally
                 {
-                    lock(mSync)
+                    lock (mSync)
                     {
                         mType = null;
                         mMethod = null;
@@ -314,17 +314,17 @@ namespace ManagedLzma.LZMA
 
         public object Invoke(Type type, string method, params object[] args)
         {
-            if(type == null)
+            if (type == null)
                 throw new ArgumentNullException("type");
 
             object result;
             Exception error;
-            lock(mSync)
+            lock (mSync)
             {
-                while(mType != null && !mShutdown)
+                while (mType != null && !mShutdown)
                     Monitor.Wait(mSync);
 
-                if(mShutdown)
+                if (mShutdown)
                     throw new InvalidOperationException("Manager has been shut down.");
 
                 mType = type;
@@ -335,10 +335,10 @@ namespace ManagedLzma.LZMA
 
                 Monitor.Pulse(mSync);
 
-                while(mType != null && !mShutdown)
+                while (mType != null && !mShutdown)
                     Monitor.Wait(mSync);
 
-                if(mShutdown)
+                if (mShutdown)
                     throw new InvalidOperationException("Manager has been shut down.");
 
                 result = mResult;
@@ -353,7 +353,7 @@ namespace ManagedLzma.LZMA
                 Monitor.Pulse(mSync);
             }
 
-            if(error != null)
+            if (error != null)
                 throw new TargetInvocationException(error);
 
             return result;

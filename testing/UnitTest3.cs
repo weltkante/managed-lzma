@@ -9,7 +9,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace ManagedLzma.LZMA
 {
     [TestClass]
-    public class UnitTest3: TestBase
+    public class UnitTest3 : TestBase
     {
         [TestMethod]
         public void TestMethod64()

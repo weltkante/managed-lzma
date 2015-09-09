@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma.LZMA.Master.SevenZip
 {
-    internal enum BlockType: byte
+    internal enum BlockType : byte
     {
         #region Constants
 
@@ -47,9 +47,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         [Conditional("DEBUG")]
         public static void Assert(bool expression)
         {
-            if(!expression)
+            if (!expression)
             {
-                if(Debugger.IsAttached)
+                if (Debugger.IsAttached)
                     Debugger.Break();
 
                 throw new Exception("Assertion failed.");
@@ -58,22 +58,22 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public static void ReadExact(this Stream stream, byte[] buffer, int offset, int length)
         {
-            if(stream == null)
+            if (stream == null)
                 throw new ArgumentNullException("stream");
 
-            if(buffer == null)
+            if (buffer == null)
                 throw new ArgumentNullException("buffer");
 
-            if(offset < 0 || offset > buffer.Length)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException("offset");
 
-            if(length < 0 || length > buffer.Length - offset)
+            if (length < 0 || length > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("length");
 
-            while(length > 0)
+            while (length > 0)
             {
                 int fetched = stream.Read(buffer, offset, length);
-                if(fetched <= 0)
+                if (fetched <= 0)
                     throw new EndOfStreamException();
 
                 offset += fetched;

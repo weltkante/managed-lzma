@@ -14,16 +14,16 @@ namespace ManagedLzma.LZMA
         [STAThread]
         public static void Main(params string[] args)
         {
-            if(Array.IndexOf(args, "-debug") >= 0)
+            if (Array.IndexOf(args, "-debug") >= 0)
             {
-                if(!System.Diagnostics.Debugger.IsAttached)
+                if (!System.Diagnostics.Debugger.IsAttached)
                     System.Diagnostics.Debugger.Launch();
                 else
                     System.Diagnostics.Debugger.Break();
             }
 
-            for(int i = 0; i < args.Length; i++)
-                if(args[i] == "-remote" && i + 1 < args.Length)
+            for (int i = 0; i < args.Length; i++)
+                if (args[i] == "-remote" && i + 1 < args.Length)
                     LocalManager.RegisterRemote(args[++i]);
 
             Application.EnableVisualStyles();
@@ -35,7 +35,7 @@ namespace ManagedLzma.LZMA
             {
                 // Must be reentrant because we are triggered by the application-idle event.
                 // (The next event may be "on air" before we are executed and unsubscribe ourselves.)
-                if(handler == null)
+                if (handler == null)
                     return;
 
                 Application.Idle -= handler;
@@ -48,7 +48,7 @@ namespace ManagedLzma.LZMA
 
                     Initialize(args);
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     error = ex;
                 }
@@ -57,15 +57,15 @@ namespace ManagedLzma.LZMA
             EventHandler exitHandler = null;
             Application.ApplicationExit += exitHandler = delegate
             {
-                if(exitHandler == null)
+                if (exitHandler == null)
                     return;
 
                 Application.ApplicationExit -= exitHandler;
                 exitHandler = null;
 
-                for(int i = 0; i < args.Length; i++)
+                for (int i = 0; i < args.Length; i++)
                 {
-                    if(args[i] == "-remote" && i + 1 < args.Length)
+                    if (args[i] == "-remote" && i + 1 < args.Length)
                     {
                         try { LocalManager.ShutdownRemote(args[++i]); }
                         catch { }
@@ -75,7 +75,7 @@ namespace ManagedLzma.LZMA
 
             Application.Run();
 
-            if(mControl != null)
+            if (mControl != null)
             {
                 try
                 {
@@ -84,14 +84,14 @@ namespace ManagedLzma.LZMA
                 catch
                 {
                     // Ignore error if we already have something more important.
-                    if(error == null)
+                    if (error == null)
                         throw;
                 }
 
                 mControl = null;
             }
 
-            if(error != null)
+            if (error != null)
                 throw new TargetInvocationException(error);
         }
 
@@ -108,11 +108,11 @@ namespace ManagedLzma.LZMA
 
         private static bool IsChannelId(string arg)
         {
-            if(string.IsNullOrEmpty(arg))
+            if (string.IsNullOrEmpty(arg))
                 return false;
 
-            for(int i = 0; i < arg.Length; i++)
-                if(!IsChannelIdChar(arg[i]))
+            for (int i = 0; i < arg.Length; i++)
+                if (!IsChannelIdChar(arg[i]))
                     return false;
 
             return true;
@@ -121,7 +121,7 @@ namespace ManagedLzma.LZMA
         private static void Initialize(string[] args)
         {
             int index = Array.IndexOf(args, "-ipc") + 1; // zero if not found
-            if(0 < index && index < args.Length && IsChannelId(args[index]))
+            if (0 < index && index < args.Length && IsChannelId(args[index]))
             {
                 LocalManager.EnsureServer(args[index]);
             }
@@ -138,7 +138,7 @@ namespace ManagedLzma.LZMA
         {
             get
             {
-                if(mControl == null)
+                if (mControl == null)
                     throw new InvalidOperationException();
 
                 return mControl.InvokeRequired;
@@ -147,7 +147,7 @@ namespace ManagedLzma.LZMA
 
         public static void Invoke(Action action)
         {
-            if(mControl == null)
+            if (mControl == null)
                 throw new InvalidOperationException();
 
             mControl.Invoke(action);
@@ -155,7 +155,7 @@ namespace ManagedLzma.LZMA
 
         public static void Invoke<T1>(Action<T1> action, T1 arg1)
         {
-            if(mControl == null)
+            if (mControl == null)
                 throw new InvalidOperationException();
 
             mControl.Invoke(action, arg1);
@@ -163,7 +163,7 @@ namespace ManagedLzma.LZMA
 
         public static void Invoke<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2)
         {
-            if(mControl == null)
+            if (mControl == null)
                 throw new InvalidOperationException();
 
             mControl.Invoke(action, arg1, arg2);
@@ -171,7 +171,7 @@ namespace ManagedLzma.LZMA
 
         public static void Invoke<T1, T2, T3>(Action<T1, T2, T3> action, T1 arg1, T2 arg2, T3 arg3)
         {
-            if(mControl == null)
+            if (mControl == null)
                 throw new InvalidOperationException();
 
             mControl.Invoke(action, arg1, arg2, arg3);
@@ -179,7 +179,7 @@ namespace ManagedLzma.LZMA
 
         public static IAsyncResult BeginInvoke(Action action)
         {
-            if(mControl == null)
+            if (mControl == null)
                 throw new InvalidOperationException();
 
             return mControl.BeginInvoke(action);
@@ -187,7 +187,7 @@ namespace ManagedLzma.LZMA
 
         public static object EndInvoke(IAsyncResult result)
         {
-            if(mControl == null)
+            if (mControl == null)
                 throw new InvalidOperationException();
 
             return mControl.EndInvoke(result);

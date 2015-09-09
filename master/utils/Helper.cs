@@ -8,7 +8,7 @@ namespace ManagedLzma.LZMA
     using Master;
     using Testing;
 
-    public class Helper: IHelper
+    public class Helper : IHelper
     {
         public Helper(Guid id)
         {
@@ -22,151 +22,151 @@ namespace ManagedLzma.LZMA
 
         public void LzmaCompress(SharedSettings s)
         {
-            switch(s.Variant)
+            switch (s.Variant)
             {
-            case 1:
-                {
-                    long s_WrittenSize = s.Dst.Length;
+                case 1:
+                    {
+                        long s_WrittenSize = s.Dst.Length;
 
-                    var props = LZMA.CLzmaEncProps.LzmaEncProps_Init();
-                    props.mLevel = s.ActualLevel;
-                    props.mDictSize = (uint)s.ActualDictSize;
-                    props.mLC = s.ActualLC;
-                    props.mLP = s.ActualLP;
-                    props.mPB = s.ActualPB;
-                    props.mAlgo = s.ActualAlgo;
-                    props.mFB = s.ActualFB;
-                    props.mBtMode = s.ActualBTMode;
-                    props.mNumHashBytes = s.ActualNumHashBytes;
-                    props.mMC = s.ActualMC;
-                    props.mWriteEndMark = s.ActualWriteEndMark;
-                    props.mNumThreads = s.ActualNumThreads;
+                        var props = LZMA.CLzmaEncProps.LzmaEncProps_Init();
+                        props.mLevel = s.ActualLevel;
+                        props.mDictSize = (uint)s.ActualDictSize;
+                        props.mLC = s.ActualLC;
+                        props.mLP = s.ActualLP;
+                        props.mPB = s.ActualPB;
+                        props.mAlgo = s.ActualAlgo;
+                        props.mFB = s.ActualFB;
+                        props.mBtMode = s.ActualBTMode;
+                        props.mNumHashBytes = s.ActualNumHashBytes;
+                        props.mMC = s.ActualMC;
+                        props.mWriteEndMark = s.ActualWriteEndMark;
+                        props.mNumThreads = s.ActualNumThreads;
 
-                    var enc = LZMA.LzmaEnc_Create(LZMA.ISzAlloc.SmallAlloc);
-                    var res = enc.LzmaEnc_SetProps(props);
-                    if(res != LZMA.SZ_OK)
-                        throw new Exception("SetProps failed: " + res);
-                    res = enc.LzmaEnc_MemEncode(P.From(s.Dst), ref s_WrittenSize, P.From(s.Src), s.Src.Length,
-                        s.ActualWriteEndMark != 0, null, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
-                    if(res != LZMA.SZ_OK)
-                        throw new Exception("MemEncode failed: " + res);
+                        var enc = LZMA.LzmaEnc_Create(LZMA.ISzAlloc.SmallAlloc);
+                        var res = enc.LzmaEnc_SetProps(props);
+                        if (res != LZMA.SZ_OK)
+                            throw new Exception("SetProps failed: " + res);
+                        res = enc.LzmaEnc_MemEncode(P.From(s.Dst), ref s_WrittenSize, P.From(s.Src), s.Src.Length,
+                            s.ActualWriteEndMark != 0, null, LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
+                        if (res != LZMA.SZ_OK)
+                            throw new Exception("MemEncode failed: " + res);
 
-                    s.Enc = new PZ(new byte[LZMA.LZMA_PROPS_SIZE]);
-                    long s_Enc_Length = s.Enc.Length;
-                    res = enc.LzmaEnc_WriteProperties(P.From(s.Enc), ref s_Enc_Length);
-                    if(res != LZMA.SZ_OK)
-                        throw new Exception("WriteProperties failed: " + res);
-                    if(s.Enc.Length != s.Enc.Buffer.Length)
-                        throw new NotSupportedException();
+                        s.Enc = new PZ(new byte[LZMA.LZMA_PROPS_SIZE]);
+                        long s_Enc_Length = s.Enc.Length;
+                        res = enc.LzmaEnc_WriteProperties(P.From(s.Enc), ref s_Enc_Length);
+                        if (res != LZMA.SZ_OK)
+                            throw new Exception("WriteProperties failed: " + res);
+                        if (s.Enc.Length != s.Enc.Buffer.Length)
+                            throw new NotSupportedException();
 
-                    enc.LzmaEnc_Destroy(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
-                    s.WrittenSize = (int)s_WrittenSize;
-                    s.Enc.Length = (int)s_Enc_Length;
-                }
-                break;
-            default:
-                {
-                    long s_WrittenSize = s.Dst.Length;
-                    s.Enc = new PZ(new byte[LZMA.LZMA_PROPS_SIZE]);
-                    long s_Enc_Length = s.Enc.Length;
-                    var res = LZMA.LzmaCompress(
-                        P.From(s.Dst), ref s_WrittenSize,
-                        P.From(s.Src), s.Src.Length,
-                        s.Enc.Buffer, ref s_Enc_Length,
-                        s.ActualLevel, s.ActualDictSize, s.ActualLC, s.ActualLP, s.ActualPB, s.ActualFB, s.ActualNumThreads);
-                    s.WrittenSize = (int)s_WrittenSize;
-                    s.Enc.Length = (int)s_Enc_Length;
-                    if(res != LZMA.SZ_OK)
-                        throw new Exception("LzmaCompress failed: " + res);
-                    if(s.Enc.Length != s.Enc.Buffer.Length)
-                        throw new NotSupportedException();
-                }
-                break;
+                        enc.LzmaEnc_Destroy(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
+                        s.WrittenSize = (int)s_WrittenSize;
+                        s.Enc.Length = (int)s_Enc_Length;
+                    }
+                    break;
+                default:
+                    {
+                        long s_WrittenSize = s.Dst.Length;
+                        s.Enc = new PZ(new byte[LZMA.LZMA_PROPS_SIZE]);
+                        long s_Enc_Length = s.Enc.Length;
+                        var res = LZMA.LzmaCompress(
+                            P.From(s.Dst), ref s_WrittenSize,
+                            P.From(s.Src), s.Src.Length,
+                            s.Enc.Buffer, ref s_Enc_Length,
+                            s.ActualLevel, s.ActualDictSize, s.ActualLC, s.ActualLP, s.ActualPB, s.ActualFB, s.ActualNumThreads);
+                        s.WrittenSize = (int)s_WrittenSize;
+                        s.Enc.Length = (int)s_Enc_Length;
+                        if (res != LZMA.SZ_OK)
+                            throw new Exception("LzmaCompress failed: " + res);
+                        if (s.Enc.Length != s.Enc.Buffer.Length)
+                            throw new NotSupportedException();
+                    }
+                    break;
             }
         }
 
         public void LzmaUncompress(SharedSettings s)
         {
-            switch(s.Variant)
+            switch (s.Variant)
             {
-            case 1:
-                {
-                    var decoder = new LZMA.CLzmaDec();
-                    decoder.LzmaDec_Construct();
-
-                    var res = decoder.LzmaDec_Allocate(P.From(s.Enc), checked((uint)s.Enc.Length), LZMA.ISzAlloc.SmallAlloc);
-                    if(res != LZMA.SZ_OK)
-                        throw new Exception("Allocate failed: " + res);
-
-                    decoder.LzmaDec_Init();
-
-                    P<byte> dstPtr = P.From(s.Dst);
-                    long s_WrittenSize = s.Dst.Length;
-                    s.WrittenSize = 0;
-
-                    P<byte> srcPtr = P.From(s.Src);
-                    long s_UsedSize = s.Src.Length;
-                    s.UsedSize = 0;
-
-                    for(; ; )
+                case 1:
                     {
-                        LZMA.ELzmaStatus status;
-                        res = decoder.LzmaDec_DecodeToBuf(dstPtr, ref s_WrittenSize, srcPtr, ref s_UsedSize, LZMA.ELzmaFinishMode.LZMA_FINISH_END, out status);
-                        if(res != LZMA.SZ_OK)
-                            throw new Exception("DecodeToBuf failed: " + res);
+                        var decoder = new LZMA.CLzmaDec();
+                        decoder.LzmaDec_Construct();
 
-                        s.WrittenSize += checked((int)s_WrittenSize);
-                        s.UsedSize += checked((int)s_UsedSize);
-                        dstPtr += s_WrittenSize;
-                        srcPtr += s_UsedSize;
-                        s_WrittenSize = dstPtr.mBuffer.Length - dstPtr.mOffset;
-                        s_UsedSize = srcPtr.mBuffer.Length - srcPtr.mOffset;
+                        var res = decoder.LzmaDec_Allocate(P.From(s.Enc), checked((uint)s.Enc.Length), LZMA.ISzAlloc.SmallAlloc);
+                        if (res != LZMA.SZ_OK)
+                            throw new Exception("Allocate failed: " + res);
 
-                        if(status == LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT
-                            || status == LZMA.ELzmaStatus.LZMA_STATUS_NOT_FINISHED)
-                            continue;
+                        decoder.LzmaDec_Init();
 
-                        if(status == LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK)
+                        P<byte> dstPtr = P.From(s.Dst);
+                        long s_WrittenSize = s.Dst.Length;
+                        s.WrittenSize = 0;
+
+                        P<byte> srcPtr = P.From(s.Src);
+                        long s_UsedSize = s.Src.Length;
+                        s.UsedSize = 0;
+
+                        for (;;)
                         {
-                            if(s.ActualWriteEndMark == 0)
-                                throw new Exception("Finished with mark even though we didn't want to write one.");
-                            break;
-                        }
+                            LZMA.ELzmaStatus status;
+                            res = decoder.LzmaDec_DecodeToBuf(dstPtr, ref s_WrittenSize, srcPtr, ref s_UsedSize, LZMA.ELzmaFinishMode.LZMA_FINISH_END, out status);
+                            if (res != LZMA.SZ_OK)
+                                throw new Exception("DecodeToBuf failed: " + res);
 
-                        if(status == LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK)
-                        {
-                            if(s.ActualWriteEndMark != 0)
+                            s.WrittenSize += checked((int)s_WrittenSize);
+                            s.UsedSize += checked((int)s_UsedSize);
+                            dstPtr += s_WrittenSize;
+                            srcPtr += s_UsedSize;
+                            s_WrittenSize = dstPtr.mBuffer.Length - dstPtr.mOffset;
+                            s_UsedSize = srcPtr.mBuffer.Length - srcPtr.mOffset;
+
+                            if (status == LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT
+                                || status == LZMA.ELzmaStatus.LZMA_STATUS_NOT_FINISHED)
+                                continue;
+
+                            if (status == LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK)
+                            {
+                                if (s.ActualWriteEndMark == 0)
+                                    throw new Exception("Finished with mark even though we didn't want to write one.");
                                 break;
+                            }
+
+                            if (status == LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK)
+                            {
+                                if (s.ActualWriteEndMark != 0)
+                                    break;
+                            }
+
+                            throw new NotSupportedException("Unsupported status case: " + status);
                         }
 
-                        throw new NotSupportedException("Unsupported status case: " + status);
+                        decoder.LzmaDec_Free(LZMA.ISzAlloc.SmallAlloc);
+
+                        s.WrittenSize = (int)dstPtr.mOffset;
+                        s.UsedSize = (int)srcPtr.mOffset;
                     }
-
-                    decoder.LzmaDec_Free(LZMA.ISzAlloc.SmallAlloc);
-
-                    s.WrittenSize = (int)dstPtr.mOffset;
-                    s.UsedSize = (int)srcPtr.mOffset;
-                }
-                break;
-            default:
-                {
-                    long s_WrittenSize = s.Dst.Length;
-                    long s_UsedSize = s.Src.Length;
-                    var res = LZMA.LzmaUncompress(
-                        P.From(s.Dst), ref s_WrittenSize,
-                        P.From(s.Src), ref s_UsedSize,
-                        P.From(s.Enc), s.Enc.Length);
-                    if(res != LZMA.SZ_OK)
-                        throw new Exception("LzmaUcompress failed: " + res);
-                    s.WrittenSize = (int)s_WrittenSize;
-                    s.UsedSize = (int)s_UsedSize;
-                }
-                break;
+                    break;
+                default:
+                    {
+                        long s_WrittenSize = s.Dst.Length;
+                        long s_UsedSize = s.Src.Length;
+                        var res = LZMA.LzmaUncompress(
+                            P.From(s.Dst), ref s_WrittenSize,
+                            P.From(s.Src), ref s_UsedSize,
+                            P.From(s.Enc), s.Enc.Length);
+                        if (res != LZMA.SZ_OK)
+                            throw new Exception("LzmaUcompress failed: " + res);
+                        s.WrittenSize = (int)s_WrittenSize;
+                        s.UsedSize = (int)s_UsedSize;
+                    }
+                    break;
             }
         }
     }
 
-    public class Helper2: IHelper
+    public class Helper2 : IHelper
     {
         public Helper2(Guid id)
         {
@@ -178,7 +178,7 @@ namespace ManagedLzma.LZMA
             Trace.StopSession();
         }
 
-        private sealed class CSeqInStream: LZMA.ISeqInStream
+        private sealed class CSeqInStream : LZMA.ISeqInStream
         {
             private SharedSettings s;
 
@@ -198,7 +198,7 @@ namespace ManagedLzma.LZMA
             }
         }
 
-        private sealed class CSeqOutStream: LZMA.ISeqOutStream
+        private sealed class CSeqOutStream : LZMA.ISeqOutStream
         {
             private SharedSettings s;
 
@@ -248,11 +248,11 @@ namespace ManagedLzma.LZMA
             var encoder = new LZMA.CLzma2Enc(LZMA.ISzAlloc.SmallAlloc, LZMA.ISzAlloc.BigAlloc);
 
             var res = encoder.Lzma2Enc_SetProps(props);
-            if(res != LZMA.SZ_OK)
+            if (res != LZMA.SZ_OK)
                 throw new Exception("Lzma2Compress/SetProps failed: " + res);
 
             res = encoder.Lzma2Enc_Encode(output, input, null);
-            if(res != LZMA.SZ_OK)
+            if (res != LZMA.SZ_OK)
                 throw new Exception("Lzma2Compress/Encode failed: " + res);
 
             s.WrittenSize = s.Dst.Offset - dstBase;
@@ -267,44 +267,44 @@ namespace ManagedLzma.LZMA
 
         public void LzmaUncompress(SharedSettings s)
         {
-            if(s.Enc.Length != 1)
+            if (s.Enc.Length != 1)
                 throw new ArgumentException("Settings must contain a single byte.", "propLength");
 
-            if(s.Variant == 1)
+            if (s.Variant == 1)
             {
                 LZMA.CLzma2Dec dec = new LZMA.CLzma2Dec();
                 dec.Lzma2Dec_Construct();
                 var res = dec.Lzma2Dec_Allocate(s.Enc[0], LZMA.ISzAlloc.SmallAlloc);
-                if(res != LZMA.SZ_OK)
+                if (res != LZMA.SZ_OK)
                     throw new Exception("Lzma2Dec_Allocate failed: " + res);
                 dec.Lzma2Dec_Init();
-                for(; ; )
+                for (;;)
                 {
                     long s_WrittenSize = s.Dst.Length - s.Dst.Offset;
                     long s_UsedSize = s.Src.Length - s.Src.Offset;
 
                     LZMA.ELzmaStatus status;
                     res = dec.Lzma2Dec_DecodeToBuf(P.From(s.Dst), ref s_WrittenSize, P.From(s.Src), ref s_UsedSize, LZMA.ELzmaFinishMode.LZMA_FINISH_END, out status);
-                    if(res != LZMA.SZ_OK)
+                    if (res != LZMA.SZ_OK)
                         throw new Exception("Lzma2Dec_DecodeToBuf failed: " + res);
 
                     s.Dst.Offset += checked((int)s_WrittenSize);
                     s.Src.Offset += checked((int)s_UsedSize);
 
-                    if(status == LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT
+                    if (status == LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT
                         || status == LZMA.ELzmaStatus.LZMA_STATUS_NOT_FINISHED)
                         continue;
 
-                    if(status == LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK)
+                    if (status == LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK)
                     {
-                        if(s.ActualWriteEndMark == 0)
+                        if (s.ActualWriteEndMark == 0)
                             throw new Exception("Finished with mark even though we didn't want to write one.");
                         break;
                     }
 
-                    if(status == LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK)
+                    if (status == LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK)
                     {
-                        if(s.ActualWriteEndMark != 0)
+                        if (s.ActualWriteEndMark != 0)
                             break;
                     }
 
@@ -326,22 +326,22 @@ namespace ManagedLzma.LZMA
                     P.From(s.Src), ref s_UsedSize,
                     s.Enc[0], LZMA.ELzmaFinishMode.LZMA_FINISH_END, out status,
                     LZMA.ISzAlloc.SmallAlloc);
-                if(res != LZMA.SZ_OK)
+                if (res != LZMA.SZ_OK)
                     throw new Exception("LzmaUncompress failed: " + res);
-                switch(status)
+                switch (status)
                 {
-                case LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT:
-                    throw new EndOfStreamException();
-                case LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK:
-                    if(s.ActualWriteEndMark == 0)
-                        throw new InvalidDataException();
-                    break;
-                case LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK:
-                    if(s.ActualWriteEndMark != 0)
-                        throw new InvalidDataException();
-                    break;
-                default:
-                    throw new Exception(status.ToString());
+                    case LZMA.ELzmaStatus.LZMA_STATUS_NEEDS_MORE_INPUT:
+                        throw new EndOfStreamException();
+                    case LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK:
+                        if (s.ActualWriteEndMark == 0)
+                            throw new InvalidDataException();
+                        break;
+                    case LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK:
+                        if (s.ActualWriteEndMark != 0)
+                            throw new InvalidDataException();
+                        break;
+                    default:
+                        throw new Exception(status.ToString());
                 }
 
                 s.WrittenSize = checked((int)s_WrittenSize);

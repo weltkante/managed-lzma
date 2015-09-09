@@ -10,7 +10,7 @@ namespace sandbox_7z
 {
     static class Program
     {
-        class Password: master._7zip.Legacy.IPasswordProvider
+        class Password : master._7zip.Legacy.IPasswordProvider
         {
             string _pw;
 

@@ -6,7 +6,7 @@ using System.Text;
 
 namespace master._7zip.Legacy
 {
-    class BcjDecoderStream: DecoderStream
+    class BcjDecoderStream : DecoderStream
     {
         private static readonly bool[] kMaskToAllowedStatus = { true, true, true, false, true, false, false, false };
         private static readonly byte[] kMaskToBitNumber = { 0, 1, 2, 2, 3, 3, 3, 3 };
@@ -21,7 +21,7 @@ namespace master._7zip.Legacy
 
         public BcjDecoderStream(Stream stream, byte[] info, long limit)
         {
-            if(info != null && info.Length != 0)
+            if (info != null && info.Length != 0)
                 throw new NotSupportedException();
 
             mStream = stream;
@@ -34,19 +34,19 @@ namespace master._7zip.Legacy
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if(mOffset == mEnding)
+            if (mOffset == mEnding)
             {
                 mOffset = 0;
                 mEnding = 0;
             }
 
-            while(mEnding - mOffset < 5)
+            while (mEnding - mOffset < 5)
             {
-                if(mInputEnd)
+                if (mInputEnd)
                 {
                     // if less than 5 bytes are left they are copied
                     int n = 0;
-                    while(mOffset < mEnding && count > 0)
+                    while (mOffset < mEnding && count > 0)
                     {
                         buffer[offset++] = mBuffer[mOffset++];
                         count--;
@@ -55,7 +55,7 @@ namespace master._7zip.Legacy
                     return n;
                 }
 
-                if(mBuffer.Length - mOffset < 5)
+                if (mBuffer.Length - mOffset < 5)
                 {
                     Buffer.BlockCopy(mBuffer, mOffset, mBuffer, 0, mEnding - mOffset);
                     mEnding -= mOffset;
@@ -63,7 +63,7 @@ namespace master._7zip.Legacy
                 }
 
                 int delta = mStream.Read(mBuffer, mEnding, mBuffer.Length - mEnding);
-                if(delta == 0)
+                if (delta == 0)
                     mInputEnd = true;
                 else
                     mEnding += delta;
@@ -71,10 +71,10 @@ namespace master._7zip.Legacy
 
             unsafe
             {
-                fixed(byte* pBuffer = mBuffer)
+                fixed (byte* pBuffer = mBuffer)
                 {
                     int delta = x86_Convert(pBuffer + mOffset, Math.Min(mEnding - mOffset, count), (uint)_bufferPos);
-                    if(delta == 0)
+                    if (delta == 0)
                         throw new NotSupportedException();
 
                     Buffer.BlockCopy(mBuffer, mOffset, buffer, offset, delta);
@@ -91,37 +91,37 @@ namespace master._7zip.Legacy
             int bufferPos = 0;
             uint prevMask = mState & 0x7;
 
-            if(size < 5)
+            if (size < 5)
                 return 0;
 
             ip += 5;
             int prevPosT = -1;
 
-            for(; ; )
+            for (;;)
             {
                 byte* p = data + bufferPos;
                 byte* limit = data + size - 4;
 
-                while(p < limit && (*p & 0xFE) != 0xE8)
+                while (p < limit && (*p & 0xFE) != 0xE8)
                     p++;
 
                 bufferPos = (int)(p - data);
-                if(p >= limit)
+                if (p >= limit)
                     break;
 
                 prevPosT = bufferPos - prevPosT;
 
-                if(prevPosT > 3)
+                if (prevPosT > 3)
                 {
                     prevMask = 0;
                 }
                 else
                 {
                     prevMask = (prevMask << ((int)prevPosT - 1)) & 0x7;
-                    if(prevMask != 0)
+                    if (prevMask != 0)
                     {
                         byte b = p[4 - kMaskToBitNumber[prevMask]];
-                        if(!kMaskToAllowedStatus[prevMask] || Test86MSByte(b))
+                        if (!kMaskToAllowedStatus[prevMask] || Test86MSByte(b))
                         {
                             prevPosT = bufferPos;
                             prevMask = ((prevMask << 1) & 0x7) | 1;
@@ -133,20 +133,20 @@ namespace master._7zip.Legacy
 
                 prevPosT = bufferPos;
 
-                if(Test86MSByte(p[4]))
+                if (Test86MSByte(p[4]))
                 {
                     uint src = ((uint)p[4] << 24) | ((uint)p[3] << 16) | ((uint)p[2] << 8) | ((uint)p[1]);
                     uint dest;
-                    for(; ; )
+                    for (;;)
                     {
                         dest = src - (ip + (uint)bufferPos);
 
-                        if(prevMask == 0)
+                        if (prevMask == 0)
                             break;
 
                         int index = kMaskToBitNumber[prevMask] * 8;
                         byte b = (byte)(dest >> (24 - index));
-                        if(!Test86MSByte(b))
+                        if (!Test86MSByte(b))
                             break;
 
                         src = dest ^ ((1u << (32 - index)) - 1);

@@ -11,7 +11,7 @@ namespace master._7zip.Utilities
     /// <remarks>
     /// This stream is a length-constrained wrapper around a cached stream so it does not dispose the inner stream.
     /// </remarks>
-    internal class UnpackSubStream: Stream
+    internal class UnpackSubStream : Stream
     {
         private Stream mSource;
         private long mLength;
@@ -56,23 +56,23 @@ namespace master._7zip.Utilities
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if(buffer == null)
+            if (buffer == null)
                 throw new ArgumentNullException("buffer");
 
-            if(offset < 0 || offset > buffer.Length)
+            if (offset < 0 || offset > buffer.Length)
                 throw new ArgumentOutOfRangeException("offset");
 
-            if(count < 0 || count > buffer.Length - offset)
+            if (count < 0 || count > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException("count");
 
-            if(count > mLength - mOffset)
+            if (count > mLength - mOffset)
                 count = (int)(mLength - mOffset);
 
-            if(count == 0)
+            if (count == 0)
                 return 0;
 
             int processed = mSource.Read(buffer, offset, count);
-            if(processed == 0)
+            if (processed == 0)
                 throw new EndOfStreamException("Decoded stream ended prematurely, unpacked data is corrupt.");
 
             mOffset += processed;

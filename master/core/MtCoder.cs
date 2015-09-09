@@ -26,13 +26,13 @@ namespace ManagedLzma.LZMA.Master
 
             private void LoopThreadFunc()
             {
-                for(; ; )
+                for (;;)
                 {
-                    if(Event_Wait(mStartEvent) != 0)
+                    if (Event_Wait(mStartEvent) != 0)
                         return; // SZ_ERROR_THREAD;
 
                     Trace.MatchObjectWait(this, "LoopThreadFunc");
-                    if(mStop)
+                    if (mStop)
                     {
                         Trace.MatchObjectDestroy(this, "LoopThreadFunc");
                         return; // 0;
@@ -42,7 +42,7 @@ namespace ManagedLzma.LZMA.Master
                     /* mRes = mFunc(mParam)*/
                     mFunc();
 
-                    if(Event_Set(mFinishedEvent) != 0)
+                    if (Event_Set(mFinishedEvent) != 0)
                         return; // SZ_ERROR_THREAD;
                 }
             }
@@ -72,9 +72,9 @@ namespace ManagedLzma.LZMA.Master
                 Trace.MatchObjectWait(this, "LoopThread_Create");
 
                 SRes res;
-                if((res = AutoResetEvent_CreateNotSignaled(out mStartEvent)) != SZ_OK)
+                if ((res = AutoResetEvent_CreateNotSignaled(out mStartEvent)) != SZ_OK)
                     return res;
-                if((res = AutoResetEvent_CreateNotSignaled(out mFinishedEvent)) != SZ_OK)
+                if ((res = AutoResetEvent_CreateNotSignaled(out mFinishedEvent)) != SZ_OK)
                     return res;
                 return Thread_Create(out mThread, LoopThreadFunc, "LZMA 2 Loop Thread");
             }
@@ -85,7 +85,7 @@ namespace ManagedLzma.LZMA.Master
                 mStop = true;
                 Trace.MatchObjectWait(this, "LoopThread_StopAndWait");
 
-                if(Event_Set(mStartEvent) != 0)
+                if (Event_Set(mStartEvent) != 0)
                     return SZ_ERROR_THREAD;
 
                 return Thread_Wait(mThread);
@@ -128,7 +128,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal void MtProgress_Init(ICompressProgress progress)
             {
-                for(uint i = 0; i < NUM_MT_CODER_THREADS_MAX; i++)
+                for (uint i = 0; i < NUM_MT_CODER_THREADS_MAX; i++)
                     mInSizes[i] = mOutSizes[i] = 0;
 
                 mTotalInSize = 0;
@@ -145,7 +145,7 @@ namespace ManagedLzma.LZMA.Master
 
             private static void UPDATE_PROGRESS(ulong size, ref ulong prev, ref ulong total)
             {
-                if(size != ~0ul)
+                if (size != ~0ul)
                 {
                     total += size - prev;
                     prev = size;
@@ -162,7 +162,7 @@ namespace ManagedLzma.LZMA.Master
                 CriticalSection_Enter(mCS);
                 UPDATE_PROGRESS(inSize, ref mInSizes[index], ref mTotalInSize);
                 UPDATE_PROGRESS(outSize, ref mOutSizes[index], ref mTotalOutSize);
-                if(mRes == SZ_OK)
+                if (mRes == SZ_OK)
                     mRes = Progress(mProgress, mTotalInSize, mTotalOutSize);
                 SRes res = mRes;
                 CriticalSection_Leave(mCS);
@@ -172,7 +172,7 @@ namespace ManagedLzma.LZMA.Master
             internal void MtProgress_SetError(SRes res)
             {
                 CriticalSection_Enter(mCS);
-                if(mRes == SZ_OK)
+                if (mRes == SZ_OK)
                     mRes = res;
                 CriticalSection_Leave(mCS);
             }
@@ -219,7 +219,7 @@ namespace ManagedLzma.LZMA.Master
             internal CMtThread GET_NEXT_THREAD()
             {
                 int index = mIndex + 1;
-                if(index == mMtCoder.mNumThreads)
+                if (index == mMtCoder.mNumThreads)
                     index = 0;
 
                 return mMtCoder.mThreads[index];
@@ -228,13 +228,13 @@ namespace ManagedLzma.LZMA.Master
             internal SRes MtThread_Process(out bool stop)
             {
                 stop = true;
-                if(Event_Wait(mCanRead) != 0)
+                if (Event_Wait(mCanRead) != 0)
                     return SZ_ERROR_THREAD;
 
                 CMtThread next = GET_NEXT_THREAD();
 
                 Trace.MatchObjectWait(this, "MtThread_Process");
-                if(mStopReading)
+                if (mStopReading)
                 {
                     next.mStopReading = true;
                     Trace.MatchObjectWait(this, "MtThread_Process");
@@ -247,7 +247,7 @@ namespace ManagedLzma.LZMA.Master
                     long destSize = mOutBufSize;
 
                     SRes res;
-                    if((res = CMtCoder.FullRead(mMtCoder.mInStream, mInBuf, ref size)) != SZ_OK)
+                    if ((res = CMtCoder.FullRead(mMtCoder.mInStream, mInBuf, ref size)) != SZ_OK)
                         return res;
 
                     stop = (size != mMtCoder.mBlockSize);
@@ -256,26 +256,26 @@ namespace ManagedLzma.LZMA.Master
                     next.mStopReading = stop;
                     Trace.MatchObjectWait(this, "MtThread_Process:2");
 
-                    if(Event_Set(next.mCanRead) != 0)
+                    if (Event_Set(next.mCanRead) != 0)
                         return SZ_ERROR_THREAD;
 
-                    if((res = mMtCoder.mMtCallback.Code(mIndex, mOutBuf, ref destSize, mInBuf, size, stop)) != SZ_OK)
+                    if ((res = mMtCoder.mMtCallback.Code(mIndex, mOutBuf, ref destSize, mInBuf, size, stop)) != SZ_OK)
                         return res;
 
                     mMtCoder.mMtProgress.MtProgress_Reinit(mIndex);
 
-                    if(Event_Wait(mCanWrite) != 0)
+                    if (Event_Wait(mCanWrite) != 0)
                         return SZ_ERROR_THREAD;
 
                     Trace.MatchObjectWait(this, "MtThread_Process:3");
-                    if(mStopWriting)
+                    if (mStopWriting)
                     {
                         Trace.MatchObjectWait(this, "MtThread_Process:3");
                         return SZ_ERROR_FAIL;
                     }
                     Trace.MatchObjectWait(this, "MtThread_Process:3");
 
-                    if(mMtCoder.mOutStream.Write(mOutBuf, destSize) != destSize)
+                    if (mMtCoder.mOutStream.Write(mOutBuf, destSize) != destSize)
                         return SZ_ERROR_WRITE;
 
                     return Event_Set(next.mCanWrite) == 0 ? SZ_OK : SZ_ERROR_THREAD;
@@ -284,13 +284,13 @@ namespace ManagedLzma.LZMA.Master
 
             internal void ThreadFunc()
             {
-                for(; ; )
+                for (;;)
                 {
                     CMtThread next = GET_NEXT_THREAD();
 
                     bool stop;
                     SRes res = MtThread_Process(out stop);
-                    if(res != SZ_OK)
+                    if (res != SZ_OK)
                     {
                         mMtCoder.MtCoder_SetError(res);
                         mMtCoder.mMtProgress.MtProgress_SetError(res);
@@ -305,7 +305,7 @@ namespace ManagedLzma.LZMA.Master
                         return; // res;
                     }
 
-                    if(stop)
+                    if (stop)
                         return; // 0;
                 }
             }
@@ -325,18 +325,18 @@ namespace ManagedLzma.LZMA.Master
                 Trace.MatchObjectDestroy(this, "CMtThread_Destruct");
                 CMtThread_CloseEvents();
 
-                if(Thread_WasCreated(mThread.mThread))
+                if (Thread_WasCreated(mThread.mThread))
                 {
                     mThread.LoopThread_StopAndWait();
                     mThread.LoopThread_Close();
                 }
 
-                if(mMtCoder.mAlloc != null)
+                if (mMtCoder.mAlloc != null)
                     IAlloc_FreeBytes(mMtCoder.mAlloc, mOutBuf);
 
                 mOutBuf = null;
 
-                if(mMtCoder.mAlloc != null)
+                if (mMtCoder.mAlloc != null)
                     IAlloc_FreeBytes(mMtCoder.mAlloc, mInBuf);
 
                 mInBuf = null;
@@ -344,21 +344,21 @@ namespace ManagedLzma.LZMA.Master
 
             internal SRes CMtThread_Prepare()
             {
-                if(mInBuf == null || mInBufSize != mMtCoder.mBlockSize)
+                if (mInBuf == null || mInBufSize != mMtCoder.mBlockSize)
                 {
                     IAlloc_FreeBytes(mMtCoder.mAlloc, mInBuf);
                     mInBufSize = mMtCoder.mBlockSize;
                     mInBuf = IAlloc_AllocBytes(mMtCoder.mAlloc, mInBufSize);
-                    if(mInBuf == null)
+                    if (mInBuf == null)
                         return SZ_ERROR_MEM;
                 }
 
-                if(mOutBuf == null || mOutBufSize != mMtCoder.mDestBlockSize)
+                if (mOutBuf == null || mOutBufSize != mMtCoder.mDestBlockSize)
                 {
                     IAlloc_FreeBytes(mMtCoder.mAlloc, mOutBuf);
                     mOutBufSize = mMtCoder.mDestBlockSize;
                     mOutBuf = IAlloc_AllocBytes(mMtCoder.mAlloc, mOutBufSize);
-                    if(mOutBuf == null)
+                    if (mOutBuf == null)
                         return SZ_ERROR_MEM;
                 }
 
@@ -367,10 +367,10 @@ namespace ManagedLzma.LZMA.Master
                 mStopWriting = false;
                 Trace.MatchObjectWait(this, "CMtThread_Prepare");
 
-                if(AutoResetEvent_CreateNotSignaled(out mCanRead) != SZ_OK)
+                if (AutoResetEvent_CreateNotSignaled(out mCanRead) != SZ_OK)
                     return SZ_ERROR_THREAD;
 
-                if(AutoResetEvent_CreateNotSignaled(out mCanWrite) != SZ_OK)
+                if (AutoResetEvent_CreateNotSignaled(out mCanWrite) != SZ_OK)
                     return SZ_ERROR_THREAD;
 
                 return SZ_OK;
@@ -408,7 +408,7 @@ namespace ManagedLzma.LZMA.Master
                 mAlloc = null;
 
                 mThreads = new CMtThread[NUM_MT_CODER_THREADS_MAX];
-                for(int i = 0; i < mThreads.Length; i++)
+                for (int i = 0; i < mThreads.Length; i++)
                     mThreads[i] = new CMtThread(i, this);
 
                 CriticalSection_Init(out mCS);
@@ -417,7 +417,7 @@ namespace ManagedLzma.LZMA.Master
 
             internal void MtCoder_Destruct()
             {
-                for(uint i = 0; i < mThreads.Length; i++)
+                for (uint i = 0; i < mThreads.Length; i++)
                     mThreads[i].CMtThread_Destruct();
 
                 CriticalSection_Delete(mCS);
@@ -432,21 +432,21 @@ namespace ManagedLzma.LZMA.Master
 
                 mMtProgress.MtProgress_Init(mProgress);
 
-                for(uint i = 0; i < numThreads; i++)
+                for (uint i = 0; i < numThreads; i++)
                 {
-                    if((res = mThreads[i].CMtThread_Prepare()) != SZ_OK)
+                    if ((res = mThreads[i].CMtThread_Prepare()) != SZ_OK)
                         return res;
                 }
 
-                for(uint i = 0; i < numThreads; i++)
+                for (uint i = 0; i < numThreads; i++)
                 {
                     CMtThread t = mThreads[i];
                     CLoopThread lt = t.mThread;
 
-                    if(!Thread_WasCreated(lt.mThread))
+                    if (!Thread_WasCreated(lt.mThread))
                     {
                         lt.mFunc = t.ThreadFunc;
-                        if(lt.LoopThread_Create() != SZ_OK)
+                        if (lt.LoopThread_Create() != SZ_OK)
                         {
                             res = SZ_ERROR_THREAD;
                             break;
@@ -454,13 +454,13 @@ namespace ManagedLzma.LZMA.Master
                     }
                 }
 
-                if(res == SZ_OK)
+                if (res == SZ_OK)
                 {
                     int i;
-                    for(i = 0; i < numThreads; i++)
+                    for (i = 0; i < numThreads; i++)
                     {
                         CMtThread t = mThreads[i];
-                        if(t.mThread.LoopThread_StartSubThread() != SZ_OK)
+                        if (t.mThread.LoopThread_StartSubThread() != SZ_OK)
                         {
                             res = SZ_ERROR_THREAD;
                             Trace.MatchObjectWait(mThreads[0], "MtCoder_Code");
@@ -473,11 +473,11 @@ namespace ManagedLzma.LZMA.Master
                     Event_Set(mThreads[0].mCanWrite);
                     Event_Set(mThreads[0].mCanRead);
 
-                    for(int j = 0; j < i; j++)
+                    for (int j = 0; j < i; j++)
                         mThreads[j].mThread.LoopThread_WaitSubThread();
                 }
 
-                for(uint i = 0; i < numThreads; i++)
+                for (uint i = 0; i < numThreads; i++)
                     mThreads[i].CMtThread_CloseEvents();
 
                 return (res == SZ_OK) ? mRes : res;
@@ -490,7 +490,7 @@ namespace ManagedLzma.LZMA.Master
             internal void MtCoder_SetError(SRes res)
             {
                 CriticalSection_Enter(mCS);
-                if(mRes == SZ_OK)
+                if (mRes == SZ_OK)
                     mRes = res;
                 CriticalSection_Leave(mCS);
             }
@@ -499,16 +499,16 @@ namespace ManagedLzma.LZMA.Master
             {
                 long size = processedSize;
                 processedSize = 0;
-                while(size != 0)
+                while (size != 0)
                 {
                     long curSize = size;
                     SRes res = stream.Read(data, ref curSize);
                     processedSize += curSize;
                     data += curSize;
                     size -= curSize;
-                    if(res != SZ_OK)
+                    if (res != SZ_OK)
                         return res;
-                    if(curSize == 0)
+                    if (curSize == 0)
                         return SZ_OK;
                 }
                 return SZ_OK;

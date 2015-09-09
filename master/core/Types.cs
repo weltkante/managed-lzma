@@ -49,7 +49,7 @@ namespace ManagedLzma.LZMA.Master
             SRes Read(P<byte> buf, ref long size);
         }
 
-        public class CSeqInStream: ISeqInStream
+        public class CSeqInStream : ISeqInStream
         {
             private Func<P<byte>, long, long> mCallback;
 
@@ -73,7 +73,7 @@ namespace ManagedLzma.LZMA.Master
             long Write(P<byte> buf, long size);
         }
 
-        public class CSeqOutStream: ISeqOutStream
+        public class CSeqOutStream : ISeqOutStream
         {
             private Action<P<byte>, long> mCallback;
 
@@ -84,7 +84,7 @@ namespace ManagedLzma.LZMA.Master
 
             long ISeqOutStream.Write(P<byte> buf, long size)
             {
-                if(size <= 0)
+                if (size <= 0)
                 {
                     System.Diagnostics.Debugger.Break();
                     return -1;
@@ -129,7 +129,7 @@ namespace ManagedLzma.LZMA.Master
 #endif
 
             public T AllocObject<T>(object p)
-                where T: class, new()
+                where T : class, new()
             {
 #if !DISABLE_TRACE
                 if(!CheckAllocObject<T>())
@@ -140,10 +140,10 @@ namespace ManagedLzma.LZMA.Master
 
             public byte[] AllocBytes(object p, long size)
             {
-                lock(Cache1)
+                lock (Cache1)
                 {
                     List<byte[]> cache;
-                    if(Cache1.TryGetValue(size, out cache) && cache.Count > 0)
+                    if (Cache1.TryGetValue(size, out cache) && cache.Count > 0)
                     {
                         byte[] buffer = cache[cache.Count - 1];
                         cache.RemoveAt(cache.Count - 1);
@@ -157,10 +157,10 @@ namespace ManagedLzma.LZMA.Master
 
             public ushort[] AllocUInt16(object p, long size)
             {
-                lock(Cache2)
+                lock (Cache2)
                 {
                     List<ushort[]> cache;
-                    if(Cache2.TryGetValue(size, out cache) && cache.Count > 0)
+                    if (Cache2.TryGetValue(size, out cache) && cache.Count > 0)
                     {
                         ushort[] buffer = cache[cache.Count - 1];
                         cache.RemoveAt(cache.Count - 1);
@@ -174,10 +174,10 @@ namespace ManagedLzma.LZMA.Master
 
             public uint[] AllocUInt32(object p, long size)
             {
-                lock(Cache3)
+                lock (Cache3)
                 {
                     List<uint[]> cache;
-                    if(Cache3.TryGetValue(size, out cache) && cache.Count > 0)
+                    if (Cache3.TryGetValue(size, out cache) && cache.Count > 0)
                     {
                         uint[] buffer = cache[cache.Count - 1];
                         cache.RemoveAt(cache.Count - 1);
@@ -196,12 +196,12 @@ namespace ManagedLzma.LZMA.Master
 
             public void FreeBytes(object p, byte[] buffer)
             {
-                if(buffer != null)
+                if (buffer != null)
                 {
-                    lock(Cache1)
+                    lock (Cache1)
                     {
                         List<byte[]> cache;
-                        if(!Cache1.TryGetValue(buffer.Length, out cache))
+                        if (!Cache1.TryGetValue(buffer.Length, out cache))
                             Cache1.Add(buffer.Length, cache = new List<byte[]>());
 
                         cache.Add(buffer);
@@ -211,12 +211,12 @@ namespace ManagedLzma.LZMA.Master
 
             public void FreeUInt16(object p, ushort[] buffer)
             {
-                if(buffer != null)
+                if (buffer != null)
                 {
-                    lock(Cache2)
+                    lock (Cache2)
                     {
                         List<ushort[]> cache;
-                        if(!Cache2.TryGetValue(buffer.Length, out cache))
+                        if (!Cache2.TryGetValue(buffer.Length, out cache))
                             Cache2.Add(buffer.Length, cache = new List<ushort[]>());
 
                         cache.Add(buffer);
@@ -226,12 +226,12 @@ namespace ManagedLzma.LZMA.Master
 
             public void FreeUInt32(object p, uint[] buffer)
             {
-                if(buffer != null)
+                if (buffer != null)
                 {
-                    lock(Cache3)
+                    lock (Cache3)
                     {
                         List<uint[]> cache;
-                        if(!Cache3.TryGetValue(buffer.Length, out cache))
+                        if (!Cache3.TryGetValue(buffer.Length, out cache))
                             Cache3.Add(buffer.Length, cache = new List<uint[]>());
 
                         cache.Add(buffer);

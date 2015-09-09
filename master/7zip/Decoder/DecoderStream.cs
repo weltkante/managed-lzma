@@ -6,7 +6,7 @@ using System.IO;
 
 namespace master._7zip.Legacy
 {
-    abstract class DecoderStream: Stream
+    abstract class DecoderStream : Stream
     {
         public override bool CanRead
         {
@@ -59,11 +59,11 @@ namespace master._7zip.Legacy
     {
         private static int FindCoderIndexForOutStreamIndex(CFolder folderInfo, int outStreamIndex)
         {
-            for(int coderIndex = 0; coderIndex < folderInfo.Coders.Count; coderIndex++)
+            for (int coderIndex = 0; coderIndex < folderInfo.Coders.Count; coderIndex++)
             {
                 var coderInfo = folderInfo.Coders[coderIndex];
                 outStreamIndex -= coderInfo.NumOutStreams;
-                if(outStreamIndex < 0)
+                if (outStreamIndex < 0)
                     return coderIndex;
             }
 
@@ -76,17 +76,17 @@ namespace master._7zip.Legacy
             primaryCoderIndex = -1;
             primaryOutStreamIndex = -1;
 
-            for(int outStreamIndex = 0, coderIndex = 0;
+            for (int outStreamIndex = 0, coderIndex = 0;
                 coderIndex < folderInfo.Coders.Count;
                 coderIndex++)
             {
-                for(int coderOutStreamIndex = 0;
+                for (int coderOutStreamIndex = 0;
                     coderOutStreamIndex < folderInfo.Coders[coderIndex].NumOutStreams;
                     coderOutStreamIndex++, outStreamIndex++)
                 {
-                    if(folderInfo.FindBindPairForOutStream(outStreamIndex) < 0)
+                    if (folderInfo.FindBindPairForOutStream(outStreamIndex) < 0)
                     {
-                        if(foundPrimaryOutStream)
+                        if (foundPrimaryOutStream)
                             throw new NotSupportedException("Multiple output streams.");
 
                         foundPrimaryOutStream = true;
@@ -96,41 +96,41 @@ namespace master._7zip.Legacy
                 }
             }
 
-            if(!foundPrimaryOutStream)
+            if (!foundPrimaryOutStream)
                 throw new NotSupportedException("No output stream.");
         }
 
         private static Stream CreateDecoderStream(Stream[] packStreams, long[] packSizes, Stream[] outStreams, CFolder folderInfo, int coderIndex, IPasswordProvider pass)
         {
             var coderInfo = folderInfo.Coders[coderIndex];
-            if(coderInfo.NumOutStreams != 1)
+            if (coderInfo.NumOutStreams != 1)
                 throw new NotSupportedException("Multiple output streams are not supported.");
 
             int inStreamId = 0;
-            for(int i = 0; i < coderIndex; i++)
+            for (int i = 0; i < coderIndex; i++)
                 inStreamId += folderInfo.Coders[i].NumInStreams;
 
             int outStreamId = 0;
-            for(int i = 0; i < coderIndex; i++)
+            for (int i = 0; i < coderIndex; i++)
                 outStreamId += folderInfo.Coders[i].NumOutStreams;
 
             Stream[] inStreams = new Stream[coderInfo.NumInStreams];
 
-            for(int i = 0; i < inStreams.Length; i++, inStreamId++)
+            for (int i = 0; i < inStreams.Length; i++, inStreamId++)
             {
                 int bindPairIndex = folderInfo.FindBindPairForInStream(inStreamId);
-                if(bindPairIndex >= 0)
+                if (bindPairIndex >= 0)
                 {
                     int pairedOutIndex = folderInfo.BindPairs[bindPairIndex].OutIndex;
 
-                    if(outStreams[pairedOutIndex] != null)
+                    if (outStreams[pairedOutIndex] != null)
                         throw new NotSupportedException("Overlapping stream bindings are not supported.");
 
                     int otherCoderIndex = FindCoderIndexForOutStreamIndex(folderInfo, pairedOutIndex);
                     inStreams[i] = CreateDecoderStream(packStreams, packSizes, outStreams, folderInfo, otherCoderIndex, pass);
                     //inStreamSizes[i] = folderInfo.UnpackSizes[pairedOutIndex];
 
-                    if(outStreams[pairedOutIndex] != null)
+                    if (outStreams[pairedOutIndex] != null)
                         throw new NotSupportedException("Overlapping stream bindings are not supported.");
 
                     outStreams[pairedOutIndex] = inStreams[i];
@@ -138,7 +138,7 @@ namespace master._7zip.Legacy
                 else
                 {
                     int index = folderInfo.FindPackStreamArrayIndex(inStreamId);
-                    if(index < 0)
+                    if (index < 0)
                         throw new NotSupportedException("Could not find input stream binding.");
 
                     inStreams[i] = packStreams[index];
@@ -152,13 +152,13 @@ namespace master._7zip.Legacy
 
         internal static Stream CreateDecoderStream(Stream inStream, long startPos, long[] packSizes, CFolder folderInfo, IPasswordProvider pass)
         {
-            if(!folderInfo.CheckStructure())
+            if (!folderInfo.CheckStructure())
                 throw new NotSupportedException("Unsupported stream binding structure.");
 
             // We have multiple views into the same stream which will be used by several threads - need to sync those.
             object sync = new object();
             Stream[] inStreams = new Stream[folderInfo.PackStreams.Count];
-            for(int j = 0; j < folderInfo.PackStreams.Count; j++)
+            for (int j = 0; j < folderInfo.PackStreams.Count; j++)
             {
                 inStreams[j] = new SyncStreamView(sync, inStream, startPos, packSizes[j]);
                 startPos += packSizes[j];

@@ -26,7 +26,7 @@ namespace ManagedLzma.LZMA.Master
 
         internal static void Thread_Close(ref CThread p)
         {
-            if(p != null)
+            if (p != null)
             {
 #if !DISABLE_TRACE
                 Trace.MatchThreadClose(p._thread);
@@ -53,7 +53,7 @@ namespace ManagedLzma.LZMA.Master
 #if !DISABLE_TRACE
             p._thread = Trace.MatchThreadStart(func);
 #else
-            p._thread = new System.Threading.Thread(delegate() { func(); });
+            p._thread = new System.Threading.Thread(delegate () { func(); });
             p._thread.Name = threadName;
             p._thread.Start();
 #endif
@@ -85,7 +85,7 @@ namespace ManagedLzma.LZMA.Master
 
         internal static void Event_Close(ref CEvent p)
         {
-            if(p != null)
+            if (p != null)
             {
 #if !DISABLE_TRACE
                 Trace.MatchObjectDestroy(p, "Event_Close");
@@ -155,7 +155,7 @@ namespace ManagedLzma.LZMA.Master
 
         internal static void Semaphore_Close(ref CSemaphore p)
         {
-            if(p != null)
+            if (p != null)
             {
 #if !DISABLE_TRACE
                 Trace.MatchObjectDestroy(p, "Semaphore_Close");

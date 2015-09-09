@@ -56,7 +56,7 @@ namespace master._7zip.Legacy
             PackStreamStartPositions.Clear();
 
             long startPos = 0;
-            for(int i = 0; i < PackSizes.Count; i++)
+            for (int i = 0; i < PackSizes.Count; i++)
             {
                 PackStreamStartPositions.Add(startPos);
                 startPos += PackSizes[i];
@@ -70,30 +70,30 @@ namespace master._7zip.Legacy
 
             int folderIndex = 0;
             int indexInFolder = 0;
-            for(int i = 0; i < Files.Count; i++)
+            for (int i = 0; i < Files.Count; i++)
             {
                 CFileItem file = Files[i];
 
                 bool emptyStream = !file.HasStream;
 
-                if(emptyStream && indexInFolder == 0)
+                if (emptyStream && indexInFolder == 0)
                 {
                     FileIndexToFolderIndexMap.Add(-1);
                     continue;
                 }
 
-                if(indexInFolder == 0)
+                if (indexInFolder == 0)
                 {
                     // v3.13 incorrectly worked with empty folders
                     // v4.07: Loop for skipping empty folders
-                    for(; ; )
+                    for (;;)
                     {
-                        if(folderIndex >= Folders.Count)
+                        if (folderIndex >= Folders.Count)
                             throw new InvalidDataException();
 
                         FolderStartFileIndex.Add(i); // check it
 
-                        if(NumUnpackStreamsVector[folderIndex] != 0)
+                        if (NumUnpackStreamsVector[folderIndex] != 0)
                             break;
 
                         folderIndex++;
@@ -102,12 +102,12 @@ namespace master._7zip.Legacy
 
                 FileIndexToFolderIndexMap.Add(folderIndex);
 
-                if(emptyStream)
+                if (emptyStream)
                     continue;
 
                 indexInFolder++;
 
-                if(indexInFolder >= NumUnpackStreamsVector[folderIndex])
+                if (indexInFolder >= NumUnpackStreamsVector[folderIndex])
                 {
                     folderIndex++;
                     indexInFolder = 0;
@@ -133,7 +133,7 @@ namespace master._7zip.Legacy
             CFolder folder = Folders[folderIndex];
 
             long size = 0;
-            for(int i = 0; i < folder.PackStreams.Count; i++)
+            for (int i = 0; i < folder.PackStreams.Count; i++)
                 size += PackSizes[packStreamIndex + i];
 
             return size;
@@ -147,8 +147,8 @@ namespace master._7zip.Legacy
         private long GetFilePackSize(int fileIndex)
         {
             int folderIndex = FileIndexToFolderIndexMap[fileIndex];
-            if(folderIndex != -1)
-                if(FolderStartFileIndex[folderIndex] == fileIndex)
+            if (folderIndex != -1)
+                if (FolderStartFileIndex[folderIndex] == fileIndex)
                     return GetFolderFullPackSize(folderIndex);
             return 0;
         }
@@ -206,7 +206,7 @@ namespace master._7zip.Legacy
 
         public Byte ReadByte()
         {
-            if(_offset >= _ending)
+            if (_offset >= _ending)
                 throw new EndOfStreamException();
 
             return _buffer[_offset++];
@@ -214,16 +214,16 @@ namespace master._7zip.Legacy
 
         public void ReadBytes(byte[] buffer, int offset, int length)
         {
-            if(length > _ending - _offset)
+            if (length > _ending - _offset)
                 throw new EndOfStreamException();
 
-            while(length-- > 0)
+            while (length-- > 0)
                 buffer[offset++] = _buffer[_offset++];
         }
 
         public void SkipData(long size)
         {
-            if(size > _ending - _offset)
+            if (size > _ending - _offset)
                 throw new EndOfStreamException();
 
             _offset += (int)size;
@@ -237,23 +237,23 @@ namespace master._7zip.Legacy
 
         public ulong ReadNumber()
         {
-            if(_offset >= _ending)
+            if (_offset >= _ending)
                 throw new EndOfStreamException();
 
             byte firstByte = _buffer[_offset++];
             byte mask = 0x80;
             ulong value = 0;
 
-            for(int i = 0; i < 8; i++)
+            for (int i = 0; i < 8; i++)
             {
-                if((firstByte & mask) == 0)
+                if ((firstByte & mask) == 0)
                 {
                     ulong highPart = firstByte & (mask - 1u);
                     value += highPart << (i * 8);
                     return value;
                 }
 
-                if(_offset >= _ending)
+                if (_offset >= _ending)
                     throw new EndOfStreamException();
 
                 value |= (ulong)_buffer[_offset++] << (8 * i);
@@ -266,7 +266,7 @@ namespace master._7zip.Legacy
         public int ReadNum()
         {
             ulong value = ReadNumber();
-            if(value > Int32.MaxValue)
+            if (value > Int32.MaxValue)
                 throw new NotSupportedException();
 
             return (int)value;
@@ -274,7 +274,7 @@ namespace master._7zip.Legacy
 
         public uint ReadUInt32()
         {
-            if(_offset + 4 > _ending)
+            if (_offset + 4 > _ending)
                 throw new EndOfStreamException();
 
             uint res = Get32(_buffer, _offset);
@@ -284,7 +284,7 @@ namespace master._7zip.Legacy
 
         public ulong ReadUInt64()
         {
-            if(_offset + 8 > _ending)
+            if (_offset + 8 > _ending)
                 throw new EndOfStreamException();
 
             ulong res = Get64(_buffer, _offset);
@@ -296,12 +296,12 @@ namespace master._7zip.Legacy
         {
             int ending = _offset;
 
-            for(; ; )
+            for (;;)
             {
-                if(ending + 2 > _ending)
+                if (ending + 2 > _ending)
                     throw new EndOfStreamException();
 
-                if(_buffer[ending] == 0 && _buffer[ending + 1] == 0)
+                if (_buffer[ending] == 0 && _buffer[ending + 1] == 0)
                     break;
 
                 ending += 2;
@@ -315,7 +315,7 @@ namespace master._7zip.Legacy
         #endregion
     }
 
-    internal struct CStreamSwitch: IDisposable
+    internal struct CStreamSwitch : IDisposable
     {
         private ArchiveReader _archive;
         private bool _needRemove;
@@ -323,13 +323,13 @@ namespace master._7zip.Legacy
 
         public void Dispose()
         {
-            if(_active)
+            if (_active)
             {
                 _active = false;
                 Log.WriteLine("[end of switch]");
             }
 
-            if(_needRemove)
+            if (_needRemove)
             {
                 _needRemove = false;
                 _archive.DeleteByteStream();
@@ -351,10 +351,10 @@ namespace master._7zip.Legacy
             _active = true;
 
             byte external = archive.ReadByte();
-            if(external != 0)
+            if (external != 0)
             {
                 int dataIndex = archive.ReadNum();
-                if(dataIndex < 0 || dataIndex >= dataVector.Count)
+                if (dataIndex < 0 || dataIndex >= dataVector.Count)
                     throw new InvalidDataException();
 
                 Log.WriteLine("[switch to stream {0}]", dataIndex);
@@ -427,7 +427,7 @@ namespace master._7zip.Legacy
         private BlockType? ReadId()
         {
             ulong id = _currentReader.ReadNumber();
-            if(id > 25)
+            if (id > 25)
                 return null;
 
             Log.WriteLine("ReadId: {0}", (BlockType)id);
@@ -446,12 +446,12 @@ namespace master._7zip.Legacy
 
         private void WaitAttribute(BlockType attribute)
         {
-            for(; ; )
+            for (;;)
             {
                 BlockType? type = ReadId();
-                if(type == attribute)
+                if (type == attribute)
                     return;
-                if(type == BlockType.End)
+                if (type == BlockType.End)
                     throw new InvalidDataException();
                 SkipData();
             }
@@ -459,7 +459,7 @@ namespace master._7zip.Legacy
 
         private void ReadArchiveProperties()
         {
-            while(ReadId() != BlockType.End)
+            while (ReadId() != BlockType.End)
                 SkipData();
         }
 
@@ -474,15 +474,15 @@ namespace master._7zip.Legacy
             byte data = 0;
             byte mask = 0;
 
-            for(int i = 0; i < length; i++)
+            for (int i = 0; i < length; i++)
             {
-                if(mask == 0)
+                if (mask == 0)
                 {
                     data = ReadByte();
                     mask = 0x80;
                 }
 
-                if((data & mask) != 0)
+                if ((data & mask) != 0)
                     bits.SetBit(i);
 
                 mask >>= 1;
@@ -494,7 +494,7 @@ namespace master._7zip.Legacy
         private BitVector ReadOptionalBitVector(int length)
         {
             byte allTrue = ReadByte();
-            if(allTrue != 0)
+            if (allTrue != 0)
                 return new BitVector(length, true);
 
             return ReadBitVector(length);
@@ -504,13 +504,13 @@ namespace master._7zip.Legacy
         {
             var defined = ReadOptionalBitVector(numFiles);
 
-            using(CStreamSwitch streamSwitch = new CStreamSwitch())
+            using (CStreamSwitch streamSwitch = new CStreamSwitch())
             {
                 streamSwitch.Set(this, dataVector);
 
-                for(int i = 0; i < numFiles; i++)
+                for (int i = 0; i < numFiles; i++)
                 {
-                    if(defined[i])
+                    if (defined[i])
                         action(i, checked((long)ReadUInt64()));
                     else
                         action(i, null);
@@ -526,7 +526,7 @@ namespace master._7zip.Legacy
 
         private DateTime? TranslateTime(long? time)
         {
-            if(time.HasValue)
+            if (time.HasValue)
                 return TranslateTime(time.Value);
             else
                 return null;
@@ -540,12 +540,12 @@ namespace master._7zip.Legacy
         private void ReadAttributeVector(List<byte[]> dataVector, int numFiles, Action<int, uint?> action)
         {
             BitVector boolVector = ReadOptionalBitVector(numFiles);
-            using(var streamSwitch = new CStreamSwitch())
+            using (var streamSwitch = new CStreamSwitch())
             {
                 streamSwitch.Set(this, dataVector);
-                for(int i = 0; i < numFiles; i++)
+                for (int i = 0; i < numFiles; i++)
                 {
-                    if(boolVector[i])
+                    if (boolVector[i])
                         action(i, ReadUInt32());
                     else
                         action(i, null);
@@ -569,7 +569,7 @@ namespace master._7zip.Legacy
                 folder.Coders = new List<CCoderInfo>(numCoders);
                 int numInStreams = 0;
                 int numOutStreams = 0;
-                for(int i = 0; i < numCoders; i++)
+                for (int i = 0; i < numCoders; i++)
                 {
                     Log.WriteLine("-- Coder --");
                     Log.PushIndent();
@@ -583,14 +583,14 @@ namespace master._7zip.Legacy
                         byte[] longID = new byte[idSize];
                         ReadBytes(longID, 0, idSize);
                         Log.WriteLine("MethodId: " + String.Join("", Enumerable.Range(0, idSize).Select(x => longID[x].ToString("x2"))));
-                        if(idSize > 8)
+                        if (idSize > 8)
                             throw new NotSupportedException();
                         ulong id = 0;
-                        for(int j = 0; j < idSize; j++)
+                        for (int j = 0; j < idSize; j++)
                             id |= (ulong)longID[idSize - 1 - j] << (8 * j);
                         coder.MethodId = new CMethodId(id);
 
-                        if((mainByte & 0x10) != 0)
+                        if ((mainByte & 0x10) != 0)
                         {
                             coder.NumInStreams = ReadNum();
                             coder.NumOutStreams = ReadNum();
@@ -603,7 +603,7 @@ namespace master._7zip.Legacy
                             coder.NumOutStreams = 1;
                         }
 
-                        if((mainByte & 0x20) != 0)
+                        if ((mainByte & 0x20) != 0)
                         {
                             int propsSize = ReadNum();
                             coder.Props = new byte[propsSize];
@@ -611,7 +611,7 @@ namespace master._7zip.Legacy
                             Log.WriteLine("Settings: " + String.Join("", coder.Props.Select(bt => bt.ToString("x2"))));
                         }
 
-                        if((mainByte & 0x80) != 0)
+                        if ((mainByte & 0x80) != 0)
                             throw new NotSupportedException();
 
                         numInStreams += coder.NumInStreams;
@@ -624,7 +624,7 @@ namespace master._7zip.Legacy
                 folder.BindPairs = new List<CBindPair>(numBindPairs);
                 Log.WriteLine("BindPairs: " + numBindPairs);
                 Log.PushIndent();
-                for(int i = 0; i < numBindPairs; i++)
+                for (int i = 0; i < numBindPairs; i++)
                 {
                     CBindPair bp = new CBindPair();
                     bp.InIndex = ReadNum();
@@ -634,16 +634,16 @@ namespace master._7zip.Legacy
                 }
                 Log.PopIndent();
 
-                if(numInStreams < numBindPairs)
+                if (numInStreams < numBindPairs)
                     throw new NotSupportedException();
 
                 int numPackStreams = numInStreams - numBindPairs;
                 //folder.PackStreams.Reserve(numPackStreams);
-                if(numPackStreams == 1)
+                if (numPackStreams == 1)
                 {
-                    for(int i = 0; i < numInStreams; i++)
+                    for (int i = 0; i < numInStreams; i++)
                     {
-                        if(folder.FindBindPairForInStream(i) < 0)
+                        if (folder.FindBindPairForInStream(i) < 0)
                         {
                             Log.WriteLine("Single PackStream: #" + i);
                             folder.PackStreams.Add(i);
@@ -651,14 +651,14 @@ namespace master._7zip.Legacy
                         }
                     }
 
-                    if(folder.PackStreams.Count != 1)
+                    if (folder.PackStreams.Count != 1)
                         throw new NotSupportedException();
                 }
                 else
                 {
                     Log.WriteLine("Multiple PackStreams ...");
                     Log.PushIndent();
-                    for(int i = 0; i < numPackStreams; i++)
+                    for (int i = 0; i < numPackStreams; i++)
                     {
                         var num = ReadNum();
                         Log.WriteLine("#" + i + " - " + num);
@@ -679,9 +679,9 @@ namespace master._7zip.Legacy
 
             var defined = ReadOptionalBitVector(count);
             var digests = new List<uint?>(count);
-            for(int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
-                if(defined[i])
+                if (defined[i])
                 {
                     uint crc = ReadUInt32();
                     Log.Write("  " + crc.ToString("x8"));
@@ -715,7 +715,7 @@ namespace master._7zip.Legacy
                 WaitAttribute(BlockType.Size);
                 packSizes = new List<long>(numPackStreams);
                 Log.Write("Sizes:");
-                for(int i = 0; i < numPackStreams; i++)
+                for (int i = 0; i < numPackStreams; i++)
                 {
                     var size = checked((long)ReadNumber());
                     Log.Write("  " + size);
@@ -724,12 +724,12 @@ namespace master._7zip.Legacy
                 Log.WriteLine();
 
                 BlockType? type;
-                for(; ; )
+                for (;;)
                 {
                     type = ReadId();
-                    if(type == BlockType.End)
+                    if (type == BlockType.End)
                         break;
-                    if(type == BlockType.CRC)
+                    if (type == BlockType.CRC)
                     {
                         packCRCs = ReadHashDigests(numPackStreams);
                         continue;
@@ -737,10 +737,10 @@ namespace master._7zip.Legacy
                     SkipData();
                 }
 
-                if(packCRCs == null)
+                if (packCRCs == null)
                 {
                     packCRCs = new List<uint?>(numPackStreams);
-                    for(int i = 0; i < numPackStreams; i++)
+                    for (int i = 0; i < numPackStreams; i++)
                         packCRCs.Add(null);
                 }
             }
@@ -757,14 +757,14 @@ namespace master._7zip.Legacy
                 int numFolders = ReadNum();
                 Log.WriteLine("NumFolders: {0}", numFolders);
 
-                using(CStreamSwitch streamSwitch = new CStreamSwitch())
+                using (CStreamSwitch streamSwitch = new CStreamSwitch())
                 {
                     streamSwitch.Set(this, dataVector);
                     //folders.Clear();
                     //folders.Reserve(numFolders);
                     folders = new List<CFolder>(numFolders);
                     int index = 0;
-                    for(int i = 0; i < numFolders; i++)
+                    for (int i = 0; i < numFolders; i++)
                     {
                         var f = new CFolder { FirstPackStreamId = index };
                         folders.Add(f);
@@ -776,12 +776,12 @@ namespace master._7zip.Legacy
                 WaitAttribute(BlockType.CodersUnpackSize);
 
                 Log.WriteLine("UnpackSizes:");
-                for(int i = 0; i < numFolders; i++)
+                for (int i = 0; i < numFolders; i++)
                 {
                     CFolder folder = folders[i];
                     Log.Write("  #" + i + ":");
                     int numOutStreams = folder.GetNumOutStreams();
-                    for(int j = 0; j < numOutStreams; j++)
+                    for (int j = 0; j < numOutStreams; j++)
                     {
                         long size = checked((long)ReadNumber());
                         Log.Write("  " + size);
@@ -790,16 +790,16 @@ namespace master._7zip.Legacy
                     Log.WriteLine();
                 }
 
-                for(; ; )
+                for (;;)
                 {
                     BlockType? type = ReadId();
-                    if(type == BlockType.End)
+                    if (type == BlockType.End)
                         return;
 
-                    if(type == BlockType.CRC)
+                    if (type == BlockType.CRC)
                     {
                         List<uint?> crcs = ReadHashDigests(numFolders);
-                        for(int i = 0; i < numFolders; i++)
+                        for (int i = 0; i < numFolders; i++)
                             folders[i].UnpackCRC = crcs[i];
                         continue;
                     }
@@ -819,14 +819,14 @@ namespace master._7zip.Legacy
                 numUnpackStreamsInFolders = null;
 
                 BlockType? type;
-                for(; ; )
+                for (;;)
                 {
                     type = ReadId();
-                    if(type == BlockType.NumUnpackStream)
+                    if (type == BlockType.NumUnpackStream)
                     {
                         numUnpackStreamsInFolders = new List<int>(folders.Count);
                         Log.Write("NumUnpackStreams:");
-                        for(int i = 0; i < folders.Count; i++)
+                        for (int i = 0; i < folders.Count; i++)
                         {
                             var num = ReadNum();
                             Log.Write("  " + num);
@@ -835,34 +835,34 @@ namespace master._7zip.Legacy
                         Log.WriteLine();
                         continue;
                     }
-                    if(type == BlockType.CRC || type == BlockType.Size)
+                    if (type == BlockType.CRC || type == BlockType.Size)
                         break;
-                    if(type == BlockType.End)
+                    if (type == BlockType.End)
                         break;
                     SkipData();
                 }
 
-                if(numUnpackStreamsInFolders == null)
+                if (numUnpackStreamsInFolders == null)
                 {
                     numUnpackStreamsInFolders = new List<int>(folders.Count);
-                    for(int i = 0; i < folders.Count; i++)
+                    for (int i = 0; i < folders.Count; i++)
                         numUnpackStreamsInFolders.Add(1);
                 }
 
                 unpackSizes = new List<long>(folders.Count);
-                for(int i = 0; i < numUnpackStreamsInFolders.Count; i++)
+                for (int i = 0; i < numUnpackStreamsInFolders.Count; i++)
                 {
                     // v3.13 incorrectly worked with empty folders
                     // v4.07: we check that folder is empty
                     int numSubstreams = numUnpackStreamsInFolders[i];
-                    if(numSubstreams == 0)
+                    if (numSubstreams == 0)
                         continue;
 
                     Log.Write("#{0} StreamSizes:", i);
                     long sum = 0;
-                    for(int j = 1; j < numSubstreams; j++)
+                    for (int j = 1; j < numSubstreams; j++)
                     {
-                        if(type == BlockType.Size)
+                        if (type == BlockType.Size)
                         {
                             long size = checked((long)ReadNumber());
                             Log.Write("  " + size);
@@ -871,57 +871,57 @@ namespace master._7zip.Legacy
                         }
                     }
                     unpackSizes.Add(folders[i].GetUnpackSize() - sum);
-                    if(unpackSizes.Last() <= 0) throw new InvalidDataException();
+                    if (unpackSizes.Last() <= 0) throw new InvalidDataException();
                     Log.WriteLine("  -  rest: " + unpackSizes.Last());
                 }
-                if(type == BlockType.Size)
+                if (type == BlockType.Size)
                     type = ReadId();
 
                 int numDigests = 0;
                 int numDigestsTotal = 0;
-                for(int i = 0; i < folders.Count; i++)
+                for (int i = 0; i < folders.Count; i++)
                 {
                     int numSubstreams = numUnpackStreamsInFolders[i];
-                    if(numSubstreams != 1 || !folders[i].UnpackCRCDefined)
+                    if (numSubstreams != 1 || !folders[i].UnpackCRCDefined)
                         numDigests += numSubstreams;
                     numDigestsTotal += numSubstreams;
                 }
 
                 digests = null;
 
-                for(; ; )
+                for (;;)
                 {
-                    if(type == BlockType.CRC)
+                    if (type == BlockType.CRC)
                     {
                         digests = new List<uint?>(numDigestsTotal);
 
                         List<uint?> digests2 = ReadHashDigests(numDigests);
 
                         int digestIndex = 0;
-                        for(int i = 0; i < folders.Count; i++)
+                        for (int i = 0; i < folders.Count; i++)
                         {
                             int numSubstreams = numUnpackStreamsInFolders[i];
                             CFolder folder = folders[i];
-                            if(numSubstreams == 1 && folder.UnpackCRCDefined)
+                            if (numSubstreams == 1 && folder.UnpackCRCDefined)
                             {
                                 digests.Add(folder.UnpackCRC.Value);
                             }
                             else
                             {
-                                for(int j = 0; j < numSubstreams; j++, digestIndex++)
+                                for (int j = 0; j < numSubstreams; j++, digestIndex++)
                                     digests.Add(digests2[digestIndex]);
                             }
                         }
 
-                        if(digestIndex != numDigests || numDigestsTotal != digests.Count)
+                        if (digestIndex != numDigests || numDigestsTotal != digests.Count)
                             System.Diagnostics.Debugger.Break();
                     }
-                    else if(type == BlockType.End)
+                    else if (type == BlockType.End)
                     {
-                        if(digests == null)
+                        if (digests == null)
                         {
                             digests = new List<uint?>(numDigestsTotal);
-                            for(int i = 0; i < numDigestsTotal; i++)
+                            for (int i = 0; i < numDigestsTotal; i++)
                                 digests.Add(null);
                         }
                         return;
@@ -959,23 +959,23 @@ namespace master._7zip.Legacy
                 unpackSizes = null;
                 digests = null;
 
-                for(; ; )
+                for (;;)
                 {
-                    switch(ReadId())
+                    switch (ReadId())
                     {
-                    case BlockType.End:
-                        return;
-                    case BlockType.PackInfo:
-                        ReadPackInfo(out dataOffset, out packSizes, out packCRCs);
-                        break;
-                    case BlockType.UnpackInfo:
-                        ReadUnpackInfo(dataVector, out folders);
-                        break;
-                    case BlockType.SubStreamsInfo:
-                        ReadSubStreamsInfo(folders, out numUnpackStreamsInFolders, out unpackSizes, out digests);
-                        break;
-                    default:
-                        throw new InvalidDataException();
+                        case BlockType.End:
+                            return;
+                        case BlockType.PackInfo:
+                            ReadPackInfo(out dataOffset, out packSizes, out packCRCs);
+                            break;
+                        case BlockType.UnpackInfo:
+                            ReadUnpackInfo(dataVector, out folders);
+                            break;
+                        case BlockType.SubStreamsInfo:
+                            ReadSubStreamsInfo(folders, out numUnpackStreamsInFolders, out unpackSizes, out digests);
+                            break;
+                        default:
+                            throw new InvalidDataException();
                     }
                 }
             }
@@ -1009,11 +1009,11 @@ namespace master._7zip.Legacy
 
                 var dataVector = new List<byte[]>(folders.Count);
                 int packIndex = 0;
-                foreach(var folder in folders)
+                foreach (var folder in folders)
                 {
                     long oldDataStartPos = dataStartPos;
                     long[] myPackSizes = new long[folder.PackStreams.Count];
-                    for(int i = 0; i < myPackSizes.Length; i++)
+                    for (int i = 0; i < myPackSizes.Length; i++)
                     {
                         long packSize = packSizes[packIndex + i];
                         myPackSizes[i] = packSize;
@@ -1025,12 +1025,12 @@ namespace master._7zip.Legacy
                     int unpackSize = checked((int)folder.GetUnpackSize());
                     byte[] data = new byte[unpackSize];
                     outStream.ReadExact(data, 0, data.Length);
-                    if(outStream.ReadByte() >= 0)
+                    if (outStream.ReadByte() >= 0)
                         throw new InvalidDataException("Decoded stream is longer than expected.");
                     dataVector.Add(data);
 
-                    if(folder.UnpackCRCDefined)
-                        if(CRC.Finish(CRC.Update(CRC.kInitCRC, data, 0, unpackSize)) != folder.UnpackCRC)
+                    if (folder.UnpackCRCDefined)
+                        if (CRC.Finish(CRC.Update(CRC.kInitCRC, data, 0, unpackSize)) != folder.UnpackCRC)
                             throw new InvalidDataException("Decoded stream does not match expected CRC.");
                 }
                 return dataVector;
@@ -1046,14 +1046,14 @@ namespace master._7zip.Legacy
             {
                 BlockType? type = ReadId();
 
-                if(type == BlockType.ArchiveProperties)
+                if (type == BlockType.ArchiveProperties)
                 {
                     ReadArchiveProperties();
                     type = ReadId();
                 }
 
                 List<byte[]> dataVector = null;
-                if(type == BlockType.AdditionalStreamsInfo)
+                if (type == BlockType.AdditionalStreamsInfo)
                 {
                     dataVector = ReadAndDecodePackedStreams(db.StartPositionAfterHeader, getTextPassword);
                     type = ReadId();
@@ -1062,7 +1062,7 @@ namespace master._7zip.Legacy
                 List<long> unpackSizes;
                 List<uint?> digests;
 
-                if(type == BlockType.MainStreamsInfo)
+                if (type == BlockType.MainStreamsInfo)
                 {
                     ReadStreamsInfo(dataVector,
                         out db.DataStartPosition,
@@ -1081,7 +1081,7 @@ namespace master._7zip.Legacy
                     unpackSizes = new List<long>(db.Folders.Count);
                     digests = new List<uint?>(db.Folders.Count);
                     db.NumUnpackStreamsVector = new List<int>(db.Folders.Count);
-                    for(int i = 0; i < db.Folders.Count; i++)
+                    for (int i = 0; i < db.Folders.Count; i++)
                     {
                         var folder = db.Folders[i];
                         unpackSizes.Add(folder.GetUnpackSize());
@@ -1092,16 +1092,16 @@ namespace master._7zip.Legacy
 
                 db.Files.Clear();
 
-                if(type == BlockType.End)
+                if (type == BlockType.End)
                     return;
 
-                if(type != BlockType.FilesInfo)
+                if (type != BlockType.FilesInfo)
                     throw new InvalidDataException();
 
                 int numFiles = ReadNum();
                 Log.WriteLine("NumFiles: " + numFiles);
                 db.Files = new List<CFileItem>(numFiles);
-                for(int i = 0; i < numFiles; i++)
+                for (int i = 0; i < numFiles; i++)
                     db.Files.Add(new CFileItem());
 
                 BitVector emptyStreamVector = new BitVector(numFiles);
@@ -1109,133 +1109,133 @@ namespace master._7zip.Legacy
                 BitVector antiFileVector = null;
                 int numEmptyStreams = 0;
 
-                for(; ; )
+                for (;;)
                 {
                     type = ReadId();
-                    if(type == BlockType.End)
+                    if (type == BlockType.End)
                         break;
 
                     long size = checked((long)ReadNumber()); // TODO: throw invalid data on negative
                     int oldPos = _currentReader.Offset;
-                    switch(type)
+                    switch (type)
                     {
-                    case BlockType.Name:
-                        using(var streamSwitch = new CStreamSwitch())
-                        {
-                            streamSwitch.Set(this, dataVector);
-                            Log.Write("FileNames:");
-                            for(int i = 0; i < db.Files.Count; i++)
+                        case BlockType.Name:
+                            using (var streamSwitch = new CStreamSwitch())
                             {
-                                db.Files[i].Name = _currentReader.ReadString();
-                                Log.Write("  " + db.Files[i].Name);
+                                streamSwitch.Set(this, dataVector);
+                                Log.Write("FileNames:");
+                                for (int i = 0; i < db.Files.Count; i++)
+                                {
+                                    db.Files[i].Name = _currentReader.ReadString();
+                                    Log.Write("  " + db.Files[i].Name);
+                                }
+                                Log.WriteLine();
+                            }
+                            break;
+                        case BlockType.WinAttributes:
+                            Log.Write("WinAttributes:");
+                            ReadAttributeVector(dataVector, numFiles, delegate (int i, uint? attr)
+                            {
+                                db.Files[i].Attrib = attr;
+                                Log.Write("  " + (attr.HasValue ? attr.Value.ToString("x8") : "n/a"));
+                            });
+                            Log.WriteLine();
+                            break;
+                        case BlockType.EmptyStream:
+                            emptyStreamVector = ReadBitVector(numFiles);
+
+                            Log.Write("EmptyStream: ");
+                            for (int i = 0; i < emptyStreamVector.Length; i++)
+                            {
+                                if (emptyStreamVector[i])
+                                {
+                                    Log.Write("x");
+                                    numEmptyStreams++;
+                                }
+                                else
+                                {
+                                    Log.Write(".");
+                                }
                             }
                             Log.WriteLine();
-                        }
-                        break;
-                    case BlockType.WinAttributes:
-                        Log.Write("WinAttributes:");
-                        ReadAttributeVector(dataVector, numFiles, delegate(int i, uint? attr)
-                        {
-                            db.Files[i].Attrib = attr;
-                            Log.Write("  " + (attr.HasValue ? attr.Value.ToString("x8") : "n/a"));
-                        });
-                        Log.WriteLine();
-                        break;
-                    case BlockType.EmptyStream:
-                        emptyStreamVector = ReadBitVector(numFiles);
 
-                        Log.Write("EmptyStream: ");
-                        for(int i = 0; i < emptyStreamVector.Length; i++)
-                        {
-                            if(emptyStreamVector[i])
+                            emptyFileVector = new BitVector(numEmptyStreams);
+                            antiFileVector = new BitVector(numEmptyStreams);
+                            break;
+                        case BlockType.EmptyFile:
+                            emptyFileVector = ReadBitVector(numEmptyStreams);
+                            Log.Write("EmptyFile: ");
+                            for (int i = 0; i < numEmptyStreams; i++)
+                                Log.Write(emptyFileVector[i] ? "x" : ".");
+                            Log.WriteLine();
+                            break;
+                        case BlockType.Anti:
+                            antiFileVector = ReadBitVector(numEmptyStreams);
+                            Log.Write("Anti: ");
+                            for (int i = 0; i < numEmptyStreams; i++)
+                                Log.Write(antiFileVector[i] ? "x" : ".");
+                            Log.WriteLine();
+                            break;
+                        case BlockType.StartPos:
+                            Log.Write("StartPos:");
+                            ReadNumberVector(dataVector, numFiles, delegate (int i, long? startPos)
                             {
-                                Log.Write("x");
-                                numEmptyStreams++;
-                            }
-                            else
+                                db.Files[i].StartPos = startPos;
+                                Log.Write("  " + (startPos.HasValue ? startPos.Value.ToString() : "n/a"));
+                            });
+                            Log.WriteLine();
+                            break;
+                        case BlockType.CTime:
+                            Log.Write("CTime:");
+                            ReadDateTimeVector(dataVector, numFiles, delegate (int i, DateTime? time)
                             {
-                                Log.Write(".");
-                            }
-                        }
-                        Log.WriteLine();
-
-                        emptyFileVector = new BitVector(numEmptyStreams);
-                        antiFileVector = new BitVector(numEmptyStreams);
-                        break;
-                    case BlockType.EmptyFile:
-                        emptyFileVector = ReadBitVector(numEmptyStreams);
-                        Log.Write("EmptyFile: ");
-                        for(int i = 0; i < numEmptyStreams; i++)
-                            Log.Write(emptyFileVector[i] ? "x" : ".");
-                        Log.WriteLine();
-                        break;
-                    case BlockType.Anti:
-                        antiFileVector = ReadBitVector(numEmptyStreams);
-                        Log.Write("Anti: ");
-                        for(int i = 0; i < numEmptyStreams; i++)
-                            Log.Write(antiFileVector[i] ? "x" : ".");
-                        Log.WriteLine();
-                        break;
-                    case BlockType.StartPos:
-                        Log.Write("StartPos:");
-                        ReadNumberVector(dataVector, numFiles, delegate(int i, long? startPos)
-                        {
-                            db.Files[i].StartPos = startPos;
-                            Log.Write("  " + (startPos.HasValue ? startPos.Value.ToString() : "n/a"));
-                        });
-                        Log.WriteLine();
-                        break;
-                    case BlockType.CTime:
-                        Log.Write("CTime:");
-                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time)
-                        {
-                            db.Files[i].CTime = time;
-                            Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
-                        });
-                        Log.WriteLine();
-                        break;
-                    case BlockType.ATime:
-                        Log.Write("ATime:");
-                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time)
-                        {
-                            db.Files[i].ATime = time;
-                            Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
-                        });
-                        Log.WriteLine();
-                        break;
-                    case BlockType.MTime:
-                        Log.Write("MTime:");
-                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time)
-                        {
-                            db.Files[i].MTime = time;
-                            Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
-                        });
-                        Log.WriteLine();
-                        break;
-                    case BlockType.Dummy:
-                        Log.Write("Dummy: " + size);
-                        for(long j = 0; j < size; j++)
-                            if(ReadByte() != 0)
-                                throw new InvalidDataException();
-                        break;
-                    default:
-                        SkipData(size);
-                        break;
+                                db.Files[i].CTime = time;
+                                Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
+                            });
+                            Log.WriteLine();
+                            break;
+                        case BlockType.ATime:
+                            Log.Write("ATime:");
+                            ReadDateTimeVector(dataVector, numFiles, delegate (int i, DateTime? time)
+                            {
+                                db.Files[i].ATime = time;
+                                Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
+                            });
+                            Log.WriteLine();
+                            break;
+                        case BlockType.MTime:
+                            Log.Write("MTime:");
+                            ReadDateTimeVector(dataVector, numFiles, delegate (int i, DateTime? time)
+                            {
+                                db.Files[i].MTime = time;
+                                Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
+                            });
+                            Log.WriteLine();
+                            break;
+                        case BlockType.Dummy:
+                            Log.Write("Dummy: " + size);
+                            for (long j = 0; j < size; j++)
+                                if (ReadByte() != 0)
+                                    throw new InvalidDataException();
+                            break;
+                        default:
+                            SkipData(size);
+                            break;
                     }
 
                     // since 0.3 record sizes must be correct
                     bool checkRecordsSize = (db.MajorVersion > 0 || db.MinorVersion > 2);
-                    if(checkRecordsSize && _currentReader.Offset - oldPos != size)
+                    if (checkRecordsSize && _currentReader.Offset - oldPos != size)
                         throw new InvalidDataException();
                 }
 
                 int emptyFileIndex = 0;
                 int sizeIndex = 0;
-                for(int i = 0; i < numFiles; i++)
+                for (int i = 0; i < numFiles; i++)
                 {
                     CFileItem file = db.Files[i];
                     file.HasStream = !emptyStreamVector[i];
-                    if(file.HasStream)
+                    if (file.HasStream)
                     {
                         file.IsDir = false;
                         file.IsAnti = false;
@@ -1269,10 +1269,10 @@ namespace master._7zip.Legacy
 
             // TODO: Check Signature!
             _header = new byte[0x20];
-            for(int offset = 0; offset < 0x20; )
+            for (int offset = 0; offset < 0x20;)
             {
                 int delta = stream.Read(_header, offset, 0x20 - offset);
-                if(delta == 0)
+                if (delta == 0)
                     throw new EndOfStreamException();
                 offset += delta;
             }
@@ -1282,10 +1282,10 @@ namespace master._7zip.Legacy
 
         public void Close()
         {
-            if(_stream != null)
+            if (_stream != null)
                 _stream.Dispose();
 
-            foreach(var stream in _cachedStreams.Values)
+            foreach (var stream in _cachedStreams.Values)
                 stream.Dispose();
 
             _cachedStreams.Clear();
@@ -1298,7 +1298,7 @@ namespace master._7zip.Legacy
             db.MajorVersion = _header[6];
             db.MinorVersion = _header[7];
 
-            if(db.MajorVersion != 0)
+            if (db.MajorVersion != 0)
                 throw new InvalidDataException();
 
             uint crcFromArchive = DataReader.Get32(_header, 8);
@@ -1312,19 +1312,19 @@ namespace master._7zip.Legacy
             crc = CRC.Update(crc, nextHeaderCrc);
             crc = CRC.Finish(crc);
 
-            if(crc != crcFromArchive)
+            if (crc != crcFromArchive)
                 throw new InvalidDataException();
 
             db.StartPositionAfterHeader = _streamOrigin + 0x20;
 
             // empty header is ok
-            if(nextHeaderSize == 0)
+            if (nextHeaderSize == 0)
                 return;
 
-            if(nextHeaderOffset < 0 || nextHeaderSize < 0 || nextHeaderSize > Int32.MaxValue)
+            if (nextHeaderOffset < 0 || nextHeaderSize < 0 || nextHeaderSize > Int32.MaxValue)
                 throw new InvalidDataException();
 
-            if(nextHeaderOffset > _streamEnding - db.StartPositionAfterHeader)
+            if (nextHeaderOffset > _streamEnding - db.StartPositionAfterHeader)
                 throw new InvalidDataException();
 
             _stream.Seek(nextHeaderOffset, SeekOrigin.Current);
@@ -1332,31 +1332,31 @@ namespace master._7zip.Legacy
             byte[] header = new byte[nextHeaderSize];
             _stream.ReadExact(header, 0, header.Length);
 
-            if(CRC.Finish(CRC.Update(CRC.kInitCRC, header, 0, header.Length)) != nextHeaderCrc)
+            if (CRC.Finish(CRC.Update(CRC.kInitCRC, header, 0, header.Length)) != nextHeaderCrc)
                 throw new InvalidDataException();
 
-            using(CStreamSwitch streamSwitch = new CStreamSwitch())
+            using (CStreamSwitch streamSwitch = new CStreamSwitch())
             {
                 streamSwitch.Set(this, header);
 
                 BlockType? type = ReadId();
-                if(type != BlockType.Header)
+                if (type != BlockType.Header)
                 {
-                    if(type != BlockType.EncodedHeader)
+                    if (type != BlockType.EncodedHeader)
                         throw new InvalidDataException();
 
                     var dataVector = ReadAndDecodePackedStreams(db.StartPositionAfterHeader, pass);
 
                     // compressed header without content is odd but ok
-                    if(dataVector.Count == 0)
+                    if (dataVector.Count == 0)
                         return;
 
-                    if(dataVector.Count != 1)
+                    if (dataVector.Count != 1)
                         throw new InvalidDataException();
 
                     streamSwitch.Set(this, dataVector[0]);
 
-                    if(ReadId() != BlockType.Header)
+                    if (ReadId() != BlockType.Header)
                         throw new InvalidDataException();
                 }
 
@@ -1373,12 +1373,12 @@ namespace master._7zip.Legacy
             {
                 FileIndex = fileIndex;
                 FolderIndex = folderIndex;
-                if(fileIndex != -1)
+                if (fileIndex != -1)
                     ExtractStatuses.Add(true);
             }
         }
 
-        private class FolderUnpackStream: Stream
+        private class FolderUnpackStream : Stream
         {
             private CArchiveDatabaseEx _db;
             private int _otherIndex;
@@ -1452,7 +1452,7 @@ namespace master._7zip.Legacy
             private int _currentIndex;
             private void ProcessEmptyFiles()
             {
-                while(_currentIndex < _extractStatuses.Count && _db.Files[_startIndex + _currentIndex].Size == 0)
+                while (_currentIndex < _extractStatuses.Count && _db.Files[_startIndex + _currentIndex].Size == 0)
                 {
                     OpenFile();
                     _stream.Close();
@@ -1469,7 +1469,7 @@ namespace master._7zip.Legacy
                 //Directory.CreateDirectory(Path.GetDirectoryName(filename));
                 //_stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.Delete);
                 Log.WriteLine(_db.Files[index].Name);
-                if(_db.Files[index].CrcDefined)
+                if (_db.Files[index].CrcDefined)
                     _stream = new CrcCheckStream(_db.Files[index].Crc.Value);
                 else
                     _stream = new MemoryStream();
@@ -1477,18 +1477,18 @@ namespace master._7zip.Legacy
             }
             public override void Write(byte[] buffer, int offset, int count)
             {
-                while(count != 0)
+                while (count != 0)
                 {
-                    if(_stream != null)
+                    if (_stream != null)
                     {
                         int write = count;
-                        if(write > _rem)
+                        if (write > _rem)
                             write = (int)_rem;
                         _stream.Write(buffer, offset, write);
                         count -= write;
                         _rem -= write;
                         offset += write;
-                        if(_rem == 0)
+                        if (_rem == 0)
                         {
                             _stream.Close();
                             _stream = null;
@@ -1499,7 +1499,7 @@ namespace master._7zip.Legacy
                     else
                     {
                         ProcessEmptyFiles();
-                        if(_currentIndex == _extractStatuses.Count)
+                        if (_currentIndex == _extractStatuses.Count)
                         {
                             // we support partial extracting
                             System.Diagnostics.Debugger.Break();
@@ -1516,17 +1516,17 @@ namespace master._7zip.Legacy
         private Stream GetCachedDecoderStream(CArchiveDatabaseEx _db, int folderIndex, IPasswordProvider pw)
         {
             Stream s;
-            if(!_cachedStreams.TryGetValue(folderIndex, out s))
+            if (!_cachedStreams.TryGetValue(folderIndex, out s))
             {
                 CFolder folderInfo = _db.Folders[folderIndex];
                 int packStreamIndex = _db.Folders[folderIndex].FirstPackStreamId;
                 long folderStartPackPos = _db.GetFolderStreamPos(folderIndex, 0);
                 List<long> packSizes = new List<long>();
-                for(int j = 0; j < folderInfo.PackStreams.Count; j++)
+                for (int j = 0; j < folderInfo.PackStreams.Count; j++)
                     packSizes.Add(_db.PackSizes[packStreamIndex + j]);
 
                 s = DecoderStreamHelper.CreateDecoderStream(_stream, folderStartPackPos, packSizes.ToArray(), folderInfo, pw);
-                if(!s.CanSeek)
+                if (!s.CanSeek)
                     s = new ManagedLzma._7zip.Decoder.FileBufferedDecoderStream(s);
 
                 _cachedStreams.Add(folderIndex, s);
@@ -1540,12 +1540,12 @@ namespace master._7zip.Legacy
             int folderIndex = _db.FileIndexToFolderIndexMap[fileIndex];
             int numFilesInFolder = _db.NumUnpackStreamsVector[folderIndex];
             int firstFileIndex = _db.FolderStartFileIndex[folderIndex];
-            if(firstFileIndex > fileIndex || fileIndex - firstFileIndex >= numFilesInFolder)
+            if (firstFileIndex > fileIndex || fileIndex - firstFileIndex >= numFilesInFolder)
                 throw new InvalidOperationException();
 
             int skipCount = fileIndex - firstFileIndex;
             long skipSize = 0;
-            for(int i = 0; i < skipCount; i++)
+            for (int i = 0; i < skipCount; i++)
                 skipSize += _db.Files[firstFileIndex + i].Size;
 
             Stream s = GetCachedDecoderStream(_db, folderIndex, pw);
@@ -1557,47 +1557,47 @@ namespace master._7zip.Legacy
         {
             int numItems;
             bool allFilesMode = (indices == null);
-            if(allFilesMode)
+            if (allFilesMode)
                 numItems = _db.Files.Count;
             else
                 numItems = indices.Length;
 
-            if(numItems == 0)
+            if (numItems == 0)
                 return;
 
             List<CExtractFolderInfo> extractFolderInfoVector = new List<CExtractFolderInfo>();
-            for(int i = 0; i < numItems; i++)
+            for (int i = 0; i < numItems; i++)
             {
                 int fileIndex = allFilesMode ? i : indices[i];
 
                 int folderIndex = _db.FileIndexToFolderIndexMap[fileIndex];
-                if(folderIndex == -1)
+                if (folderIndex == -1)
                 {
                     extractFolderInfoVector.Add(new CExtractFolderInfo(fileIndex, -1));
                     continue;
                 }
 
-                if(extractFolderInfoVector.Count == 0 || folderIndex != extractFolderInfoVector.Last().FolderIndex)
+                if (extractFolderInfoVector.Count == 0 || folderIndex != extractFolderInfoVector.Last().FolderIndex)
                     extractFolderInfoVector.Add(new CExtractFolderInfo(-1, folderIndex));
 
                 CExtractFolderInfo efi = extractFolderInfoVector.Last();
 
                 int startIndex = _db.FolderStartFileIndex[folderIndex];
-                for(int index = efi.ExtractStatuses.Count; index <= fileIndex - startIndex; index++)
+                for (int index = efi.ExtractStatuses.Count; index <= fileIndex - startIndex; index++)
                     efi.ExtractStatuses.Add(index == fileIndex - startIndex);
             }
 
-            foreach(CExtractFolderInfo efi in extractFolderInfoVector)
+            foreach (CExtractFolderInfo efi in extractFolderInfoVector)
             {
                 int startIndex;
-                if(efi.FileIndex != -1)
+                if (efi.FileIndex != -1)
                     startIndex = efi.FileIndex;
                 else
                     startIndex = _db.FolderStartFileIndex[efi.FolderIndex];
 
                 var outStream = new FolderUnpackStream(_db, 0, startIndex, efi.ExtractStatuses);
 
-                if(efi.FileIndex != -1)
+                if (efi.FileIndex != -1)
                     continue;
 
                 int folderIndex = efi.FolderIndex;
@@ -1607,17 +1607,17 @@ namespace master._7zip.Legacy
                 long folderStartPackPos = _db.GetFolderStreamPos(folderIndex, 0);
 
                 List<long> packSizes = new List<long>();
-                for(int j = 0; j < folderInfo.PackStreams.Count; j++)
+                for (int j = 0; j < folderInfo.PackStreams.Count; j++)
                     packSizes.Add(_db.PackSizes[packStreamIndex + j]);
 
                 // TODO: If the decoding fails the last file may be extracted incompletely. Delete it?
 
                 Stream s = DecoderStreamHelper.CreateDecoderStream(_stream, folderStartPackPos, packSizes.ToArray(), folderInfo, pw);
                 byte[] buffer = new byte[4 << 10];
-                for(; ; )
+                for (;;)
                 {
                     int processed = s.Read(buffer, 0, buffer.Length);
-                    if(processed == 0) break;
+                    if (processed == 0) break;
                     outStream.Write(buffer, 0, processed);
                 }
             }

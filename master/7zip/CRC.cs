@@ -15,16 +15,16 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             const uint kCrcPoly = 0xEDB88320;
 
-            for(uint i = 0; i < 256; i++)
+            for (uint i = 0; i < 256; i++)
             {
                 uint r = i;
-                for(int j = 0; j < 8; j++)
+                for (int j = 0; j < 8; j++)
                     r = (r >> 1) ^ (kCrcPoly & ~((r & 1) - 1));
 
                 kTable[i] = r;
             }
 
-            for(uint i = 256; i < kTable.Length; i++)
+            for (uint i = 256; i < kTable.Length; i++)
             {
                 uint r = kTable[i - 256];
                 kTable[i] = kTable[r & 0xFF] ^ (r >> 8);
@@ -35,10 +35,10 @@ namespace ManagedLzma.LZMA.Master.SevenZip
         {
             uint crc = kInitCRC;
             byte[] buffer = new byte[Math.Min(length, 4 << 10)];
-            while(length > 0)
+            while (length > 0)
             {
                 int delta = stream.Read(buffer, 0, (int)Math.Min(length, buffer.Length));
-                if(delta == 0)
+                if (delta == 0)
                     throw new EndOfStreamException();
                 crc = Update(crc, buffer, 0, delta);
                 length -= delta;
@@ -77,7 +77,7 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public static uint Update(uint crc, byte[] buffer, int offset, int length)
         {
-            for(int i = 0; i < length; i++)
+            for (int i = 0; i < length; i++)
                 crc = Update(crc, buffer[offset + i]);
 
             return crc;
@@ -85,21 +85,21 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
         public static unsafe uint Update(uint crc, byte* buffer, int length)
         {
-            while(length > 0 && ((int)buffer & 3) != 0)
+            while (length > 0 && ((int)buffer & 3) != 0)
             {
                 crc = Update(crc, *buffer);
                 buffer++;
                 length--;
             }
 
-            while(length >= 4)
+            while (length >= 4)
             {
                 crc = Update(crc, *(uint*)buffer);
                 buffer += 4;
                 length -= 4;
             }
 
-            while(length > 0)
+            while (length > 0)
             {
                 crc = Update(crc, *buffer);
                 length--;

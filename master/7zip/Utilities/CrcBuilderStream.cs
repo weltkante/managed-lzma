@@ -8,7 +8,7 @@ using CRC = ManagedLzma.LZMA.Master.SevenZip.CRC;
 
 namespace master._7zip.Legacy
 {
-    class CrcBuilderStream: Stream
+    class CrcBuilderStream : Stream
     {
         private long mProcessed;
         private Stream mTarget;
@@ -28,7 +28,7 @@ namespace master._7zip.Legacy
 
         public uint Finish()
         {
-            if(!mFinished)
+            if (!mFinished)
             {
                 mFinished = true;
                 mCRC = CRC.Finish(mCRC);
@@ -84,7 +84,7 @@ namespace master._7zip.Legacy
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            if(mFinished)
+            if (mFinished)
                 throw new InvalidOperationException("CRC calculation has been finished.");
 
             mProcessed += count;
@@ -93,7 +93,7 @@ namespace master._7zip.Legacy
         }
     }
 
-    class ReadingCrcBuilderStream: Stream
+    class ReadingCrcBuilderStream : Stream
     {
         private long mProcessed;
         private Stream mSource;
@@ -110,7 +110,7 @@ namespace master._7zip.Legacy
         {
             try
             {
-                if(disposing)
+                if (disposing)
                     mSource.Dispose();
             }
             finally
@@ -126,7 +126,7 @@ namespace master._7zip.Legacy
 
         public uint Finish()
         {
-            if(!mFinished)
+            if (!mFinished)
             {
                 mFinished = true;
                 mCRC = CRC.Finish(mCRC);
@@ -168,10 +168,10 @@ namespace master._7zip.Legacy
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            if(count > 0 && !mFinished)
+            if (count > 0 && !mFinished)
             {
                 int read = mSource.Read(buffer, offset, count);
-                if(read > 0)
+                if (read > 0)
                 {
                     mProcessed += read;
                     mCRC = CRC.Update(mCRC, buffer, offset, read);
