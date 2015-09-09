@@ -421,65 +421,65 @@ namespace ManagedLzma.LZMA
             {
                 switch (op)
                 {
-                case CMD_INIT_TRACE:
-                    {
-                        lock (mSync)
+                    case CMD_INIT_TRACE:
                         {
-                            if (mMainThreadId != 0)
-                                throw new InvalidDataException();
+                            lock (mSync)
+                            {
+                                if (mMainThreadId != 0)
+                                    throw new InvalidDataException();
 
-                            mMainThreadId = rd.ReadInt32();
+                                mMainThreadId = rd.ReadInt32();
+                                SyncCommandEnd(rd);
+
+                                if (mMainThreadId == 0)
+                                    throw new InvalidDataException();
+
+                                Monitor.PulseAll(mSync);
+                            }
+                        }
+                        break;
+                    case CMD_STRING_MAP:
+                        {
+                            int len = rd.ReadUInt16();
+                            string text = Encoding.ASCII.GetString(rd.ReadBytes(len));
+
+                            lock (mStringSync)
+                            {
+                                int id = mStringById.Count + 1;
+                                mStringById.Add(id, text);
+                                mIdByString.Add(text, id);
+                                Monitor.PulseAll(mStringSync);
+                            }
+                        }
+                        break;
+                    case CMD_OBJECT_DTOR:
+                        {
+                            int thread = rd.ReadInt32();
+                            int handle = rd.ReadInt32();
+                            int arg = rd.ReadInt32();
                             SyncCommandEnd(rd);
 
-                            if (mMainThreadId == 0)
-                                throw new InvalidDataException();
-
-                            Monitor.PulseAll(mSync);
+                            lock (mObjectSync)
+                            {
+                                mRecordByObject[handle].Enqueue(new Record(thread, arg, kReleaseId));
+                                Monitor.PulseAll(mObjectSync);
+                            }
                         }
-                    }
-                    break;
-                case CMD_STRING_MAP:
-                    {
-                        int len = rd.ReadUInt16();
-                        string text = Encoding.ASCII.GetString(rd.ReadBytes(len));
-
-                        lock (mStringSync)
+                        break;
+                    case CMD_OBJECT_WAIT1:
                         {
-                            int id = mStringById.Count + 1;
-                            mStringById.Add(id, text);
-                            mIdByString.Add(text, id);
-                            Monitor.PulseAll(mStringSync);
-                        }
-                    }
-                    break;
-                case CMD_OBJECT_DTOR:
-                    {
-                        int thread = rd.ReadInt32();
-                        int handle = rd.ReadInt32();
-                        int arg = rd.ReadInt32();
-                        SyncCommandEnd(rd);
+                            int thread = rd.ReadInt32();
+                            int handle = rd.ReadInt32();
+                            int arg = rd.ReadInt32();
+                            SyncCommandEnd(rd);
 
-                        lock (mObjectSync)
-                        {
-                            mRecordByObject[handle].Enqueue(new Record(thread, arg, kReleaseId));
-                            Monitor.PulseAll(mObjectSync);
+                            lock (mObjectSync)
+                            {
+                                mRecordByObject[handle].Enqueue(new Record(thread, arg, kInvalidId));
+                                Monitor.PulseAll(mObjectSync);
+                            }
                         }
-                    }
-                    break;
-                case CMD_OBJECT_WAIT1:
-                    {
-                        int thread = rd.ReadInt32();
-                        int handle = rd.ReadInt32();
-                        int arg = rd.ReadInt32();
-                        SyncCommandEnd(rd);
-
-                        lock (mObjectSync)
-                        {
-                            mRecordByObject[handle].Enqueue(new Record(thread, arg, kInvalidId));
-                            Monitor.PulseAll(mObjectSync);
-                        }
-                    }
-                    break;
+                        break;
                 }
             }
 

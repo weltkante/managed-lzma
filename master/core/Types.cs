@@ -132,7 +132,7 @@ namespace ManagedLzma.LZMA.Master
                 where T : class, new()
             {
 #if !DISABLE_TRACE
-                if(!CheckAllocObject<T>())
+                if (!CheckAllocObject<T>())
                     return null;
 #endif
                 return new T();

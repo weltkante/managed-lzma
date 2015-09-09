@@ -2615,7 +2615,7 @@ namespace ManagedLzma.LZMA.Master
         public static CLzmaEnc LzmaEnc_Create(ISzAlloc alloc)
         {
 #if !DISABLE_TRACE
-            if(!alloc.CheckAllocObject<CLzmaEnc>())
+            if (!alloc.CheckAllocObject<CLzmaEnc>())
                 return null;
 #endif
             return new CLzmaEnc();
