@@ -67,7 +67,7 @@ namespace ManagedLzma.LZMA
 
         #endregion
 
-        private sealed class Session: IDisposable
+        private sealed class Session : IDisposable
         {
             #region Inner Class - Record
 
@@ -95,7 +95,7 @@ namespace ManagedLzma.LZMA
 
                 public void Match(int threadId, int arg1, int arg2)
                 {
-                    if(mThreadHandle != threadId || mArg1 != arg1 || mArg2 != arg2)
+                    if (mThreadHandle != threadId || mArg1 != arg1 || mArg2 != arg2)
                         throw new InvalidDataException();
                 }
             }
@@ -140,16 +140,16 @@ namespace ManagedLzma.LZMA
 
             public Context InitMainThread()
             {
-                if(Thread.CurrentThread != mMainThread)
+                if (Thread.CurrentThread != mMainThread)
                     throw new InvalidOperationException();
 
                 int threadId;
-                lock(mSync)
-                    while((threadId = mMainThreadId) == 0)
+                lock (mSync)
+                    while ((threadId = mMainThreadId) == 0)
                         Monitor.Wait(mSync);
 
                 Thread thread = Thread.CurrentThread;
-                lock(mThreadSync)
+                lock (mThreadSync)
                     mThreadHandleMap.Add(thread, threadId);
 
                 return new Context(this, threadId, true);
@@ -157,45 +157,45 @@ namespace ManagedLzma.LZMA
 
             public void EnsureEnd()
             {
-                if(Thread.CurrentThread != mMainThread)
+                if (Thread.CurrentThread != mMainThread)
                     throw new InvalidOperationException();
 
                 mContext.EnsureEnd();
 
                 mPipeThread.Join();
 
-                lock(mSync)
+                lock (mSync)
                 {
-                    while(mRunningThreads.Count != 0)
+                    while (mRunningThreads.Count != 0)
                         Monitor.Wait(mSync);
 
-                    if(mError.Count != 0)
+                    if (mError.Count != 0)
                         throw new Exception(string.Format(CultureInfo.InvariantCulture, "Recorded {0} exceptions.", mError.Count), mError[0]);
                 }
             }
 
             public void Dispose()
             {
-                if(Thread.CurrentThread != mMainThread)
+                if (Thread.CurrentThread != mMainThread)
                     throw new InvalidOperationException();
 
-                lock(mSync)
+                lock (mSync)
                     mShutdown = true;
 
                 mPipeThread.Join();
 
-                lock(mSync)
+                lock (mSync)
                 {
-                    while(mRunningThreads.Count != 0)
+                    while (mRunningThreads.Count != 0)
                     {
-                        foreach(Thread thread in mRunningThreads)
+                        foreach (Thread thread in mRunningThreads)
                         {
                             var state = thread.ThreadState;
-                            if(state == ThreadState.WaitSleepJoin || state == ThreadState.Running)
+                            if (state == ThreadState.WaitSleepJoin || state == ThreadState.Running)
                                 thread.Abort();
                             else
                             {
-                                if(System.Diagnostics.Debugger.IsAttached)
+                                if (System.Diagnostics.Debugger.IsAttached)
                                     System.Diagnostics.Debugger.Break();
                                 else
                                     System.Diagnostics.Debugger.Launch();
@@ -217,16 +217,16 @@ namespace ManagedLzma.LZMA
 
             public int GetThreadId(Thread thread)
             {
-                lock(mThreadSync)
+                lock (mThreadSync)
                     return mThreadHandleMap[thread];
             }
 
             public string GetString(int id)
             {
-                lock(mStringSync)
+                lock (mStringSync)
                 {
                     string text;
-                    while(!mStringById.TryGetValue(id, out text))
+                    while (!mStringById.TryGetValue(id, out text))
                         Monitor.Wait(mStringSync);
 
                     return text;
@@ -235,10 +235,10 @@ namespace ManagedLzma.LZMA
 
             public int GetStringId(string str)
             {
-                lock(mStringSync)
+                lock (mStringSync)
                 {
                     int id;
-                    while(!mIdByString.TryGetValue(str, out id))
+                    while (!mIdByString.TryGetValue(str, out id))
                         Monitor.Wait(mStringSync);
 
                     return id;
@@ -259,8 +259,8 @@ namespace ManagedLzma.LZMA
 
             public void MatchThreadWait(Thread thread, int threadId)
             {
-                lock(mThreadSync)
-                    if(mThreadHandleMap[thread] != threadId)
+                lock (mThreadSync)
+                    if (mThreadHandleMap[thread] != threadId)
                         throw new InvalidDataException();
 
                 thread.Join();
@@ -268,12 +268,12 @@ namespace ManagedLzma.LZMA
 
             public void MatchThreadClose(Thread thread, int threadId)
             {
-                if(thread.ThreadState != ThreadState.Stopped)
+                if (thread.ThreadState != ThreadState.Stopped)
                     throw new InvalidDataException();
 
-                lock(mThreadSync)
+                lock (mThreadSync)
                 {
-                    if(mThreadHandleMap[thread] != threadId)
+                    if (mThreadHandleMap[thread] != threadId)
                         throw new InvalidDataException();
 
                     mThreadHandleMap.Remove(thread);
@@ -282,7 +282,7 @@ namespace ManagedLzma.LZMA
 
             public void MatchObjectCTor(object obj, int objectId, int arg)
             {
-                lock(mObjectSync)
+                lock (mObjectSync)
                 {
                     mObjectHandleMap.Add(obj, objectId);
                     mRecordByObject.Add(objectId, new Queue<Record>());
@@ -295,13 +295,13 @@ namespace ManagedLzma.LZMA
                 var threadId = GetThreadId();
 
                 Queue<Record> queue;
-                lock(mObjectSync)
+                lock (mObjectSync)
                 {
                     int objId;
-                    while(!mObjectHandleMap.TryGetValue(obj, out objId))
+                    while (!mObjectHandleMap.TryGetValue(obj, out objId))
                         Monitor.Wait(mObjectSync);
 
-                    while((queue = mRecordByObject[objId]).Count == 0
+                    while ((queue = mRecordByObject[objId]).Count == 0
                         || !queue.Peek().CheckThread(threadId))
                         Monitor.Wait(mObjectSync);
 
@@ -312,21 +312,21 @@ namespace ManagedLzma.LZMA
                 argId = GetStringId(argStr);
                 queue.Dequeue().Match(threadId, argId, kReleaseId);
 
-                if(queue.Count != 0)
+                if (queue.Count != 0)
                     throw new InvalidDataException();
             }
 
             private Record GetNextRecord(int threadId, object obj)
             {
                 Record record;
-                lock(mObjectSync)
+                lock (mObjectSync)
                 {
                     int objId;
-                    while(!mObjectHandleMap.TryGetValue(obj, out objId))
+                    while (!mObjectHandleMap.TryGetValue(obj, out objId))
                         Monitor.Wait(mObjectSync);
 
                     Queue<Record> queue;
-                    while((queue = mRecordByObject[objId]).Count == 0
+                    while ((queue = mRecordByObject[objId]).Count == 0
                         || !queue.Peek().CheckThread(threadId))
                         Monitor.Wait(mObjectSync);
 
@@ -352,23 +352,23 @@ namespace ManagedLzma.LZMA
                 Thread thread = Thread.CurrentThread;
                 try
                 {
-                    lock(mSync)
+                    lock (mSync)
                         mRunningThreads.Add(thread);
 
-                    using(mContext = new Context(this, GetThreadId(thread), false))
+                    using (mContext = new Context(this, GetThreadId(thread), false))
                     {
                         ((Action)fun)();
                         mContext.EnsureEnd();
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    lock(mSync)
+                    lock (mSync)
                         mError.Add(ex);
                 }
                 finally
                 {
-                    lock(mSync)
+                    lock (mSync)
                     {
                         mRunningThreads.Remove(thread);
                         Monitor.PulseAll(mSync);
@@ -382,29 +382,29 @@ namespace ManagedLzma.LZMA
             {
                 try
                 {
-                    using(var pipe = new NamedPipeClientStream(".", (string)id + "\\root", PipeDirection.In))
+                    using (var pipe = new NamedPipeClientStream(".", (string)id + "\\root", PipeDirection.In))
                     {
                         pipe.Connect();
 
                         BinaryReader rd = new BinaryReader(pipe);
 
-                        for(; ; )
+                        for (;;)
                         {
-                            lock(mSync)
-                                if(mShutdown)
+                            lock (mSync)
+                                if (mShutdown)
                                     return;
 
                             int op = pipe.ReadByte();
-                            if(op < 0)
+                            if (op < 0)
                                 return;
 
                             ProcessPipeThreadEvent(rd, op);
                         }
                     }
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
-                    lock(mSync)
+                    lock (mSync)
                         mError.Add(ex);
                 }
             }
@@ -412,26 +412,26 @@ namespace ManagedLzma.LZMA
             private void SyncCommandEnd(BinaryReader rd)
             {
                 byte num = rd.ReadByte();
-                if(num != mSyncCount)
+                if (num != mSyncCount)
                     throw new InvalidDataException();
                 mSyncCount++;
             }
 
             private void ProcessPipeThreadEvent(BinaryReader rd, int op)
             {
-                switch(op)
+                switch (op)
                 {
                 case CMD_INIT_TRACE:
                     {
-                        lock(mSync)
+                        lock (mSync)
                         {
-                            if(mMainThreadId != 0)
+                            if (mMainThreadId != 0)
                                 throw new InvalidDataException();
 
                             mMainThreadId = rd.ReadInt32();
                             SyncCommandEnd(rd);
 
-                            if(mMainThreadId == 0)
+                            if (mMainThreadId == 0)
                                 throw new InvalidDataException();
 
                             Monitor.PulseAll(mSync);
@@ -443,7 +443,7 @@ namespace ManagedLzma.LZMA
                         int len = rd.ReadUInt16();
                         string text = Encoding.ASCII.GetString(rd.ReadBytes(len));
 
-                        lock(mStringSync)
+                        lock (mStringSync)
                         {
                             int id = mStringById.Count + 1;
                             mStringById.Add(id, text);
@@ -459,7 +459,7 @@ namespace ManagedLzma.LZMA
                         int arg = rd.ReadInt32();
                         SyncCommandEnd(rd);
 
-                        lock(mObjectSync)
+                        lock (mObjectSync)
                         {
                             mRecordByObject[handle].Enqueue(new Record(thread, arg, kReleaseId));
                             Monitor.PulseAll(mObjectSync);
@@ -473,7 +473,7 @@ namespace ManagedLzma.LZMA
                         int arg = rd.ReadInt32();
                         SyncCommandEnd(rd);
 
-                        lock(mObjectSync)
+                        lock (mObjectSync)
                         {
                             mRecordByObject[handle].Enqueue(new Record(thread, arg, kInvalidId));
                             Monitor.PulseAll(mObjectSync);
@@ -486,12 +486,12 @@ namespace ManagedLzma.LZMA
             #endregion
         }
 
-        private sealed class Context: IDisposable
+        private sealed class Context : IDisposable
         {
             #region Inner Class - Arg Flags
 
             [Flags]
-            private enum ArgFlags: byte
+            private enum ArgFlags : byte
             {
                 None = 0,
                 Int1 = 0x01,
@@ -534,7 +534,7 @@ namespace ManagedLzma.LZMA
 
             public void Dispose()
             {
-                if(mPipe != null)
+                if (mPipe != null)
                 {
                     mPipe.Close();
                     mPipe = null;
@@ -545,7 +545,7 @@ namespace ManagedLzma.LZMA
             {
                 SendAck(0xFF, 0xBADF00D);
 
-                if(mPipe.ReadByte() != -1)
+                if (mPipe.ReadByte() != -1)
                     throw new InvalidDataException();
             }
 
@@ -562,7 +562,7 @@ namespace ManagedLzma.LZMA
             public Thread MatchThreadStart(Action fun)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Escape | (ArgFlags)CMD_THREAD_CTOR))
+                if (cmd != (ArgFlags.Escape | (ArgFlags)CMD_THREAD_CTOR))
                     throw new InvalidDataException();
 
                 int threadId = mReader.ReadInt32();
@@ -576,7 +576,7 @@ namespace ManagedLzma.LZMA
             public void MatchThreadWait(Thread thread)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Escape | (ArgFlags)CMD_THREAD_WAIT))
+                if (cmd != (ArgFlags.Escape | (ArgFlags)CMD_THREAD_WAIT))
                     throw new InvalidDataException();
 
                 int threadId = mReader.ReadInt32();
@@ -589,7 +589,7 @@ namespace ManagedLzma.LZMA
             public void MatchThreadClose(Thread thread)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Escape | (ArgFlags)CMD_THREAD_DTOR))
+                if (cmd != (ArgFlags.Escape | (ArgFlags)CMD_THREAD_DTOR))
                     throw new InvalidDataException();
 
                 int threadId = mReader.ReadInt32();
@@ -602,7 +602,7 @@ namespace ManagedLzma.LZMA
             public void MatchObjectCreate(object obj, string arg)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Escape | (ArgFlags)CMD_OBJECT_CTOR))
+                if (cmd != (ArgFlags.Escape | (ArgFlags)CMD_OBJECT_CTOR))
                     throw new InvalidDataException();
 
                 int objectId = mReader.ReadInt32();
@@ -610,7 +610,7 @@ namespace ManagedLzma.LZMA
                 SyncCommands();
 
                 string str = GetString(strId);
-                if(str != arg)
+                if (str != arg)
                     throw new InvalidDataException();
 
                 int id = GetStringId(arg);
@@ -635,7 +635,7 @@ namespace ManagedLzma.LZMA
             public int MatchStatusCode(string arg)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Escape | (ArgFlags)CMD_STATUS_CODE))
+                if (cmd != (ArgFlags.Escape | (ArgFlags)CMD_STATUS_CODE))
                     throw new InvalidDataException();
 
                 int str1 = mReader.ReadInt32();
@@ -651,7 +651,7 @@ namespace ManagedLzma.LZMA
             public void Match(string arg1, string arg2)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Str1 | ArgFlags.Str2))
+                if (cmd != (ArgFlags.Str1 | ArgFlags.Str2))
                     throw new InvalidDataException();
 
                 int str1 = mReader.ReadInt32();
@@ -666,7 +666,7 @@ namespace ManagedLzma.LZMA
             public void Match(string arg1, int arg2)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Str1 | ArgFlags.Int2))
+                if (cmd != (ArgFlags.Str1 | ArgFlags.Int2))
                     throw new InvalidDataException();
 
                 int str1 = mReader.ReadInt32();
@@ -675,7 +675,7 @@ namespace ManagedLzma.LZMA
 
                 CheckString(arg1, str1);
 
-                if(arg2 != str2)
+                if (arg2 != str2)
                     throw new InvalidDataException();
 
                 SendAck((byte)cmd, str1 ^ str2);
@@ -684,17 +684,17 @@ namespace ManagedLzma.LZMA
             public void Match(int arg1, int arg2)
             {
                 var cmd = (ArgFlags)mReader.ReadByte();
-                if(cmd != (ArgFlags.Int1 | ArgFlags.Int2))
+                if (cmd != (ArgFlags.Int1 | ArgFlags.Int2))
                     throw new InvalidDataException();
 
                 int str1 = mReader.ReadInt32();
                 int str2 = mReader.ReadInt32();
                 SyncCommands();
 
-                if(arg1 != str1)
+                if (arg1 != str1)
                     throw new InvalidDataException();
 
-                if(arg2 != str2)
+                if (arg2 != str2)
                     throw new InvalidDataException();
 
                 SendAck((byte)cmd, str1 ^ str2);
@@ -713,18 +713,18 @@ namespace ManagedLzma.LZMA
             private void SyncCommands()
             {
                 byte num = mReader.ReadByte();
-                if(num != mSyncCount)
+                if (num != mSyncCount)
                     throw new InvalidDataException();
                 mSyncCount++;
             }
 
             private int GetStringId(string str)
             {
-                if(str == null)
+                if (str == null)
                     return 0;
 
                 int id;
-                if(!mIdByString.TryGetValue(str, out id))
+                if (!mIdByString.TryGetValue(str, out id))
                 {
                     id = mSession.GetStringId(str);
                     mStringById.Add(id, str);
@@ -736,14 +736,14 @@ namespace ManagedLzma.LZMA
 
             private string GetString(int id)
             {
-                if(id < 0)
+                if (id < 0)
                     throw new InvalidDataException();
 
-                if(id == 0)
+                if (id == 0)
                     return null;
 
                 string str;
-                if(!mStringById.TryGetValue(id, out str))
+                if (!mStringById.TryGetValue(id, out str))
                 {
                     str = mSession.GetString(id);
                     mStringById.Add(id, str);
@@ -756,7 +756,7 @@ namespace ManagedLzma.LZMA
             private void CheckString(string str, int arg)
             {
                 string argStr = GetString(arg);
-                if(argStr != str)
+                if (argStr != str)
                     throw new InvalidDataException();
             }
 
@@ -775,7 +775,7 @@ namespace ManagedLzma.LZMA
 #if DISABLE_TRACE
             throw new NotSupportedException();
 #else
-            if(mContext != null)
+            if (mContext != null)
                 throw new InvalidOperationException("This thread is already traced.");
 
             mContext = new Session(@"LZMA\TEST\" + id.ToString("N")).InitMainThread();
@@ -787,10 +787,10 @@ namespace ManagedLzma.LZMA
 #if DISABLE_TRACE
             throw new NotSupportedException();
 #else
-            if(mContext == null)
+            if (mContext == null)
                 throw new InvalidOperationException("This thread is not traced.");
 
-            if(!mContext.IsMainThread)
+            if (!mContext.IsMainThread)
                 throw new InvalidOperationException("This thread is not the main thread of the session.");
 
             Session root = mContext.Session;
