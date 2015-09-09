@@ -31,7 +31,8 @@ namespace ManagedLzma.LZMA
 
             Exception error = null;
             EventHandler handler = null;
-            Application.Idle += handler = delegate {
+            Application.Idle += handler = delegate
+            {
                 // Must be reentrant because we are triggered by the application-idle event.
                 // (The next event may be "on air" before we are executed and unsubscribe ourselves.)
                 if(handler == null)
@@ -54,7 +55,8 @@ namespace ManagedLzma.LZMA
             };
 
             EventHandler exitHandler = null;
-            Application.ApplicationExit += exitHandler = delegate {
+            Application.ApplicationExit += exitHandler = delegate
+            {
                 if(exitHandler == null)
                     return;
 

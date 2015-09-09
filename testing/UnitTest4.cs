@@ -14,7 +14,8 @@ namespace ManagedLzma.LZMA
         [TestMethod]
         public void TestMethod64()
         {
-            Test(new TestSettings {
+            Test(new TestSettings
+            {
                 Seed = 64,
                 DatLen = 64,
                 RunLen = 5,
@@ -29,7 +30,8 @@ namespace ManagedLzma.LZMA
         [TestMethod]
         public void TestMethod128()
         {
-            Test(new TestSettings {
+            Test(new TestSettings
+            {
                 Seed = 128,
                 DatLen = 128,
                 RunLen = 5,
@@ -45,7 +47,8 @@ namespace ManagedLzma.LZMA
         public void TestMethod1K()
         {
             TestPack(1024, 1 << 10);
-            Test(new TestSettings {
+            Test(new TestSettings
+            {
                 Seed = 1024,
                 DatLen = 1 << 10,
                 RunLen = 5,
@@ -60,7 +63,8 @@ namespace ManagedLzma.LZMA
         [TestMethod]
         public void TestMethod32K()
         {
-            Test(new TestSettings {
+            Test(new TestSettings
+            {
                 Seed = 1024,
                 DatLen = 1 << 15,
                 RunLen = 5,

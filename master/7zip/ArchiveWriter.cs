@@ -670,7 +670,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(file == null)
                     throw new ArgumentNullException("file");
 
-                mCurrentFile = new FileEntry {
+                mCurrentFile = new FileEntry
+                {
                     Name = file.Name,
                     CTime = EnsureUTC(file.CreationTime),
                     MTime = EnsureUTC(file.LastWriteTime),
@@ -768,7 +769,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 //       however see comment at call site for why this works for now
                 //       (we also need to replace the filesets input stream with our own
                 //       input stream, namely outputSize/outputHash)
-                var decryptionCoder = new Coder {
+                var decryptionCoder = new Coder
+                {
                     MethodId = methodId,
                     Settings = settings,
                     InputStreams = new[] { encryptedStreamRef },
@@ -786,7 +788,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 if(coder.InputStreams.Length != 1 || !(coder.InputStreams[0] is InputStreamRef) || ((InputStreamRef)coder.InputStreams[0]).PackedStreamIndex != 0)
                     throw new NotSupportedException();
 
-                return new Coder {
+                return new Coder
+                {
                     MethodId = coder.MethodId,
                     Settings = coder.Settings,
                     InputStreams = new[] { adjustedInputStream },
@@ -891,7 +894,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             {
                 Debug.Assert(inputSize == outputSize);
 
-                return new FileSet {
+                return new FileSet
+                {
                     Files = entries,
                     DataStream = new InputStreamRef { PackedStreamIndex = 0 },
                     InputStreams = new[] { new InputStream { Size = outputSize, Hash = outputHash } },
@@ -1225,7 +1229,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize, uint? inputHash, uint? outputHash)
             {
-                return new FileSet {
+                return new FileSet
+                {
                     Files = entries,
                     DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
                     InputStreams = new[] { new InputStream { Size = outputSize, Hash = outputHash } },
@@ -1255,9 +1260,12 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 mSyncObject = new object();
                 mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
                 mInputHelper = new LZMA.CSeqInStream(ReadInputHelper);
-                if(encoderProps != null) {
+                if(encoderProps != null)
+                {
                     mEncoderProps = encoderProps;
-                } else {
+                }
+                else
+                {
                     mEncoderProps = new LZMA.CLzma2EncProps();
                     mEncoderProps.Lzma2EncProps_Init();
                 }
@@ -1313,7 +1321,8 @@ namespace ManagedLzma.LZMA.Master.SevenZip
 
             internal override FileSet FinishFileSet(FileEntry[] entries, long inputSize, long outputSize, uint? inputHash, uint? outputHash)
             {
-                return new FileSet {
+                return new FileSet
+                {
                     Files = entries,
                     DataStream = new CoderStreamRef { CoderIndex = 0, StreamIndex = 0 },
                     InputStreams = new[] { new InputStream { Size = outputSize, Hash = outputHash } },

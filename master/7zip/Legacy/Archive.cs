@@ -1134,7 +1134,8 @@ namespace master._7zip.Legacy
                         break;
                     case BlockType.WinAttributes:
                         Log.Write("WinAttributes:");
-                        ReadAttributeVector(dataVector, numFiles, delegate(int i, uint? attr) {
+                        ReadAttributeVector(dataVector, numFiles, delegate(int i, uint? attr)
+                        {
                             db.Files[i].Attrib = attr;
                             Log.Write("  " + (attr.HasValue ? attr.Value.ToString("x8") : "n/a"));
                         });
@@ -1177,7 +1178,8 @@ namespace master._7zip.Legacy
                         break;
                     case BlockType.StartPos:
                         Log.Write("StartPos:");
-                        ReadNumberVector(dataVector, numFiles, delegate(int i, long? startPos) {
+                        ReadNumberVector(dataVector, numFiles, delegate(int i, long? startPos)
+                        {
                             db.Files[i].StartPos = startPos;
                             Log.Write("  " + (startPos.HasValue ? startPos.Value.ToString() : "n/a"));
                         });
@@ -1185,7 +1187,8 @@ namespace master._7zip.Legacy
                         break;
                     case BlockType.CTime:
                         Log.Write("CTime:");
-                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time) {
+                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time)
+                        {
                             db.Files[i].CTime = time;
                             Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
                         });
@@ -1193,7 +1196,8 @@ namespace master._7zip.Legacy
                         break;
                     case BlockType.ATime:
                         Log.Write("ATime:");
-                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time) {
+                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time)
+                        {
                             db.Files[i].ATime = time;
                             Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
                         });
@@ -1201,7 +1205,8 @@ namespace master._7zip.Legacy
                         break;
                     case BlockType.MTime:
                         Log.Write("MTime:");
-                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time) {
+                        ReadDateTimeVector(dataVector, numFiles, delegate(int i, DateTime? time)
+                        {
                             db.Files[i].MTime = time;
                             Log.Write("  " + (time.HasValue ? time.Value.ToString() : "n/a"));
                         });

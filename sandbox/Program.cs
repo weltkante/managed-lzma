@@ -10,7 +10,8 @@ namespace ManagedLzma.LZMA
     {
         public static void RunSandbox()
         {
-            TestRunner.RunTest(new TestSettings {
+            TestRunner.RunTest(new TestSettings
+            {
                 Seed = 64,
                 DatLen = 64,
                 RunLen = 5,

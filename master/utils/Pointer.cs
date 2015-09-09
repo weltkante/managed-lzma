@@ -40,7 +40,9 @@ namespace ManagedLzma.LZMA
         }
 
         public P(T[] buffer, uint offset)
-            : this(buffer, (int)offset) { }
+            : this(buffer, (int)offset)
+        {
+        }
 
         public bool IsNull
         {
