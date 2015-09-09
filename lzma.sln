@@ -15,8 +15,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "testing", "testing\testing.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{855DCF58-B802-41AC-B98D-4CC9B6CD7FD9}"
 	ProjectSection(SolutionItems) = preProject
+		license-readme.txt = license-readme.txt
+		license.txt = license.txt
 		Local.testsettings = Local.testsettings
 		lzma.vsmdi = lzma.vsmdi
+		readme.md = readme.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox-7z", "sandbox-7z\sandbox-7z.csproj", "{D13E39CD-E54E-43AF-AC0C-1425B755024E}"

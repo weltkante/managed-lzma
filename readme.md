@@ -7,8 +7,10 @@ The current state is working but the semi-automatic translation is still showing
 The current API and implementation is not stable and subject to change during the cleanup process.
 
 ### Roadmap:
-- Update to the latest version of the reference implementation
 - Design a proper API for 7z archives, the current API is a placeholder
+- Implement an Universal Windows library (Windows 10) to achieve native C++ performance
+- Publish nuget packages
+- Update to the latest version of the reference implementation
 - Implement the projection onto unsafe pointers for performance
 
 [![Discussion of Implementation and Features at https://gitter.im/weltkante/managed-lzma](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/weltkante/managed-lzma?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) for discussions that don't warrant a github issue.
