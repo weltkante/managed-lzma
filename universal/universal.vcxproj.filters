@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Decoder.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="DecoderSettings.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="DecoderStream.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="Encoder.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderSettings.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="EncoderStream.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="Utilities.cpp">
+      <Filter>library</Filter>
+    </ClCompile>
+    <ClCompile Include="Native\LzFindMt.c">
+      <Filter>native</Filter>
+    </ClCompile>
+    <ClCompile Include="Native\LzmaDec.c">
+      <Filter>native</Filter>
+    </ClCompile>
+    <ClCompile Include="Native\LzmaEnc.c">
+      <Filter>native</Filter>
+    </ClCompile>
+    <ClCompile Include="Native\Threads.c">
+      <Filter>native</Filter>
+    </ClCompile>
+    <ClCompile Include="Native\LzFind.c">
+      <Filter>native</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Utilities.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="Decoder.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="DecoderSettings.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="DecoderStream.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="Encoder.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="EncoderSettings.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="EncoderStream.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>library</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\LzFindMt.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\LzHash.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\LzmaDec.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\LzmaEnc.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\Precomp.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\Threads.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\7zTypes.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\Compiler.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="Native\LzFind.h">
+      <Filter>native</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="library">
+      <UniqueIdentifier>{4710839f-ed6c-489a-91d6-de8b13e84ea8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="native">
+      <UniqueIdentifier>{74771a56-343e-4dbd-841a-7909a53e9ff6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
