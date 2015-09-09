@@ -143,15 +143,15 @@ private IEnumerable<TestSettings> SeedAndSizeGen(IEnumerable<TestSettings> gen =
 		};
 
 		yield return new TestSettings(t) {
-		    Seed = 1024,
-		    DatLen = 1 << 15,
+			Seed = 1024,
+			DatLen = 1 << 15,
 			RunLen = 256,
 		};
 
 		yield return new TestSettings(t) {
-		    Seed = 1024,
-		    DatLen = 1 << 20,
-		    RunLen = 1024,
+			Seed = 1024,
+			DatLen = 1 << 20,
+			RunLen = 1024,
 		};
 	}
 }
