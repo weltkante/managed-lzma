@@ -306,7 +306,7 @@ namespace ManagedLzma.LZMA.Master
                     if(packSize == 0)
                         break;
                 }
-                
+
                 mEnc.LzmaEnc_Finish();
 
                 if(res == SZ_OK)

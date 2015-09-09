@@ -366,10 +366,10 @@ namespace ManagedLzma.LZMA.Master
                 mStopReading = false;
                 mStopWriting = false;
                 Trace.MatchObjectWait(this, "CMtThread_Prepare");
-                
+
                 if(AutoResetEvent_CreateNotSignaled(out mCanRead) != SZ_OK)
                     return SZ_ERROR_THREAD;
-                
+
                 if(AutoResetEvent_CreateNotSignaled(out mCanWrite) != SZ_OK)
                     return SZ_ERROR_THREAD;
 
