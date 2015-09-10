@@ -101,9 +101,12 @@
     <Compile Include="api\7z\ArchiveWriter.cs" />
     <Compile Include="api\Checksum.cs" />
     <Compile Include="api\lzma\Decoder.cs" />
+    <Compile Include="api\lzma\DecoderSettings.cs" />
     <Compile Include="api\lzma\DecoderStream.cs" />
     <Compile Include="api\lzma\Encoder.cs" />
+    <Compile Include="api\lzma\EncoderSettings.cs" />
     <Compile Include="api\lzma\EncoderStream.cs" />
+    <Compile Include="api\Utilities.cs" />
     <Compile Include="core\Core.cs" />
     <Compile Include="core\CRC.cs" />
     <Compile Include="core\LzFindMt.cs" />
