@@ -6,6 +6,11 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma
 {
+    public interface IPasswordProvider
+    {
+        string GetPassword();
+    }
+
     public enum ReadMode
     {
         /// <summary>

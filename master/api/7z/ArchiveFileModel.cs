@@ -130,15 +130,17 @@ namespace ManagedLzma.SevenZip.FileModel
     {
         private ArchivedFolder.Builder mRootFolder;
 
-        public ArchiveFileModel ReadMetadata(Stream stream)
+        public ArchiveFileModel ReadMetadata(Stream stream) => ReadMetadata(stream, null);
+
+        public ArchiveFileModel ReadMetadata(Stream stream, Lazy<string> password)
         {
             if (mRootFolder != null)
-                throw new InvalidOperationException("Recursive invocation is not possible.");
+                throw new InvalidOperationException("Recursive invocation.");
 
             try
             {
                 mRootFolder = new ArchivedFolder.Builder();
-                var metadata = ReadMetadataCore(stream);
+                var metadata = ReadMetadataCore(stream, password);
                 return new ArchiveFileModel(mRootFolder.ToImmutable(), metadata);
             }
             finally
