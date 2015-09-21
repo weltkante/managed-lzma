@@ -161,9 +161,12 @@ namespace ManagedLzma.SevenZip
                 if (mMetadataLength == 0)
                     return new ArchiveMetadata();
 
+                // TODO: validate metadata stream checksum
+
+                using (var metadataStream = new ConstrainedReadStream(mStream, mMetadataOffset, mMetadataLength))
                 using (var scope = new StreamScope(this))
                 {
-                    scope.SetSource(mStream, mMetadataOffset, mMetadataLength);
+                    scope.SetSource(metadataStream);
 
                     if (!PrepareMetadata(scope))
                         return new ArchiveMetadata();
@@ -216,7 +219,7 @@ namespace ManagedLzma.SevenZip
                     throw new InvalidDataException();
 
                 // Switch over to the decoded metadata stream.
-                scope.SetSource(streams[0], 0, streams[0].Length);
+                scope.SetSource(streams[0]);
                 token = ReadToken();
             }
 
@@ -284,7 +287,7 @@ namespace ManagedLzma.SevenZip
                     switch (token)
                     {
                         case Token.Name:
-                            using (new StreamScope(this, streams))
+                            using (SelectStream(streams))
                             {
                                 var reader = new MetadataStringReader(this, fileCount);
                                 ReadNames(reader);
@@ -295,7 +298,7 @@ namespace ManagedLzma.SevenZip
                         case Token.WinAttributes:
                             {
                                 var defined = ReadOptionalBitVector(fileCount);
-                                using (new StreamScope(this, streams))
+                                using (SelectStream(streams))
                                 {
                                     var reader = new MetadataAttributeReader(this, fileCount, defined);
                                     ReadAttributes(reader);
@@ -341,7 +344,7 @@ namespace ManagedLzma.SevenZip
                         case Token.StartPos:
                             {
                                 var defined = ReadOptionalBitVector(fileCount);
-                                using (new StreamScope(this, streams))
+                                using (SelectStream(streams))
                                 {
                                     var reader = new MetadataNumberReader(this, fileCount, defined);
                                     ReadOffsets(reader);
@@ -354,7 +357,7 @@ namespace ManagedLzma.SevenZip
                         case Token.CTime:
                             {
                                 var defined = ReadOptionalBitVector(fileCount);
-                                using (new StreamScope(this, streams))
+                                using (SelectStream(streams))
                                 {
                                     var reader = new MetadataDateReader(this, fileCount, defined);
                                     ReadCTime(reader);
@@ -367,7 +370,7 @@ namespace ManagedLzma.SevenZip
                         case Token.ATime:
                             {
                                 var defined = ReadOptionalBitVector(fileCount);
-                                using (new StreamScope(this, streams))
+                                using (SelectStream(streams))
                                 {
                                     var reader = new MetadataDateReader(this, fileCount, defined);
                                     ReadATime(reader);
@@ -380,7 +383,7 @@ namespace ManagedLzma.SevenZip
                         case Token.MTime:
                             {
                                 var defined = ReadOptionalBitVector(fileCount);
-                                using (new StreamScope(this, streams))
+                                using (SelectStream(streams))
                                 {
                                     var reader = new MetadataDateReader(this, fileCount, defined);
                                     ReadMTime(reader);
@@ -506,7 +509,7 @@ namespace ManagedLzma.SevenZip
             int count = ReadNumberAsInt32();
 
             var decoders = new DecoderFileFormat[count];
-            using (new StreamScope(this, streams))
+            using (SelectStream(streams))
                 for (int i = 0; i < count; i++)
                     decoders[i] = ReadDecoder();
 
@@ -585,6 +588,11 @@ namespace ManagedLzma.SevenZip
             return new ChecksumVector(defined, checksums.MoveToImmutable());
         }
 
+        internal string ReadStringInternal()
+        {
+            return mScope.ReadString();
+        }
+
         #endregion
 
         #region Private Implementation - Binary Reader
@@ -627,6 +635,22 @@ namespace ManagedLzma.SevenZip
             return (int)value;
         }
 
+        private StreamScope SelectStream(ImmutableArray<Stream> streams)
+        {
+            var switchStream = ReadByte();
+            if (switchStream == 0)
+                return null;
+
+            var streamIndex = ReadNumberAsInt32();
+            if (streamIndex < 0 || streamIndex >= streams.Length)
+                throw new InvalidDataException();
+
+            var stream = streams[streamIndex];
+            var scope = new StreamScope(this);
+            scope.SetSource(stream);
+            return scope;
+        }
+
         private Token ReadToken()
         {
             var token = ReadNumber();
@@ -644,7 +668,7 @@ namespace ManagedLzma.SevenZip
 
         private void SkipDataBlock()
         {
-            throw new NotImplementedException();
+            mScope.Skip(ReadNumberAsInt64());
         }
 
         private enum Token
@@ -691,23 +715,16 @@ namespace ManagedLzma.SevenZip
         {
             private ArchiveMetadataReader mReader;
             private StreamScope mOuterScope;
+            private Stream mStream;
+            private byte[] mBuffer = new byte[0x4000];
+            private int mBufferOffset;
+            private int mBufferEnding;
 
             public StreamScope(ArchiveMetadataReader reader)
             {
                 mReader = reader;
                 mOuterScope = reader.mScope;
-            }
-
-            public StreamScope(ArchiveMetadataReader reader, Stream stream, long offset, long length)
-                : this(reader)
-            {
-                SetSource(stream, offset, length);
-            }
-
-            public StreamScope(ArchiveMetadataReader reader, ImmutableArray<Stream> streams)
-                : this(reader)
-            {
-                SelectSource(streams);
+                reader.mScope = this;
             }
 
             public void Dispose()
@@ -716,34 +733,125 @@ namespace ManagedLzma.SevenZip
                 mReader = null;
             }
 
-            public void SetSource(Stream stream, long offset, long length)
+            public void SetSource(Stream stream)
             {
-                throw new NotImplementedException();
+                stream.Position = 0;
+                mStream = stream;
             }
 
-            public void SelectSource(ImmutableArray<Stream> streams)
+            private void EnsureBuffer(int size)
             {
-                throw new NotImplementedException();
+                if (mBufferEnding - mBufferOffset < size)
+                    PrefetchBuffer(size);
+            }
+
+            private void PrefetchBuffer(int size)
+            {
+                var buffer = (size <= mBuffer.Length) ? mBuffer : new byte[Math.Max(mBuffer.Length * 2, size)];
+
+                if (mBufferOffset < mBufferEnding)
+                    Buffer.BlockCopy(mBuffer, mBufferOffset, buffer, 0, mBufferEnding - mBufferOffset);
+
+                mBufferEnding -= mBufferOffset;
+                mBufferOffset = 0;
+                mBuffer = buffer;
+
+                while (mBufferEnding < size)
+                {
+                    var length = mStream.Read(mBuffer, mBufferEnding, mBuffer.Length - mBufferEnding);
+                    if (length <= 0)
+                        throw new EndOfStreamException();
+
+                    mBufferEnding += length;
+                }
             }
 
             public long GetCurrentOffset()
             {
-                throw new NotImplementedException();
+                return mStream.Position - (mBufferEnding - mBufferOffset);
             }
 
             public byte ReadByte()
             {
-                throw new NotImplementedException();
+                EnsureBuffer(1);
+                return mBuffer[mBufferOffset++];
             }
 
             public uint ReadUInt32()
             {
-                throw new NotImplementedException();
+                EnsureBuffer(4);
+                var result = (uint)GetInt32(mBuffer, mBufferOffset);
+                mBufferOffset += 4;
+                return result;
+            }
+
+            public ulong ReadUInt64()
+            {
+                EnsureBuffer(8);
+                var result = (ulong)GetInt64(mBuffer, mBufferOffset);
+                mBufferOffset += 8;
+                return result;
             }
 
             public ulong ReadNumber()
             {
-                throw new NotImplementedException();
+                byte firstByte = ReadByte();
+                byte mask = 0x80;
+                ulong value = 0;
+
+                for (int i = 0; i < 8; i++)
+                {
+                    if ((firstByte & mask) == 0)
+                    {
+                        ulong highPart = firstByte & (mask - 1u);
+                        value += highPart << (i * 8);
+                        return value;
+                    }
+
+                    EnsureBuffer(1);
+                    value |= (ulong)ReadByte() << (8 * i);
+                    mask >>= 1;
+                }
+
+                return value;
+            }
+
+            public string ReadString()
+            {
+                int length = 0;
+                for (;;)
+                {
+                    EnsureBuffer(length + 2);
+                    if (mBuffer[mBufferOffset + length] == 0 && mBuffer[mBufferOffset + length + 1] == 0)
+                        break;
+                }
+
+                var result = Encoding.Unicode.GetString(mBuffer, mBufferOffset, length);
+                mBufferOffset += length + 2;
+                return result;
+            }
+
+            public void Skip(long size)
+            {
+                if (size < 0)
+                    throw new InvalidDataException();
+
+                if (size < mBufferEnding - mBufferOffset)
+                {
+                    mBufferOffset += (int)size;
+                }
+                else
+                {
+                    var offset = GetCurrentOffset();
+
+                    if (size > mStream.Length - offset)
+                        throw new InvalidDataException();
+
+                    mBufferEnding = 0;
+                    mBufferOffset = 0;
+
+                    mStream.Seek(offset + size, SeekOrigin.Current);
+                }
             }
         }
 

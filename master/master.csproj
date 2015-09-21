@@ -104,6 +104,7 @@
     <Compile Include="api\7z\BitVector.cs" />
     <Compile Include="api\7z\CompressionMethod.cs" />
     <Compile Include="api\Checksum.cs" />
+    <Compile Include="api\ConstrainedReadStream.cs" />
     <Compile Include="api\lzma\Decoder.cs" />
     <Compile Include="api\lzma\DecoderSettings.cs" />
     <Compile Include="api\lzma\DecoderStream.cs" />

@@ -24,8 +24,21 @@ namespace ManagedLzma.SevenZip
 
         internal void Complete()
         {
-            // TODO: skip remaining data and clean up fields in case someone retains a reference to this instance
+            while (mIndex < mCount)
+                ReadString();
+
             mReader = null;
+        }
+
+        public string ReadString()
+        {
+            if (mReader == null)
+                throw new ObjectDisposedException(null);
+
+            if (mIndex == mCount)
+                throw new InvalidOperationException();
+
+            return mReader.ReadStringInternal();
         }
     }
 
