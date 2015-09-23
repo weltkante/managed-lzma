@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 // These classes contain the public metadata model. Metadata describes how to decode the streams
-// contained in an archive, but does not hold any information about how to split them into files.
+// contained in an archive, but does not hold any information about the files they represent.
 //
 // The structure of the metadata is different from the binary file format, mostly to reduce its
 // complexity and to make it easier to understand. As a side effect it also allocates less arrays.
@@ -18,19 +18,19 @@ namespace ManagedLzma.SevenZip
     public sealed class ArchiveMetadata
     {
         /// <summary>The raw streams stored in the archive.</summary>
-        public ImmutableArray<ArchiveStreamMetadata> SourceStreams { get; }
+        public ImmutableArray<ArchiveFileSection> FileSections { get; }
 
         /// <summary>Instructions on how to decode the archive.</summary>
-        public ImmutableArray<ArchiveSectionMetadata> Sections { get; }
+        public ImmutableArray<ArchiveDecoderSection> DecoderSections { get; }
 
         /// <summary>Constructs empty metadata.</summary>
         public ArchiveMetadata()
         {
-            this.SourceStreams = ImmutableArray<ArchiveStreamMetadata>.Empty;
-            this.Sections = ImmutableArray<ArchiveSectionMetadata>.Empty;
+            this.FileSections = ImmutableArray<ArchiveFileSection>.Empty;
+            this.DecoderSections = ImmutableArray<ArchiveDecoderSection>.Empty;
         }
 
-        public ArchiveMetadata(ImmutableArray<ArchiveStreamMetadata> streams, ImmutableArray<ArchiveSectionMetadata> sections)
+        public ArchiveMetadata(ImmutableArray<ArchiveFileSection> streams, ImmutableArray<ArchiveDecoderSection> sections)
         {
             if (streams.IsDefault)
                 throw new ArgumentNullException(nameof(streams));
@@ -38,13 +38,13 @@ namespace ManagedLzma.SevenZip
             if (sections.IsDefault)
                 throw new ArgumentNullException(nameof(sections));
 
-            this.SourceStreams = streams;
-            this.Sections = sections;
+            this.FileSections = streams;
+            this.DecoderSections = sections;
         }
     }
 
     /// <summary>Describes where a raw stream is stored in an archive.</summary>
-    public sealed class ArchiveStreamMetadata
+    public sealed class ArchiveFileSection
     {
         /// <summary>The offset of the stream in the archive.</summary>
         public long Offset { get; }
@@ -55,7 +55,7 @@ namespace ManagedLzma.SevenZip
         /// <summary>The checksum of the stream, if available.</summary>
         public Checksum? Checksum { get; }
 
-        public ArchiveStreamMetadata(long offset, long length, Checksum? checksum)
+        public ArchiveFileSection(long offset, long length, Checksum? checksum)
         {
             this.Offset = offset;
             this.Length = length;
@@ -64,7 +64,7 @@ namespace ManagedLzma.SevenZip
     }
 
     /// <summary>Describes how to decode a section of an archive.</summary>
-    public sealed class ArchiveSectionMetadata
+    public sealed class ArchiveDecoderSection
     {
         /// <summary>The decoders required to decode the section.</summary>
         public ImmutableArray<DecoderMetadata> Decoders { get; }
@@ -72,20 +72,39 @@ namespace ManagedLzma.SevenZip
         /// <summary>The checksum over all decoded streams, if available.</summary>
         public Checksum? Checksum { get; }
 
-        /// <summary>The number of streams stored in this section, if available.</summary>
-        public int? StreamCount { get; }
+        /// <summary>Information about the streams contained in this section.</summary>
+        public ImmutableArray<DecodedStreamMetadata> Streams { get; }
 
-        public ArchiveSectionMetadata(ImmutableArray<DecoderMetadata> decoders, Checksum? checksum, int? streams)
+        public ArchiveDecoderSection(ImmutableArray<DecoderMetadata> decoders, Checksum? checksum, ImmutableArray<DecodedStreamMetadata> sections)
         {
             if (decoders.IsDefault)
                 throw new ArgumentNullException(nameof(decoders));
 
-            if (streams < 0)
-                throw new ArgumentOutOfRangeException(nameof(streams));
+            if (sections.IsDefault)
+                throw new ArgumentNullException(nameof(sections));
 
             this.Decoders = decoders;
             this.Checksum = checksum;
-            this.StreamCount = streams;
+            this.Streams = sections;
+        }
+    }
+
+    /// <summary>Information about a stream which can be decoded from an archive.</summary>
+    public struct DecodedStreamMetadata
+    {
+        /// <summary>The length of the decoded stream.</summary>
+        public long Length { get; internal set; }
+
+        /// <summary>The checksum of the decoded stream, if available.</summary>
+        public Checksum? Checksum { get; internal set; }
+
+        public DecodedStreamMetadata(long length, Checksum? checksum)
+        {
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length));
+
+            this.Length = length;
+            this.Checksum = checksum;
         }
     }
 
@@ -148,14 +167,14 @@ namespace ManagedLzma.SevenZip
 
         /// <summary>
         /// The index of the decoder which provides the stream,
-        /// or null if the stream is stored in the archive.
+        /// or null if the stream is stored directly in the archive.
         /// </summary>
         public int? DecoderIndex => mDecoderIndex >= 0 ? mDecoderIndex : default(int?);
 
         /// <summary>
         /// The index of the stream. If the stream is provided by a decoder then this is an
         /// index into its output streams. If the stream is stored in the archive then this
-        /// is an index into the packed streams from the archive metadata.
+        /// is an index into the file sections from the archive metadata.
         /// </summary>
         public int StreamIndex => mStreamIndex;
     }

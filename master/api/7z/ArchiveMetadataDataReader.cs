@@ -38,46 +38,119 @@ namespace ManagedLzma.SevenZip
             if (mIndex == mCount)
                 throw new InvalidOperationException();
 
-            return mReader.ReadStringInternal();
+            var text = mReader.ReadStringInternal();
+            mIndex += 1;
+            return text;
         }
     }
 
     public sealed class MetadataDateReader
     {
+        private ArchiveMetadataReader mReader;
+        private BitVector mVector;
+        private int mCount;
+        private int mIndex;
+
         internal MetadataDateReader(ArchiveMetadataReader reader, int count, BitVector defined)
         {
-            throw new NotImplementedException();
+            mReader = reader;
+            mVector = defined;
+            mCount = count;
         }
 
         internal void Complete()
         {
-            throw new NotImplementedException();
+            while (mIndex < mCount)
+                ReadDate();
+
+            mReader = null;
+        }
+
+        public DateTime ReadDate()
+        {
+            if (mReader == null)
+                throw new ObjectDisposedException(null);
+
+            if (mIndex == mCount)
+                throw new InvalidOperationException();
+
+            // FILETIME = 100-nanosecond intervals since January 1, 1601 (UTC)
+            var date = mReader.ReadInt64Internal();
+            mIndex += 1;
+            return DateTime.FromFileTimeUtc(date);
         }
     }
 
     public sealed class MetadataNumberReader
     {
+        private ArchiveMetadataReader mReader;
+        private BitVector mVector;
+        private int mCount;
+        private int mIndex;
+
         internal MetadataNumberReader(ArchiveMetadataReader reader, int count, BitVector defined)
         {
-            throw new NotImplementedException();
+            mReader = reader;
+            mVector = defined;
+            mCount = count;
         }
 
         internal void Complete()
         {
-            throw new NotImplementedException();
+            while (mIndex < mCount)
+                ReadNumber();
+
+            mReader = null;
+        }
+
+        public long ReadNumber()
+        {
+            if (mReader == null)
+                throw new ObjectDisposedException(null);
+
+            if (mIndex == mCount)
+                throw new InvalidOperationException();
+
+            var number = mReader.ReadNumberInternal();
+            mIndex += 1;
+            return number;
         }
     }
 
     public sealed class MetadataAttributeReader
     {
+        private ArchiveMetadataReader mReader;
+        private BitVector mVector;
+        private int mCount;
+        private int mIndex;
+
         internal MetadataAttributeReader(ArchiveMetadataReader reader, int count, BitVector defined)
         {
+            mReader = reader;
+            mVector = defined;
+            mCount = count;
             throw new NotImplementedException();
         }
 
         internal void Complete()
         {
-            throw new NotImplementedException();
+            while (mIndex < mCount)
+                ReadAttributes();
+
+            mReader = null;
+        }
+
+        public System.IO.FileAttributes ReadAttributes()
+        {
+            if (mReader == null)
+                throw new ObjectDisposedException(null);
+
+            if (mIndex == mCount)
+                throw new InvalidOperationException();
+
+            var number = mReader.ReadInt32Internal();
+            mIndex += 1;
+            return (System.IO.FileAttributes)number;
         }
     }
 
@@ -96,19 +169,33 @@ namespace ManagedLzma.SevenZip
 
     public sealed class MetadataBitReader
     {
-        internal MetadataBitReader(ArchiveMetadataReader reader, BitVector bits)
-        {
-            throw new NotImplementedException();
-        }
+        private ArchiveMetadataReader mReader;
+        private BitVector mVector;
+        private int mIndex;
 
-        internal MetadataBitReader(ArchiveMetadataReader reader, int count)
+        internal MetadataBitReader(ArchiveMetadataReader reader, BitVector vector)
         {
-            throw new NotImplementedException();
+            mReader = reader;
+            mVector = vector;
         }
 
         internal void Complete()
         {
-            throw new NotImplementedException();
+            while (mIndex < mVector.Count)
+                ReadBit();
+
+            mReader = null;
+        }
+
+        public bool ReadBit()
+        {
+            if (mReader == null)
+                throw new ObjectDisposedException(null);
+
+            if (mIndex == mVector.Count)
+                throw new InvalidOperationException();
+
+            return mVector[mIndex++];
         }
     }
 }

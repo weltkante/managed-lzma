@@ -163,7 +163,7 @@ namespace ManagedLzma.SevenZip
 
                 // TODO: validate metadata stream checksum
 
-                using (var metadataStream = new ConstrainedReadStream(mStream, mMetadataOffset, mMetadataLength))
+                using (var metadataStream = new ConstrainedReadStream(mStream, kHeaderLength + mMetadataOffset, mMetadataLength))
                 using (var scope = new StreamScope(this))
                 {
                     scope.SetSource(metadataStream);
@@ -297,10 +297,10 @@ namespace ManagedLzma.SevenZip
 
                         case Token.WinAttributes:
                             {
-                                var defined = ReadOptionalBitVector(fileCount);
+                                var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
                                 {
-                                    var reader = new MetadataAttributeReader(this, fileCount, defined);
+                                    var reader = new MetadataAttributeReader(this, fileCount, vector);
                                     ReadAttributes(reader);
                                     reader.Complete();
                                 }
@@ -324,7 +324,7 @@ namespace ManagedLzma.SevenZip
                                 if (emptyStreamCount == null)
                                     throw new InvalidDataException();
 
-                                var reader = new MetadataBitReader(this, emptyStreamCount.Value);
+                                var reader = new MetadataBitReader(this, ReadRequiredBitVector(emptyStreamCount.Value));
                                 ReadEmptyFileMarkers(reader);
                                 reader.Complete();
                                 break;
@@ -335,7 +335,7 @@ namespace ManagedLzma.SevenZip
                                 if (emptyStreamCount == null)
                                     throw new InvalidDataException();
 
-                                var reader = new MetadataBitReader(this, emptyStreamCount.Value);
+                                var reader = new MetadataBitReader(this, ReadRequiredBitVector(emptyStreamCount.Value));
                                 ReadRemovedFileMarkers(reader);
                                 reader.Complete();
                                 break;
@@ -343,10 +343,10 @@ namespace ManagedLzma.SevenZip
 
                         case Token.StartPos:
                             {
-                                var defined = ReadOptionalBitVector(fileCount);
+                                var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
                                 {
-                                    var reader = new MetadataNumberReader(this, fileCount, defined);
+                                    var reader = new MetadataNumberReader(this, fileCount, vector);
                                     ReadOffsets(reader);
                                     reader.Complete();
                                 }
@@ -356,10 +356,10 @@ namespace ManagedLzma.SevenZip
 
                         case Token.CTime:
                             {
-                                var defined = ReadOptionalBitVector(fileCount);
+                                var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
                                 {
-                                    var reader = new MetadataDateReader(this, fileCount, defined);
+                                    var reader = new MetadataDateReader(this, fileCount, vector);
                                     ReadCTime(reader);
                                     reader.Complete();
                                 }
@@ -369,10 +369,10 @@ namespace ManagedLzma.SevenZip
 
                         case Token.ATime:
                             {
-                                var defined = ReadOptionalBitVector(fileCount);
+                                var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
                                 {
-                                    var reader = new MetadataDateReader(this, fileCount, defined);
+                                    var reader = new MetadataDateReader(this, fileCount, vector);
                                     ReadATime(reader);
                                     reader.Complete();
                                 }
@@ -382,10 +382,10 @@ namespace ManagedLzma.SevenZip
 
                         case Token.MTime:
                             {
-                                var defined = ReadOptionalBitVector(fileCount);
+                                var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
                                 {
-                                    var reader = new MetadataDateReader(this, fileCount, defined);
+                                    var reader = new MetadataDateReader(this, fileCount, vector);
                                     ReadMTime(reader);
                                     reader.Complete();
                                 }
@@ -425,7 +425,7 @@ namespace ManagedLzma.SevenZip
         private ImmutableArray<Stream> ReadPackedStreams()
         {
             var metadata = ReadMetadata(ImmutableArray<Stream>.Empty, false);
-            var count = metadata.Sections.Length;
+            var count = metadata.DecoderSections.Length;
             var streams = ImmutableArray.CreateBuilder<Stream>(count);
 
             for (int i = 0; i < count; i++)
@@ -442,59 +442,54 @@ namespace ManagedLzma.SevenZip
 
         private ArchiveMetadata ReadMetadata(ImmutableArray<Stream> streams, bool main)
         {
-            var sourceStreams = ImmutableArray.CreateBuilder<ArchiveStreamMetadata>();
-            var sections = ImmutableArray.CreateBuilder<ArchiveSectionMetadata>();
-            DecoderFileFormat[] decoders;
+            var rawStreams = default(ImmutableArray<ArchiveFileSection>);
+            var sections = default(ArchiveSectionMetadataBuilder[]);
 
             for (;;)
             {
                 switch (ReadToken())
                 {
-                    case Token.End:
-                        throw new NotImplementedException();
-
                     case Token.PackInfo:
-                        {
-                            var offset = ReadNumberAsInt64() + kHeaderLength;
-                            if (offset < 0)
-                                throw new InvalidDataException();
-
-                            var count = ReadNumberAsInt32();
-
-                            SkipToToken(Token.Size);
-
-                            var sizes = ImmutableArray.CreateBuilder<long>(count);
-                            for (int i = 0; i < count; i++)
-                                sizes.Add(ReadNumberAsInt64());
-
-                            var checksums = default(ChecksumVector);
-                            Token token;
-                            for (;;)
-                            {
-                                token = ReadToken();
-                                if (token == Token.End)
-                                    break;
-
-                                if (token == Token.CRC)
-                                {
-                                    checksums = ReadChecksumVector(count);
-                                    continue;
-                                }
-
-                                SkipDataBlock();
-                            }
-
-                            break;
-                        }
+                        rawStreams = ReadRawStreamList();
+                        break;
 
                     case Token.UnpackInfo:
-                        decoders = ReadDecoderList(streams);
+                        sections = ReadSectionHeader(streams);
                         break;
 
                     case Token.SubStreamsInfo:
+                        if (sections == null)
+                            throw new InvalidDataException();
+
+                        ReadSectionDetails(sections);
+                        break;
+
+                    case Token.End:
+                        if (rawStreams.IsDefault || sections == null)
+                            throw new InvalidDataException();
+
+                        var sectionListBuilder = ImmutableArray.CreateBuilder<ArchiveDecoderSection>(sections.Length);
+
+                        foreach (var section in sections)
                         {
-                            break;
+                            var decoderListBuilder = ImmutableArray.CreateBuilder<DecoderMetadata>(section.Decoders.Length);
+
+                            foreach (var decoder in section.Decoders)
+                            {
+                                decoderListBuilder.Add(new DecoderMetadata(
+                                    decoder.Method,
+                                    decoder.Settings,
+                                    decoder.InputInfo.MoveToImmutable(),
+                                    decoder.OutputInfo.MoveToImmutable()));
+                            }
+
+                            sectionListBuilder.Add(new ArchiveDecoderSection(
+                                decoderListBuilder.MoveToImmutable(),
+                                section.Checksum,
+                                section.Subsections.ToImmutableArray()));
                         }
+
+                        return new ArchiveMetadata(rawStreams, sectionListBuilder.MoveToImmutable());
 
                     default:
                         throw new InvalidDataException();
@@ -502,26 +497,107 @@ namespace ManagedLzma.SevenZip
             }
         }
 
-        private DecoderFileFormat[] ReadDecoderList(ImmutableArray<Stream> streams)
+        private ImmutableArray<ArchiveFileSection> ReadRawStreamList()
+        {
+            var rawStreamBaseOffset = ReadNumberAsInt64() + kHeaderLength;
+            if (rawStreamBaseOffset < 0)
+                throw new InvalidDataException();
+
+            var rawStreamCount = ReadNumberAsInt32();
+
+            SkipToToken(Token.Size);
+
+            var rawStreamSizes = new long[rawStreamCount];
+            for (int i = 0; i < rawStreamCount; i++)
+                rawStreamSizes[i] = ReadNumberAsInt64();
+
+            ImmutableArray<ArchiveFileSection>.Builder rawStreamListBuilder = null;
+
+            for (;;)
+            {
+                var token = ReadToken();
+                if (token == Token.CRC)
+                {
+                    var vector = ReadOptionalBitVector(rawStreamCount);
+                    var rawStreamOffset = rawStreamBaseOffset;
+                    rawStreamListBuilder = ImmutableArray.CreateBuilder<ArchiveFileSection>(rawStreamCount);
+
+                    for (int i = 0; i < rawStreamCount; i++)
+                    {
+                        var length = rawStreamSizes[i];
+                        rawStreamOffset += length;
+
+                        if (vector[i])
+                            rawStreamListBuilder.Add(new ArchiveFileSection(rawStreamOffset, length, new Checksum(ReadInt32())));
+                        else
+                            rawStreamListBuilder.Add(new ArchiveFileSection(rawStreamOffset, length, null));
+                    }
+                }
+                else if (token == Token.End)
+                {
+                    if (rawStreamListBuilder == null)
+                    {
+                        var rawStreamOffset = rawStreamBaseOffset;
+                        rawStreamListBuilder = ImmutableArray.CreateBuilder<ArchiveFileSection>(rawStreamCount);
+
+                        for (int i = 0; i < rawStreamCount; i++)
+                        {
+                            var length = rawStreamSizes[i];
+                            rawStreamOffset += length;
+
+                            rawStreamListBuilder.Add(new ArchiveFileSection(rawStreamOffset, length, null));
+                        }
+                    }
+
+                    return rawStreamListBuilder.MoveToImmutable();
+                }
+                else
+                {
+                    SkipDataBlock();
+                }
+            }
+        }
+
+        private ArchiveSectionMetadataBuilder[] ReadSectionHeader(ImmutableArray<Stream> streams)
         {
             SkipToToken(Token.Folder);
 
-            int count = ReadNumberAsInt32();
+            var sectionCount = ReadNumberAsInt32();
+            var sections = new ArchiveSectionMetadataBuilder[sectionCount];
+            int rawStreamCount = 0;
 
-            var decoders = new DecoderFileFormat[count];
             using (SelectStream(streams))
-                for (int i = 0; i < count; i++)
-                    decoders[i] = ReadDecoder();
+            {
+                for (int i = 0; i < sectionCount; i++)
+                {
+                    var section = ReadSection(rawStreamCount);
+                    rawStreamCount += section.RequiredRawInputStreamCount;
+                    sections[i] = section;
+                }
+            }
 
             SkipToToken(Token.CodersUnpackSize);
 
-            foreach (var decoder in decoders)
+            foreach (var section in sections)
             {
-                var outputCount = decoder.OutputCount;
-                var output = ImmutableArray.CreateBuilder<DecoderOutputMetadata>(outputCount);
-                for (int i = 0; i < outputCount; i++)
-                    output.Add(new DecoderOutputMetadata(ReadNumberAsInt64()));
-                decoder.OutputInfo = output;
+                long totalOutputLength = 0;
+
+                foreach (var decoder in section.Decoders)
+                {
+                    var outputCount = decoder.OutputCount;
+                    var outputBuilder = ImmutableArray.CreateBuilder<DecoderOutputMetadata>(outputCount);
+
+                    for (int i = 0; i < outputCount; i++)
+                    {
+                        var length = ReadNumberAsInt64();
+                        totalOutputLength += length;
+                        outputBuilder.Add(new DecoderOutputMetadata(length));
+                    }
+
+                    decoder.OutputInfo = outputBuilder;
+                }
+
+                section.OutputLength += totalOutputLength;
             }
 
             for (;;)
@@ -532,27 +608,338 @@ namespace ManagedLzma.SevenZip
 
                 if (token == Token.CRC)
                 {
-                    var defined = ReadOptionalBitVector(count);
-                    for (int i = 0; i < count; i++)
+                    var vector = ReadOptionalBitVector(sectionCount);
+
+                    for (int i = 0; i < sectionCount; i++)
                     {
-                        if (defined[i])
-                            decoders[i].Checksum = new Checksum(ReadInt32());
+                        if (vector[i])
+                            sections[i].Checksum = new Checksum(ReadInt32());
                         else
-                            decoders[i].Checksum = null;
+                            sections[i].Checksum = null;
                     }
-
-                    continue;
                 }
-
-                SkipDataBlock();
+                else
+                {
+                    SkipDataBlock();
+                }
             }
 
-            return decoders;
+            return sections;
         }
 
-        private DecoderFileFormat ReadDecoder()
+        private void ReadSectionDetails(ArchiveSectionMetadataBuilder[] sections)
         {
-            throw new NotImplementedException();
+            #region Counts
+
+            bool hasStreamCounts = false;
+
+            Token token;
+            for (;;)
+            {
+                token = ReadToken();
+                if (token == Token.End || token == Token.CRC || token == Token.Size)
+                    break;
+
+                if (token == Token.NumUnpackStream)
+                {
+                    hasStreamCounts = true;
+
+                    foreach (var section in sections)
+                        section.SubStreamCount = ReadNumberAsInt32();
+                }
+                else
+                {
+                    SkipDataBlock();
+                }
+            }
+
+            if (!hasStreamCounts)
+                foreach (var section in sections)
+                    section.SubStreamCount = 1;
+
+            #endregion
+
+            #region Sizes
+
+            foreach (var section in sections)
+            {
+                // v3.13 was broken and wrote empty sections
+                // v4.07 added compat code to skip empty sections
+                if (section.SubStreamCount.Value == 0)
+                    continue;
+
+                var remaining = section.OutputLength;
+                var subsections = new DecodedStreamMetadata[section.SubStreamCount.Value];
+
+                for (int i = 0; i < subsections.Length - 1; i++)
+                {
+                    if (token == Token.Size)
+                    {
+                        var size = ReadNumberAsInt64();
+                        if (size == 0 || size >= remaining)
+                            throw new InvalidDataException();
+
+                        subsections[i] = new DecodedStreamMetadata(size, null);
+                        remaining -= size;
+                    }
+                }
+
+                if (remaining == 0)
+                    throw new InvalidDataException();
+
+                subsections[subsections.Length - 1] = new DecodedStreamMetadata(remaining, null);
+                section.Subsections = subsections;
+            }
+
+            if (token == Token.Size)
+                token = ReadToken();
+
+            #endregion
+
+            #region Checksums
+
+            int requiredChecksumCount = 0;
+            int totalChecksumCount = 0;
+
+            ImmutableArray<Checksum?>.Builder checksums = null;
+
+            foreach (var section in sections)
+            {
+                // If there is only one stream and we have a section checksum 7z doesn't store the checksum again.
+                if (!(section.SubStreamCount == 1 && section.Checksum.HasValue))
+                    requiredChecksumCount += section.SubStreamCount.Value;
+
+                totalChecksumCount += section.SubStreamCount.Value;
+            }
+
+            for (;;)
+            {
+                if (token == Token.End)
+                {
+                    if (checksums == null)
+                    {
+                        checksums = ImmutableArray.CreateBuilder<Checksum?>(totalChecksumCount);
+                        for (int i = 0; i < totalChecksumCount; i++)
+                            checksums.Add(null);
+                    }
+
+                    break;
+                }
+                else if (token == Token.CRC)
+                {
+                    checksums = ImmutableArray.CreateBuilder<Checksum?>(totalChecksumCount);
+
+                    var vector = ReadOptionalBitVector(requiredChecksumCount);
+                    int requiredChecksumIndex = 0;
+
+                    foreach (var section in sections)
+                    {
+                        if (section.SubStreamCount == 1 && section.Checksum.HasValue)
+                        {
+                            checksums.Add(section.Checksum.Value);
+                        }
+                        else
+                        {
+                            for (int i = 0; i < section.SubStreamCount; i++)
+                            {
+                                if (vector[requiredChecksumIndex++])
+                                    checksums.Add(new Checksum(ReadInt32()));
+                                else
+                                    checksums.Add(null);
+                            }
+                        }
+                    }
+
+                    System.Diagnostics.Debug.Assert(requiredChecksumIndex == requiredChecksumCount);
+                    System.Diagnostics.Debug.Assert(checksums.Count == totalChecksumCount);
+                }
+                else
+                {
+                    SkipDataBlock();
+                }
+
+                token = ReadToken();
+            }
+
+            #endregion
+        }
+
+        private ArchiveSectionMetadataBuilder ReadSection(int rawInputStreamIndex)
+        {
+            var section = new ArchiveSectionMetadataBuilder();
+
+            int totalInputCount = 0;
+            int totalOutputCount = 0;
+
+            var decoderCount = ReadNumberAsInt32();
+            section.Decoders = new DecoderMetadataBuilder[decoderCount];
+            for (int i = 0; i < decoderCount; i++)
+            {
+                var decoder = ReadDecoder();
+                totalInputCount += decoder.InputCount;
+                totalOutputCount += decoder.OutputCount;
+                section.Decoders[i] = decoder;
+            }
+
+            // One output is the final output, the others need to be wired up.
+            for (int i = 1; i < totalOutputCount; i++)
+            {
+                int inputIndex = ReadNumberAsInt32();
+                int inputDecoderIndex = 0;
+                for (;;)
+                {
+                    if (inputDecoderIndex == decoderCount)
+                        throw new InvalidDataException();
+
+                    if (inputIndex < section.Decoders[inputDecoderIndex].InputCount)
+                        break;
+
+                    inputIndex -= section.Decoders[inputDecoderIndex].OutputCount;
+                    inputDecoderIndex += 1;
+                }
+
+                int outputIndex = ReadNumberAsInt32();
+                int outputDecoderIndex = 0;
+                for (;;)
+                {
+                    if (outputDecoderIndex == decoderCount)
+                        throw new InvalidDataException();
+
+                    var outputCount = section.Decoders[outputDecoderIndex].OutputCount;
+                    if (outputIndex < outputCount)
+                        break;
+
+                    outputIndex -= outputCount;
+                    outputDecoderIndex += 1;
+                }
+
+                // Detect duplicate connections by checking for the placeholder.
+                if (section.Decoders[inputDecoderIndex].InputInfo[inputIndex].StreamIndex != Int32.MaxValue)
+                    throw new InvalidDataException();
+
+                section.Decoders[inputDecoderIndex].InputInfo[inputIndex] = new DecoderInputMetadata(outputDecoderIndex, outputIndex);
+            }
+
+            // Outputs must be wired up to unique inputs. Inputs which are not wired to outputs must be wired to raw streams.
+            // Note that negative overflow is not possible and positive overflow is ok in this calculation,
+            // it will fail the range check and trigger the exception, which is the intended behavior.
+            var requiredRawStreams = 1 + totalInputCount - totalOutputCount;
+            if (requiredRawStreams <= 0)
+                throw new InvalidDataException();
+
+            section.RequiredRawInputStreamCount = requiredRawStreams;
+
+            if (requiredRawStreams == 1)
+            {
+                bool connected = false;
+
+                foreach (var decoder in section.Decoders)
+                {
+                    for (int i = 0; i < decoder.InputCount; i++)
+                    {
+                        if (decoder.InputInfo[i].StreamIndex == Int32.MaxValue)
+                        {
+                            if (connected)
+                                throw new InvalidDataException();
+
+                            connected = true;
+                            decoder.InputInfo[i] = new DecoderInputMetadata(null, 0);
+                        }
+                    }
+                }
+
+                if (!connected)
+                    throw new InvalidDataException();
+            }
+            else
+            {
+                for (int i = 0; i < requiredRawStreams; i++)
+                {
+                    int inputIndex = ReadNumberAsInt32();
+                    int inputDecoderIndex = 0;
+                    for (;;)
+                    {
+                        if (inputDecoderIndex == decoderCount)
+                            throw new InvalidDataException();
+
+                        var decoder = section.Decoders[inputDecoderIndex];
+                        if (inputIndex < decoder.InputCount)
+                            break;
+
+                        inputIndex -= decoder.OutputCount;
+                        inputDecoderIndex += 1;
+                    }
+
+                    var decoderInput = section.Decoders[inputDecoderIndex].InputInfo;
+                    if (decoderInput[inputIndex].StreamIndex != Int32.MaxValue)
+                        throw new InvalidDataException();
+
+                    decoderInput[inputIndex] = new DecoderInputMetadata(null, rawInputStreamIndex + i);
+                }
+            }
+
+            return section;
+        }
+
+        private DecoderMetadataBuilder ReadDecoder()
+        {
+            var decoder = new DecoderMetadataBuilder();
+
+            var mainByte = ReadByte();
+
+#warning ??? why did we check this in the old decoder ???
+            if ((mainByte & 0x80) != 0)
+                throw new NotImplementedException();
+
+            var idLen = (mainByte & 0x0F);
+            if (idLen > 4)
+                throw new InvalidDataException(); // all known decoders use 4 bytes or less
+
+            int id = 0;
+            for (int i = idLen - 1; i >= 0; i--)
+                id |= ReadByte() << (i * 8);
+
+            decoder.Method = CompressionMethod.TryDecode(id);
+            if (decoder.Method.IsUndefined)
+                throw new InvalidDataException(); // unknown decoder
+
+            if ((mainByte & 0x10) != 0)
+            {
+                decoder.InputCount = ReadNumberAsInt32();
+                decoder.OutputCount = ReadNumberAsInt32();
+            }
+            else
+            {
+                decoder.InputCount = 1;
+                decoder.OutputCount = 1;
+            }
+
+            decoder.Method.CheckInputOutputCount(decoder.InputCount, decoder.OutputCount);
+
+            decoder.InputInfo = ImmutableArray.CreateBuilder<DecoderInputMetadata>(decoder.InputCount);
+
+            // We need to fill the array because it is not guaranteed that inputs will be connected in order.
+            // No valid decoder can have Int32.MaxValue inputs so we can use this as a placeholder value to detect bugs.
+            var placeholder = new DecoderInputMetadata(Int32.MaxValue, Int32.MaxValue);
+            for (int i = 0; i < decoder.InputCount; i++)
+                decoder.InputInfo.Add(placeholder);
+
+            if ((mainByte & 0x20) != 0)
+            {
+                var settingsLength = ReadNumberAsInt32();
+                var settingsBuilder = ImmutableArray.CreateBuilder<byte>(settingsLength);
+
+                for (int i = 0; i < settingsLength; i++)
+                    settingsBuilder.Add(ReadByte());
+
+                decoder.Settings = settingsBuilder.MoveToImmutable();
+            }
+            else
+            {
+                decoder.Settings = ImmutableArray<byte>.Empty;
+            }
+
+            return decoder;
         }
 
         private void ReadArchiveProperties()
@@ -564,28 +951,36 @@ namespace ManagedLzma.SevenZip
 
         private BitVector ReadRequiredBitVector(int count)
         {
-            throw new NotImplementedException();
+            // TODO: this calculation could overflow for malformed data, should throw an InvalidDataException instead of ArgumentOutOfRangeException
+            var buffer = new byte[(count + 7) >> 3];
+            for (int i = 0; i < buffer.Length; i++)
+                buffer[i] = ReadByte();
+
+            return new BitVector(count, buffer);
         }
 
         private BitVector ReadOptionalBitVector(int count)
         {
-            throw new NotImplementedException();
+            var allTrue = ReadByte();
+            if (allTrue != 0)
+                return new BitVector(count, true);
+
+            return ReadRequiredBitVector(count);
         }
 
-        private ChecksumVector ReadChecksumVector(int count)
+        internal long ReadInt32Internal()
         {
-            var defined = ReadOptionalBitVector(count);
-            var checksums = ImmutableArray.CreateBuilder<Checksum>(count);
+            return ReadInt32();
+        }
 
-            for (int i = 0; i < count; i++)
-            {
-                if (defined[i])
-                    checksums.Add(new Checksum(ReadInt32()));
-                else
-                    checksums.Add(default(Checksum));
-            }
+        internal long ReadInt64Internal()
+        {
+            return ReadInt64();
+        }
 
-            return new ChecksumVector(defined, checksums.MoveToImmutable());
+        internal long ReadNumberInternal()
+        {
+            return ReadNumberAsInt64();
         }
 
         internal string ReadStringInternal()
@@ -610,6 +1005,11 @@ namespace ManagedLzma.SevenZip
         private int ReadInt32()
         {
             return (int)mScope.ReadUInt32();
+        }
+
+        private long ReadInt64()
+        {
+            return (long)mScope.ReadUInt64();
         }
 
         private ulong ReadNumber()
@@ -824,6 +1224,8 @@ namespace ManagedLzma.SevenZip
                     EnsureBuffer(length + 2);
                     if (mBuffer[mBufferOffset + length] == 0 && mBuffer[mBufferOffset + length + 1] == 0)
                         break;
+
+                    length += 2;
                 }
 
                 var result = Encoding.Unicode.GetString(mBuffer, mBufferOffset, length);

@@ -11,10 +11,23 @@ namespace ManagedLzma.SevenZip
     {
     }
 
-    internal sealed class DecoderFileFormat
+    internal sealed class ArchiveSectionMetadataBuilder
     {
+        public DecoderMetadataBuilder[] Decoders;
+        public int RequiredRawInputStreamCount;
         public Checksum? Checksum;
+        public long OutputLength;
+        public int? SubStreamCount;
+        public DecodedStreamMetadata[] Subsections;
+    }
+
+    internal sealed class DecoderMetadataBuilder
+    {
+        public CompressionMethod Method;
+        public int InputCount;
         public int OutputCount;
+        public ImmutableArray<byte> Settings;
+        public ImmutableArray<DecoderInputMetadata>.Builder InputInfo;
         public ImmutableArray<DecoderOutputMetadata>.Builder OutputInfo;
     }
 }
