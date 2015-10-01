@@ -99,6 +99,7 @@
     <Compile Include="api\7z\ArchiveMetadataDataReader.cs" />
     <Compile Include="api\7z\ArchiveMetadataFileFormat.cs" />
     <Compile Include="api\7z\ArchiveMetadataReader.cs" />
+    <Compile Include="api\7z\ArchiveDecoder.cs" />
     <Compile Include="api\7z\ArchiveReader.cs" />
     <Compile Include="api\7z\ArchiveWriter.cs" />
     <Compile Include="api\7z\BitVector.cs" />

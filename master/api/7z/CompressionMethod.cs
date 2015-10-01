@@ -92,6 +92,11 @@ namespace ManagedLzma.SevenZip
             }
         }
 
+        public ArchiveDecoder CreateDecoder(ImmutableArray<byte> settings)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion
 
         private int mSignature;

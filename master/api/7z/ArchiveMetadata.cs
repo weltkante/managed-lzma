@@ -69,13 +69,19 @@ namespace ManagedLzma.SevenZip
         /// <summary>The decoders required to decode the section.</summary>
         public ImmutableArray<DecoderMetadata> Decoders { get; }
 
+        /// <summary>Describes where to obtain the decoded streams.</summary>
+        public DecoderInputMetadata DecodedStream { get; }
+
+        /// <summary>The total length of the decoded streams.</summary>
+        public long Length { get; }
+
         /// <summary>The checksum over all decoded streams, if available.</summary>
         public Checksum? Checksum { get; }
 
         /// <summary>Information about the streams contained in this section.</summary>
         public ImmutableArray<DecodedStreamMetadata> Streams { get; }
 
-        public ArchiveDecoderSection(ImmutableArray<DecoderMetadata> decoders, Checksum? checksum, ImmutableArray<DecodedStreamMetadata> sections)
+        public ArchiveDecoderSection(ImmutableArray<DecoderMetadata> decoders, DecoderInputMetadata decodedStream, long length, Checksum? checksum, ImmutableArray<DecodedStreamMetadata> sections)
         {
             if (decoders.IsDefault)
                 throw new ArgumentNullException(nameof(decoders));
@@ -83,7 +89,12 @@ namespace ManagedLzma.SevenZip
             if (sections.IsDefault)
                 throw new ArgumentNullException(nameof(sections));
 
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length));
+
             this.Decoders = decoders;
+            this.DecodedStream = decodedStream;
+            this.Length = length;
             this.Checksum = checksum;
             this.Streams = sections;
         }

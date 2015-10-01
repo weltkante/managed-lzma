@@ -485,6 +485,7 @@ namespace ManagedLzma.SevenZip
 
                             sectionListBuilder.Add(new ArchiveDecoderSection(
                                 decoderListBuilder.MoveToImmutable(),
+                                section.OutputLength,
                                 section.Checksum,
                                 section.Subsections.ToImmutableArray()));
                         }
@@ -597,7 +598,7 @@ namespace ManagedLzma.SevenZip
                     decoder.OutputInfo = outputBuilder;
                 }
 
-                section.OutputLength += totalOutputLength;
+                section.OutputLength = totalOutputLength;
             }
 
             for (;;)

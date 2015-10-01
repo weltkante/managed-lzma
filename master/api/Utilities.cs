@@ -2,11 +2,29 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ManagedLzma
 {
+    [Serializable]
+    internal sealed class InternalFailureException : InvalidOperationException
+    {
+        public InternalFailureException()
+        {
+#if DEBUG
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debugger.Break();
+#endif
+        }
+
+        private InternalFailureException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+    }
+
     public interface IPasswordProvider
     {
         string GetPassword();
