@@ -126,6 +126,11 @@ namespace ManagedLzma.LZMA
             return length;
         }
 
+        public int SkipOutputData(int length)
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Decode input data until either the input data has been used up, the given output limit
         /// has been reached, or the end of the decoded data has been reached.
@@ -355,6 +360,11 @@ namespace ManagedLzma.LZMA
             frame.mMode = mode;
             PushOutputFrame(frame);
             return frame.mCompletion.Task;
+        }
+
+        public Task SkipOutputAsync(int length)
+        {
+            throw new NotImplementedException();
         }
 
         private void PushInputFrame(InputFrame frame)

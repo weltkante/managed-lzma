@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +24,11 @@ namespace ManagedLzma.LZMA
             dictSize |= (uint)data[offset + 3] << 16;
             dictSize |= (uint)data[offset + 4] << 24;
             return new DecoderSettings(dictSize, lc, pb, lp);
+        }
+
+        public static DecoderSettings CreateFrom(ImmutableArray<byte> data)
+        {
+            return ReadFrom(data.ToArray(), 0);
         }
 
         internal readonly uint mDictSize;

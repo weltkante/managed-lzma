@@ -14,13 +14,13 @@ namespace ManagedLzma.SevenZip
 
         private ArchiveMetadata mMetadata;
         private ArchiveDecoderSection mDecoderSection;
-        private Stream mDecodedStream;
-        private Stream mCurrentStream;
+        private ArchiveSectionDecoder mDecodedStream;
+        private DecodedStream mCurrentStream;
         private int mIndex;
 
-        public DecodedSectionReader(Stream stream, ArchiveMetadata metadata, int index)
+        public DecodedSectionReader(Stream stream, ArchiveMetadata metadata, int index, Lazy<string> password)
         {
-            mDecodedStream = new DecodedSectionStream(stream, metadata, index);
+            mDecodedStream = new ArchiveSectionDecoder(stream, metadata, index, password);
             mMetadata = metadata;
             mDecoderSection = metadata.DecoderSections[index];
         }
@@ -78,9 +78,14 @@ namespace ManagedLzma.SevenZip
 
             CloseCurrentStream();
 
-            // Seeking forward must be supported by all decoder streams.
+            while (remaining > Int32.MaxValue)
+            {
+                mDecodedStream.Skip(Int32.MaxValue);
+                remaining -= Int32.MaxValue;
+            }
+
             if (remaining > 0)
-                mDecodedStream.Seek(remaining, SeekOrigin.Current);
+                mDecodedStream.Skip((int)remaining);
 
             mIndex++;
         }
@@ -101,13 +106,13 @@ namespace ManagedLzma.SevenZip
     {
         #region Implementation
 
-        private Stream mStream;
+        private ArchiveSectionDecoder mReader;
         private long mOffset;
         private long mLength;
 
-        internal DecodedStream(Stream stream, long length)
+        internal DecodedStream(ArchiveSectionDecoder stream, long length)
         {
-            mStream = stream;
+            mReader = stream;
             mLength = length;
         }
 
@@ -115,7 +120,7 @@ namespace ManagedLzma.SevenZip
         {
             // We mark the stream as disposed by clearing the base stream reference.
             // Note that we must keep the offset/length fields intact because our owner still needs them.
-            mStream = null;
+            mReader = null;
 
             base.Dispose(disposing);
         }
@@ -124,45 +129,90 @@ namespace ManagedLzma.SevenZip
         public override bool CanSeek => false;
         public override bool CanWrite => false;
 
+        /// <remarks>
+        /// Returning the length from a non-seekable stream is non-standard.
+        /// The caller must know otherwise that we support this method.
+        /// </remarks>
         public override long Length
         {
             get
             {
-                // Returning the length from a non-seekable stream is non-standard.
-                // The caller must know otherwise that we support this method.
                 return mLength;
             }
         }
 
+        /// <remarks>
+        /// Returning the position from a non-seekable stream is non-standard.
+        /// The caller must know otherwise that we support this method.
+        /// </remarks>
         public override long Position
         {
             get
             {
-                // Returning the position from a non-seekable stream is non-standard.
-                // The caller must know otherwise that we support this method.
                 return mOffset;
             }
             set
             {
-                throw new InvalidOperationException();
+                if (value < mOffset || value > mLength)
+                    throw new ArgumentOutOfRangeException(nameof(value));
+
+                Skip(value - mOffset);
             }
         }
 
+        /// <summary>
+        /// Seeking on a non-seekable stream is non-standard.
+        /// The caller must know otherwise that we support this method.
+        /// </summary>
         public override long Seek(long offset, SeekOrigin origin)
         {
-            if (mStream == null)
-                throw new ObjectDisposedException(null);
+            switch (origin)
+            {
+                case SeekOrigin.Begin:
+                    if (offset < mOffset || offset > mLength)
+                        throw new ArgumentOutOfRangeException(nameof(offset));
 
-            if (origin != SeekOrigin.Current)
-                throw new InvalidOperationException();
+                    offset -= mOffset;
+                    break;
 
-            var remaining = mLength - mOffset;
-            if (offset < 0 || offset > remaining)
-                throw new InvalidOperationException();
+                case SeekOrigin.Current:
+                    if (offset < 0 || offset > mLength - mOffset)
+                        throw new ArgumentOutOfRangeException(nameof(offset));
 
-            mStream.Seek(offset, SeekOrigin.Current);
-            mOffset += offset;
+                    break;
+
+                case SeekOrigin.End:
+                    if (offset > 0 || offset < mOffset - mLength)
+                        throw new ArgumentOutOfRangeException(nameof(offset));
+
+                    offset += mLength;
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(origin));
+            }
+
+            Skip(offset);
             return mOffset;
+        }
+
+        public void Skip(long offset)
+        {
+            if (offset < 0 || offset > mLength - mOffset)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            while (offset > Int32.MaxValue)
+            {
+                mReader.Skip(Int32.MaxValue);
+                mOffset += Int32.MaxValue;
+                offset -= Int32.MaxValue;
+            }
+
+            if (offset > 0)
+            {
+                mReader.Skip((int)offset);
+                mOffset += offset;
+            }
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -176,7 +226,7 @@ namespace ManagedLzma.SevenZip
             if (count < 0 || count > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException(nameof(count));
 
-            if (mStream == null)
+            if (mReader == null)
                 throw new ObjectDisposedException(null);
 
             var remaining = mLength - mOffset;
@@ -186,7 +236,7 @@ namespace ManagedLzma.SevenZip
             if (count == 0)
                 return 0;
 
-            var result = mStream.Read(buffer, offset, count);
+            var result = mReader.Read(buffer, offset, count);
             if (result <= 0 || result > count)
                 throw new InternalFailureException();
 

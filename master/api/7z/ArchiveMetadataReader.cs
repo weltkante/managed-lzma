@@ -485,8 +485,9 @@ namespace ManagedLzma.SevenZip
 
                             sectionListBuilder.Add(new ArchiveDecoderSection(
                                 decoderListBuilder.MoveToImmutable(),
+                                section.OutputStream,
                                 section.OutputLength,
-                                section.Checksum,
+                                section.OutputChecksum,
                                 section.Subsections.ToImmutableArray()));
                         }
 
@@ -581,24 +582,24 @@ namespace ManagedLzma.SevenZip
 
             foreach (var section in sections)
             {
-                long totalOutputLength = 0;
-
-                foreach (var decoder in section.Decoders)
+                for (int decoderIndex = 0; decoderIndex < section.Decoders.Length; decoderIndex++)
                 {
+                    var decoder = section.Decoders[decoderIndex];
                     var outputCount = decoder.OutputCount;
                     var outputBuilder = ImmutableArray.CreateBuilder<DecoderOutputMetadata>(outputCount);
 
-                    for (int i = 0; i < outputCount; i++)
+                    for (int outputIndex = 0; outputIndex < outputCount; outputIndex++)
                     {
                         var length = ReadNumberAsInt64();
-                        totalOutputLength += length;
                         outputBuilder.Add(new DecoderOutputMetadata(length));
+
+                        var stream = new DecoderInputMetadata(decoderIndex, outputIndex);
+                        if (section.OutputStream == stream)
+                            section.OutputLength = length;
                     }
 
                     decoder.OutputInfo = outputBuilder;
                 }
-
-                section.OutputLength = totalOutputLength;
             }
 
             for (;;)
@@ -614,9 +615,9 @@ namespace ManagedLzma.SevenZip
                     for (int i = 0; i < sectionCount; i++)
                     {
                         if (vector[i])
-                            sections[i].Checksum = new Checksum(ReadInt32());
+                            sections[i].OutputChecksum = new Checksum(ReadInt32());
                         else
-                            sections[i].Checksum = null;
+                            sections[i].OutputChecksum = null;
                     }
                 }
                 else
@@ -707,7 +708,7 @@ namespace ManagedLzma.SevenZip
             foreach (var section in sections)
             {
                 // If there is only one stream and we have a section checksum 7z doesn't store the checksum again.
-                if (!(section.SubStreamCount == 1 && section.Checksum.HasValue))
+                if (!(section.SubStreamCount == 1 && section.OutputChecksum.HasValue))
                     requiredChecksumCount += section.SubStreamCount.Value;
 
                 totalChecksumCount += section.SubStreamCount.Value;
@@ -735,9 +736,9 @@ namespace ManagedLzma.SevenZip
 
                     foreach (var section in sections)
                     {
-                        if (section.SubStreamCount == 1 && section.Checksum.HasValue)
+                        if (section.SubStreamCount == 1 && section.OutputChecksum.HasValue)
                         {
-                            checksums.Add(section.Checksum.Value);
+                            checksums.Add(section.OutputChecksum.Value);
                         }
                         else
                         {
@@ -773,6 +774,9 @@ namespace ManagedLzma.SevenZip
             int totalOutputCount = 0;
 
             var decoderCount = ReadNumberAsInt32();
+            if (decoderCount == 0)
+                throw new InvalidDataException();
+
             section.Decoders = new DecoderMetadataBuilder[decoderCount];
             for (int i = 0; i < decoderCount; i++)
             {
@@ -783,6 +787,7 @@ namespace ManagedLzma.SevenZip
             }
 
             // One output is the final output, the others need to be wired up.
+            var usedOutputMask = new bool[totalOutputCount];
             for (int i = 1; i < totalOutputCount; i++)
             {
                 int inputIndex = ReadNumberAsInt32();
@@ -800,6 +805,14 @@ namespace ManagedLzma.SevenZip
                 }
 
                 int outputIndex = ReadNumberAsInt32();
+                
+                // Detect duplicate output connections through the output mask.
+                if (outputIndex >= totalOutputCount || usedOutputMask[outputIndex])
+                    throw new InvalidDataException();
+
+                usedOutputMask[outputIndex] = true;
+
+                // Separate the output index into decoder index and stream index
                 int outputDecoderIndex = 0;
                 for (;;)
                 {
@@ -814,12 +827,33 @@ namespace ManagedLzma.SevenZip
                     outputDecoderIndex += 1;
                 }
 
-                // Detect duplicate connections by checking for the placeholder.
+                // Detect duplicate input connections by checking for the placeholder.
                 if (section.Decoders[inputDecoderIndex].InputInfo[inputIndex].StreamIndex != Int32.MaxValue)
                     throw new InvalidDataException();
 
                 section.Decoders[inputDecoderIndex].InputInfo[inputIndex] = new DecoderInputMetadata(outputDecoderIndex, outputIndex);
             }
+
+            bool foundFinalOutput = false;
+
+            for (int finalOutputIndex = 0, i = 0; i < decoderCount; i++)
+            {
+                var decoder = section.Decoders[i];
+                for (int j = 0; j < decoder.OutputCount; j++)
+                {
+                    if (!usedOutputMask[finalOutputIndex++])
+                    {
+                        if (foundFinalOutput)
+                            throw new InvalidDataException();
+
+                        foundFinalOutput = true;
+                        section.OutputStream = new DecoderInputMetadata(i, j);
+                    }
+                }
+            }
+
+            if (!foundFinalOutput)
+                throw new InvalidDataException();
 
             // Outputs must be wired up to unique inputs. Inputs which are not wired to outputs must be wired to raw streams.
             // Note that negative overflow is not possible and positive overflow is ok in this calculation,

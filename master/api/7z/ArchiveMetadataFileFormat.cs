@@ -15,8 +15,9 @@ namespace ManagedLzma.SevenZip
     {
         public DecoderMetadataBuilder[] Decoders;
         public int RequiredRawInputStreamCount;
-        public Checksum? Checksum;
+        public DecoderInputMetadata OutputStream;
         public long OutputLength;
+        public Checksum? OutputChecksum;
         public int? SubStreamCount;
         public DecodedStreamMetadata[] Subsections;
     }

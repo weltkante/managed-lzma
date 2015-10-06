@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 namespace ManagedLzma.SevenZip
 {
     /// <summary>Contains the metadata required to read content from an archive.</summary>
+    [System.Diagnostics.DebuggerDisplay(@"\{ArchiveMetadata #FileSections={FileSections.Length} #DecoderSections={DecoderSections.Length}\}")]
     public sealed class ArchiveMetadata
     {
         /// <summary>The raw streams stored in the archive.</summary>
@@ -57,6 +58,12 @@ namespace ManagedLzma.SevenZip
 
         public ArchiveFileSection(long offset, long length, Checksum? checksum)
         {
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length));
+
             this.Offset = offset;
             this.Length = length;
             this.Checksum = checksum;
@@ -64,6 +71,7 @@ namespace ManagedLzma.SevenZip
     }
 
     /// <summary>Describes how to decode a section of an archive.</summary>
+    [System.Diagnostics.DebuggerDisplay(@"\{ArchiveDecoderSection #Decoders={Decoders.Length} #Streams={Streams.Length}\}")]
     public sealed class ArchiveDecoderSection
     {
         /// <summary>The decoders required to decode the section.</summary>
@@ -120,6 +128,7 @@ namespace ManagedLzma.SevenZip
     }
 
     /// <summary>Describes how to configure a decoder and how to connect it to other decoders.</summary>
+    [System.Diagnostics.DebuggerDisplay(@"\{DecoderMetadata {DecoderType.Name,nq}\}")]
     public sealed class DecoderMetadata
     {
         /// <summary>The type of the decoder.</summary>
@@ -156,7 +165,7 @@ namespace ManagedLzma.SevenZip
     }
 
     /// <summary>Describes where a decoder obtains its input.</summary>
-    public struct DecoderInputMetadata
+    public struct DecoderInputMetadata : IEquatable<DecoderInputMetadata>
     {
         [System.Diagnostics.DebuggerBrowsable(System.Diagnostics.DebuggerBrowsableState.Never)]
         private readonly int mDecoderIndex;
@@ -188,9 +197,48 @@ namespace ManagedLzma.SevenZip
         /// is an index into the file sections from the archive metadata.
         /// </summary>
         public int StreamIndex => mStreamIndex;
+
+        #region Identity
+
+        public override string ToString()
+        {
+            if (DecoderIndex == null)
+                return FormattableString.Invariant($"{{{nameof(DecoderInputMetadata)} File Section #{StreamIndex}}}");
+            else
+                return FormattableString.Invariant($"{{{nameof(DecoderInputMetadata)} Decoder #{DecoderIndex} Output #{StreamIndex}}}");
+        }
+
+        public override int GetHashCode()
+        {
+            return (mDecoderIndex << 16) + mStreamIndex;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is DecoderInputMetadata && Equals((DecoderInputMetadata)obj);
+        }
+
+        public bool Equals(DecoderInputMetadata other)
+        {
+            return mDecoderIndex == other.mDecoderIndex
+                && mStreamIndex == other.mStreamIndex;
+        }
+
+        public static bool operator ==(DecoderInputMetadata left, DecoderInputMetadata right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(DecoderInputMetadata left, DecoderInputMetadata right)
+        {
+            return !left.Equals(right);
+        }
+
+        #endregion
     }
 
     /// <summary>Describes the output of a decoder.</summary>
+    [System.Diagnostics.DebuggerDisplay(@"\{DecoderOutputMetadata {Length}\}")]
     public struct DecoderOutputMetadata
     {
         /// <summary>The length of the output stream provided by the decoder.</summary>

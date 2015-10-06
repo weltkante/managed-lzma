@@ -8,11 +8,18 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma.SevenZip
 {
-    public abstract class ArchiveDecoder : IDisposable
+    public abstract class ReaderNode : IDisposable
     {
         public abstract void Dispose();
-        public abstract Stream SetInputStream(int index, Stream stream);
-        public abstract Stream GetOutputStream(int index);
+        public abstract void Skip(int count);
+        public abstract int Read(byte[] buffer, int offset, int count);
+    }
+
+    public abstract class DecoderNode : IDisposable
+    {
+        public abstract void Dispose();
+        public abstract void SetInputStream(int index, ReaderNode stream);
+        public abstract ReaderNode GetOutputStream(int index);
     }
 
     internal sealed class StreamCoordinator
@@ -31,7 +38,7 @@ namespace ManagedLzma.SevenZip
         }
     }
 
-    internal sealed class CoordinatedStream : Stream
+    internal sealed class CoordinatedStream : ReaderNode
     {
         private StreamCoordinator mCoordinator;
         private long mOffset;
@@ -46,41 +53,18 @@ namespace ManagedLzma.SevenZip
             mEnding = offset + length;
         }
 
-        public override bool CanRead => true;
-        public override bool CanSeek => false;
-        public override bool CanWrite => false;
-
-        public override long Length
+        public override void Dispose()
         {
-            get
-            {
-                return mEnding - mOffset;
-            }
+            mCoordinator = null;
         }
 
-        public override long Position
+        public override void Skip(int count)
         {
-            get
-            {
-                return mCursor - mOffset;
-            }
-            set
-            {
-                throw new InvalidOperationException();
-            }
-        }
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            if (offset < 0 || origin != SeekOrigin.Current)
-                throw new InvalidOperationException();
-
             var remaining = mEnding - mCursor;
-            if (offset > remaining)
-                throw new ArgumentOutOfRangeException(nameof(offset));
+            if (count < 0 || count > remaining)
+                throw new ArgumentOutOfRangeException(nameof(count));
 
-            mCursor += offset;
-            return mCursor - mOffset;
+            mCursor += count;
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -99,36 +83,11 @@ namespace ManagedLzma.SevenZip
             mCursor += result;
             return result;
         }
-
-        public override void SetLength(long value)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override void Flush()
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override Task FlushAsync(CancellationToken cancellationToken)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            throw new InvalidOperationException();
-        }
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            throw new InvalidOperationException();
-        }
     }
 
-    public sealed class DecodedSectionStream : Stream
+    public sealed class ArchiveSectionDecoder : IDisposable
     {
-        private static Stream SelectStream(DecoderInputMetadata metadata, Stream[] streams, ArchiveDecoder[] decoders)
+        private static ReaderNode SelectStream(DecoderInputMetadata metadata, ReaderNode[] streams, DecoderNode[] decoders)
         {
             var decoderIndex = metadata.DecoderIndex;
             if (decoderIndex.HasValue)
@@ -138,11 +97,11 @@ namespace ManagedLzma.SevenZip
         }
 
         private StreamCoordinator mCoordinator;
-        private Stream[] mInputStreams;
-        private ArchiveDecoder[] mDecoders;
-        private Stream mOutputStream;
+        private ReaderNode[] mInputStreams;
+        private DecoderNode[] mDecoders;
+        private ReaderNode mOutputStream;
 
-        public DecodedSectionStream(Stream stream, ArchiveMetadata metadata, int index)
+        public ArchiveSectionDecoder(Stream stream, ArchiveMetadata metadata, int index, Lazy<string> password)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -160,18 +119,18 @@ namespace ManagedLzma.SevenZip
                 throw new ArgumentOutOfRangeException(nameof(index));
 
             var inputCoordinator = new StreamCoordinator(stream);
-            var inputStreams = new Stream[metadata.FileSections.Length];
+            var inputStreams = new ReaderNode[metadata.FileSections.Length];
             for (int i = 0; i < inputStreams.Length; i++)
                 inputStreams[i] = new CoordinatedStream(inputCoordinator, metadata.FileSections[i].Offset, metadata.FileSections[i].Length);
 
             var decoderSection = metadata.DecoderSections[index];
             var decoderDefinitions = decoderSection.Decoders;
-            var decoders = new ArchiveDecoder[decoderDefinitions.Length];
+            var decoders = new DecoderNode[decoderDefinitions.Length];
 
             for (int i = 0; i < decoders.Length; i++)
             {
                 var decoderDefinition = decoderDefinitions[i];
-                decoders[i] = decoderDefinition.DecoderType.CreateDecoder(decoderDefinition.Settings);
+                decoders[i] = decoderDefinition.DecoderType.CreateDecoder(decoderDefinition.Settings, decoderDefinition.OutputStreams, password);
             }
 
             for (int i = 0; i < decoders.Length; i++)
@@ -190,16 +149,41 @@ namespace ManagedLzma.SevenZip
             mOutputStream = SelectStream(decoderSection.DecodedStream, inputStreams, decoders);
         }
 
+        public void Dispose()
+        {
+            foreach (var input in mInputStreams)
+                input.Dispose();
+
+            foreach (var decoder in mDecoders)
+                decoder.Dispose();
+        }
+
+        public void Skip(int offset)
+        {
+            mOutputStream.Skip(offset);
+        }
+
+        public int Read(byte[] buffer, int offset, int count)
+        {
+            return mOutputStream.Read(buffer, offset, count);
+        }
+    }
+
+    public sealed class DecodedArchiveSectionStream : Stream
+    {
+        private ArchiveSectionDecoder mReader;
+        private long mLength;
+        private long mPosition;
+
+        public DecodedArchiveSectionStream(Stream stream, ArchiveMetadata metadata, int index, Lazy<string> password)
+        {
+            mReader = new ArchiveSectionDecoder(stream, metadata, index, password);
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
-            {
-                foreach (var input in mInputStreams)
-                    input.Dispose();
-
-                foreach (var decoder in mDecoders)
-                    decoder.Dispose();
-            }
+                mReader.Dispose();
 
             base.Dispose(disposing);
         }
@@ -208,33 +192,91 @@ namespace ManagedLzma.SevenZip
         public override bool CanSeek => false;
         public override bool CanWrite => false;
 
+        /// <summary>Only provided for convenience, does not implement full CanSeek API contract.</summary>
         public override long Length
         {
-            get { return mOutputStream.Length; }
+            get { return mLength; }
         }
 
+        /// <summary>Only provided for convenience, does not implement full CanSeek API contract.</summary>
         public override long Position
         {
-            get { return mOutputStream.Position; }
-            set { throw new InvalidOperationException(); }
+            get { return mPosition; }
+            set
+            {
+                if (value < mPosition || value > mLength)
+                    throw new ArgumentOutOfRangeException(nameof(value));
+
+                Skip(value - mPosition);
+            }
         }
 
+        /// <summary>Only provided for convenience, does not implement full CanSeek API contract.</summary>
         public override long Seek(long offset, SeekOrigin origin)
         {
-            if (origin != SeekOrigin.Current || offset < 0)
-                throw new InvalidOperationException();
+            switch (origin)
+            {
+                case SeekOrigin.Begin:
+                    if (offset < mPosition || offset > mLength)
+                        throw new ArgumentOutOfRangeException(nameof(offset));
 
-            return mOutputStream.Seek(offset, origin);
+                    offset -= mPosition;
+                    break;
+
+                case SeekOrigin.Current:
+                    if (offset < 0 || offset > mLength - mPosition)
+                        throw new ArgumentOutOfRangeException(nameof(offset));
+
+                    break;
+
+                case SeekOrigin.End:
+                    if (offset > 0 || offset < mPosition - mLength)
+                        throw new ArgumentOutOfRangeException(nameof(offset));
+
+                    offset += mLength;
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(origin));
+            }
+
+            Skip(offset);
+            return mPosition;
+        }
+
+        public void Skip(long offset)
+        {
+            if (offset < 0 || offset > mLength - mPosition)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            
+            while (offset > Int32.MaxValue)
+            {
+                mReader.Skip(Int32.MaxValue);
+                mPosition += Int32.MaxValue;
+                offset -= Int32.MaxValue;
+            }
+
+            if (offset > 0)
+            {
+                mReader.Skip((int)offset);
+                mPosition += offset;
+            }
         }
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return mOutputStream.Read(buffer, offset, count);
-        }
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
 
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            return mOutputStream.ReadAsync(buffer, offset, count, cancellationToken);
+            if (offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            if (count < 0 || count > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
+            var result = mReader.Read(buffer, offset, count);
+            mPosition += result;
+            return result;
         }
 
         #region Invalid Operations
