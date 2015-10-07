@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma.SevenZip
 {
-    internal sealed class BcjArchiveDecoder : DecoderNode
+    internal sealed class Lzma2ArchiveDecoder : DecoderNode
     {
         private sealed class InputStream : Stream
         {
@@ -71,24 +71,24 @@ namespace ManagedLzma.SevenZip
 
         private sealed class OutputStream : ReaderNode
         {
-            private BcjArchiveDecoder mOwner;
-            public OutputStream(BcjArchiveDecoder owner) { mOwner = owner; }
+            private Lzma2ArchiveDecoder mOwner;
+            public OutputStream(Lzma2ArchiveDecoder owner) { mOwner = owner; }
             public override void Dispose() { mOwner = null; }
             public override void Skip(int count) => mOwner.Skip(count);
             public override int Read(byte[] buffer, int offset, int count) => mOwner.Read(buffer, offset, count);
         }
 
-        private master._7zip.Legacy.BcjDecoderStream mDecoder;
+        private master._7zip.Legacy.Lzma2DecoderStream mDecoder;
         private InputStream mInput;
         private OutputStream mOutput;
         private long mLength;
         private long mPosition;
 
-        public BcjArchiveDecoder(ImmutableArray<byte> settings, long length)
+        public Lzma2ArchiveDecoder(ImmutableArray<byte> settings, long length)
         {
             mInput = new InputStream();
             mOutput = new OutputStream(this);
-            mDecoder = new master._7zip.Legacy.BcjDecoderStream(mInput, settings.ToArray(), length);
+            mDecoder = new master._7zip.Legacy.Lzma2DecoderStream(mInput, settings.Single(), length);
             mLength = length;
         }
 

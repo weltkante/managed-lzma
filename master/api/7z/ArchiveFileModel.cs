@@ -128,6 +128,12 @@ namespace ManagedLzma.SevenZip.FileModel
     /// </summary>
     public sealed class ArchiveFileModelMetadataReader : ArchiveMetadataReader
     {
+        private List<string> mFileNames;
+        private List<long?> mOffsets;
+        private List<FileAttributes?> mAttributes;
+        private List<DateTime?> mCDates;
+        private List<DateTime?> mMDates;
+        private List<DateTime?> mADates;
         private ArchivedFolder.Builder mRootFolder;
 
         public ArchiveFileModel ReadMetadata(Stream stream) => ReadMetadata(stream, null);
@@ -148,6 +154,60 @@ namespace ManagedLzma.SevenZip.FileModel
                 // clean up in case of exceptions
                 mRootFolder = null;
             }
+        }
+
+        protected override void ReadNames(MetadataStringReader data)
+        {
+            mFileNames = new List<string>(data.Count);
+            for (int i = 0; i < data.Count; i++)
+                mFileNames.Add(data.ReadString());
+        }
+
+        protected override void ReadEmptyFileMarkers(MetadataBitReader data)
+        {
+        }
+
+        protected override void ReadEmptyStreamMarkers(MetadataBitReader data)
+        {
+        }
+
+        protected override void ReadRemovedFileMarkers(MetadataBitReader data)
+        {
+        }
+
+        protected override void ReadOffsets(MetadataNumberReader data)
+        {
+            mOffsets = new List<long?>(data.Count);
+            for (int i = 0; i < data.Count; i++)
+                mOffsets.Add(data.ReadNumber());
+        }
+
+        protected override void ReadAttributes(MetadataAttributeReader data)
+        {
+            mAttributes = new List<FileAttributes?>();
+            for (int i = 0; i < data.Count; i++)
+                mAttributes.Add(data.ReadAttributes());
+        }
+
+        protected override void ReadCTime(MetadataDateReader data)
+        {
+            mCDates = new List<DateTime?>(data.Count);
+            for (int i = 0; i < data.Count; i++)
+                mCDates.Add(data.ReadDate());
+        }
+
+        protected override void ReadMTime(MetadataDateReader data)
+        {
+            mMDates = new List<DateTime?>(data.Count);
+            for (int i = 0; i < data.Count; i++)
+                mMDates.Add(data.ReadDate());
+        }
+
+        protected override void ReadATime(MetadataDateReader data)
+        {
+            mADates = new List<DateTime?>(data.Count);
+            for (int i = 0; i < data.Count; i++)
+                mADates.Add(data.ReadDate());
         }
     }
 }

@@ -30,6 +30,9 @@ namespace ManagedLzma.SevenZip
             mReader = null;
         }
 
+        public int Count => mCount;
+        public int Index => mIndex;
+
         public string ReadString()
         {
             if (mReader == null)
@@ -66,7 +69,10 @@ namespace ManagedLzma.SevenZip
             mReader = null;
         }
 
-        public DateTime ReadDate()
+        public int Count => mCount;
+        public int Index => mIndex;
+
+        public DateTime? ReadDate()
         {
             if (mReader == null)
                 throw new ObjectDisposedException(null);
@@ -74,10 +80,18 @@ namespace ManagedLzma.SevenZip
             if (mIndex == mCount)
                 throw new InvalidOperationException();
 
-            // FILETIME = 100-nanosecond intervals since January 1, 1601 (UTC)
-            var date = mReader.ReadInt64Internal();
-            mIndex += 1;
-            return DateTime.FromFileTimeUtc(date);
+            if (mVector[mIndex])
+            {
+                // FILETIME = 100-nanosecond intervals since January 1, 1601 (UTC)
+                var date = mReader.ReadInt64Internal();
+                mIndex += 1;
+                return DateTime.FromFileTimeUtc(date);
+            }
+            else
+            {
+                mIndex += 1;
+                return null;
+            }
         }
     }
 
@@ -103,7 +117,10 @@ namespace ManagedLzma.SevenZip
             mReader = null;
         }
 
-        public long ReadNumber()
+        public int Count => mCount;
+        public int Index => mIndex;
+
+        public long? ReadNumber()
         {
             if (mReader == null)
                 throw new ObjectDisposedException(null);
@@ -111,9 +128,17 @@ namespace ManagedLzma.SevenZip
             if (mIndex == mCount)
                 throw new InvalidOperationException();
 
-            var number = mReader.ReadNumberInternal();
-            mIndex += 1;
-            return number;
+            if (mVector[mIndex])
+            {
+                var number = mReader.ReadNumberInternal();
+                mIndex += 1;
+                return number;
+            }
+            else
+            {
+                mIndex += 1;
+                return null;
+            }
         }
     }
 
@@ -140,7 +165,10 @@ namespace ManagedLzma.SevenZip
             mReader = null;
         }
 
-        public System.IO.FileAttributes ReadAttributes()
+        public int Count => mCount;
+        public int Index => mIndex;
+
+        public System.IO.FileAttributes? ReadAttributes()
         {
             if (mReader == null)
                 throw new ObjectDisposedException(null);
@@ -148,22 +176,17 @@ namespace ManagedLzma.SevenZip
             if (mIndex == mCount)
                 throw new InvalidOperationException();
 
-            var number = mReader.ReadInt32Internal();
-            mIndex += 1;
-            return (System.IO.FileAttributes)number;
-        }
-    }
-
-    public sealed class MetadataChecksumReader
-    {
-        internal MetadataChecksumReader(ArchiveMetadataReader reader, int count)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal void Complete()
-        {
-            throw new NotImplementedException();
+            if (mVector[mIndex])
+            {
+                var number = mReader.ReadInt32Internal();
+                mIndex += 1;
+                return (System.IO.FileAttributes)number;
+            }
+            else
+            {
+                mIndex += 1;
+                return null;
+            }
         }
     }
 
@@ -186,6 +209,9 @@ namespace ManagedLzma.SevenZip
 
             mReader = null;
         }
+
+        public int Count => mVector.Count;
+        public int Index => mIndex;
 
         public bool ReadBit()
         {

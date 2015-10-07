@@ -105,6 +105,7 @@
     <Compile Include="api\7z\BitVector.cs" />
     <Compile Include="api\7z\CompressionMethod.cs" />
     <Compile Include="api\7z\decoders\Bcj2Decoder.cs" />
+    <Compile Include="api\7z\decoders\Lzma2Decoder.cs" />
     <Compile Include="api\7z\decoders\CopyDecoder.cs" />
     <Compile Include="api\7z\decoders\BcjDecoder.cs" />
     <Compile Include="api\7z\decoders\AesDecoder.cs" />

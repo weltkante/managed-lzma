@@ -101,7 +101,7 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
-        public override void SetInputStream(int index, ReaderNode stream)
+        public override void SetInputStream(int index, ReaderNode stream, long length)
         {
             if (index < 0 || index >= 4)
                 throw new ArgumentOutOfRangeException(nameof(index));

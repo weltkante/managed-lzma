@@ -196,7 +196,6 @@ namespace ManagedLzma.SevenZip
         protected virtual void ReadCTime(MetadataDateReader data) { }
         protected virtual void ReadATime(MetadataDateReader data) { }
         protected virtual void ReadMTime(MetadataDateReader data) { }
-        protected virtual void ReadChecksums(MetadataChecksumReader data) { }
 
         #endregion
 
@@ -527,12 +526,12 @@ namespace ManagedLzma.SevenZip
                     for (int i = 0; i < rawStreamCount; i++)
                     {
                         var length = rawStreamSizes[i];
-                        rawStreamOffset += length;
-
+                        var checksum = default(Checksum?);
                         if (vector[i])
-                            rawStreamListBuilder.Add(new ArchiveFileSection(rawStreamOffset, length, new Checksum(ReadInt32())));
-                        else
-                            rawStreamListBuilder.Add(new ArchiveFileSection(rawStreamOffset, length, null));
+                            checksum = new Checksum(ReadInt32());
+
+                        rawStreamListBuilder.Add(new ArchiveFileSection(rawStreamOffset, length, checksum));
+                        rawStreamOffset += length;
                     }
                 }
                 else if (token == Token.End)
@@ -545,9 +544,8 @@ namespace ManagedLzma.SevenZip
                         for (int i = 0; i < rawStreamCount; i++)
                         {
                             var length = rawStreamSizes[i];
-                            rawStreamOffset += length;
-
                             rawStreamListBuilder.Add(new ArchiveFileSection(rawStreamOffset, length, null));
+                            rawStreamOffset += length;
                         }
                     }
 

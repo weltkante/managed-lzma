@@ -15,7 +15,6 @@ namespace ManagedLzma.SevenZip
     /// These methods are defined by the 7z file format and not by the application.
     /// You cannot add new compression methods here, nobody will understand them.
     /// </remarks>
-    [System.Diagnostics.DebuggerDisplay(@"\{CompressionMethod {Name,nq}\}")]
     public struct CompressionMethod : IEquatable<CompressionMethod>
     {
         private const int kCopy = 0x00;
@@ -107,12 +106,12 @@ namespace ManagedLzma.SevenZip
             {
                 case kCopy: return new CopyArchiveDecoder(settings, output.Single().Length);
                 case kLZMA: return new LzmaArchiveDecoder(settings, output.Single().Length);
+                case kLZMA2: return new Lzma2ArchiveDecoder(settings, output.Single().Length);
                 case kAES: return new AesArchiveDecoder(settings, password, output.Single().Length);
                 case kBCJ: return new BcjArchiveDecoder(settings, output.Single().Length);
                 case kBCJ2: return new Bcj2ArchiveDecoder(settings, output.Single().Length);
 
                 case kDeflate:
-                case kLZMA2:
                 case kDelta:
                 case kPPMD:
                 case kBZip2:
@@ -134,24 +133,21 @@ namespace ManagedLzma.SevenZip
 
         public bool IsUndefined => mSignature == 0;
 
-        public string Name
+        public override string ToString()
         {
-            get
+            switch (~mSignature)
             {
-                switch (~mSignature)
-                {
-                    case kCopy: return nameof(Copy);
-                    case kDelta: return nameof(Delta);
-                    case kLZMA2: return nameof(LZMA2);
-                    case kLZMA: return nameof(LZMA);
-                    case kPPMD: return nameof(PPMD);
-                    case kBCJ: return nameof(BCJ);
-                    case kBCJ2: return nameof(BCJ2);
-                    case kDeflate: return nameof(Deflate);
-                    case kBZip2: return nameof(BZip2);
-                    case kAES: return nameof(AES);
-                    default: return nameof(Undefined);
-                }
+                case kCopy: return nameof(Copy);
+                case kDelta: return nameof(Delta);
+                case kLZMA2: return nameof(LZMA2);
+                case kLZMA: return nameof(LZMA);
+                case kPPMD: return nameof(PPMD);
+                case kBCJ: return nameof(BCJ);
+                case kBCJ2: return nameof(BCJ2);
+                case kDeflate: return nameof(Deflate);
+                case kBZip2: return nameof(BZip2);
+                case kAES: return nameof(AES);
+                default: return nameof(Undefined);
             }
         }
 

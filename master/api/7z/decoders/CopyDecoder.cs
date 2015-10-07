@@ -45,7 +45,7 @@ namespace ManagedLzma.SevenZip
             mInput?.Dispose();
         }
 
-        public override void SetInputStream(int index, ReaderNode stream)
+        public override void SetInputStream(int index, ReaderNode stream, long length)
         {
             if (index != 0)
                 throw new ArgumentOutOfRangeException(nameof(index));

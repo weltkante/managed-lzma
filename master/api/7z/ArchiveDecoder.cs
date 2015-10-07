@@ -18,7 +18,7 @@ namespace ManagedLzma.SevenZip
     public abstract class DecoderNode : IDisposable
     {
         public abstract void Dispose();
-        public abstract void SetInputStream(int index, ReaderNode stream);
+        public abstract void SetInputStream(int index, ReaderNode stream, long length);
         public abstract ReaderNode GetOutputStream(int index);
     }
 
@@ -87,13 +87,26 @@ namespace ManagedLzma.SevenZip
 
     public sealed class ArchiveSectionDecoder : IDisposable
     {
-        private static ReaderNode SelectStream(DecoderInputMetadata metadata, ReaderNode[] streams, DecoderNode[] decoders)
+        private static void SelectStream(
+            ArchiveMetadata archiveMetadata,
+            ArchiveDecoderSection sectionMetadata,
+            DecoderInputMetadata selector,
+            ReaderNode[] streams,
+            DecoderNode[] decoders,
+            out ReaderNode result,
+            out long length)
         {
-            var decoderIndex = metadata.DecoderIndex;
+            var decoderIndex = selector.DecoderIndex;
             if (decoderIndex.HasValue)
-                return decoders[decoderIndex.Value].GetOutputStream(metadata.StreamIndex);
+            {
+                length = sectionMetadata.Decoders[decoderIndex.Value].OutputStreams[selector.StreamIndex].Length;
+                result = decoders[decoderIndex.Value].GetOutputStream(selector.StreamIndex);
+            }
             else
-                return streams[metadata.StreamIndex];
+            {
+                length = archiveMetadata.FileSections[selector.StreamIndex].Length;
+                result = streams[selector.StreamIndex];
+            }
         }
 
         private StreamCoordinator mCoordinator;
@@ -140,13 +153,22 @@ namespace ManagedLzma.SevenZip
                 var decoderInputDefinitions = decoderDefinition.InputStreams;
 
                 for (int j = 0; j < decoderInputDefinitions.Length; j++)
-                    decoder.SetInputStream(j, SelectStream(decoderInputDefinitions[j], inputStreams, decoders));
+                {
+                    ReaderNode inputStream;
+                    long inputLength;
+                    SelectStream(metadata, decoderSection, decoderInputDefinitions[j], inputStreams, decoders, out inputStream, out inputLength);
+                    decoder.SetInputStream(j, inputStream, inputLength);
+                }
             }
+
+            ReaderNode outputStream;
+            long outputLength;
+            SelectStream(metadata, decoderSection, decoderSection.DecodedStream, inputStreams, decoders, out outputStream, out outputLength);
 
             mCoordinator = inputCoordinator;
             mInputStreams = inputStreams;
             mDecoders = decoders;
-            mOutputStream = SelectStream(decoderSection.DecodedStream, inputStreams, decoders);
+            mOutputStream = outputStream;
         }
 
         public void Dispose()
@@ -248,7 +270,7 @@ namespace ManagedLzma.SevenZip
         {
             if (offset < 0 || offset > mLength - mPosition)
                 throw new ArgumentOutOfRangeException(nameof(offset));
-            
+
             while (offset > Int32.MaxValue)
             {
                 mReader.Skip(Int32.MaxValue);

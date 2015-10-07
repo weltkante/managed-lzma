@@ -28,8 +28,9 @@ namespace ManagedLzma.SevenZip
         private sealed class InputStream : Stream
         {
             private ReaderNode mInput;
+            private long mInputLength;
 
-            public void SetInput(ReaderNode stream)
+            public void SetInput(ReaderNode stream, long length)
             {
                 if (stream == null)
                     throw new ArgumentNullException(nameof(stream));
@@ -54,7 +55,7 @@ namespace ManagedLzma.SevenZip
 
             public override long Length
             {
-                get { throw new InvalidOperationException(); }
+                get { return mInputLength; }
             }
 
             public override long Position
@@ -115,7 +116,7 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
-        public override void SetInputStream(int index, ReaderNode stream)
+        public override void SetInputStream(int index, ReaderNode stream, long length)
         {
             if (index != 0)
                 throw new ArgumentOutOfRangeException(nameof(index));
@@ -123,7 +124,7 @@ namespace ManagedLzma.SevenZip
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
-            mInput.SetInput(stream);
+            mInput.SetInput(stream, length);
         }
 
         public override ReaderNode GetOutputStream(int index)
