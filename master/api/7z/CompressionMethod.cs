@@ -100,6 +100,54 @@ namespace ManagedLzma.SevenZip
             }
         }
 
+        internal int GetInputCount()
+        {
+            switch (~mSignature)
+            {
+                case kCopy:
+                case kDeflate:
+                case kLZMA:
+                case kLZMA2:
+                case kAES:
+                case kBCJ:
+                    return 1;
+
+                case kBCJ2:
+                    return 4;
+
+                case kDelta:
+                case kPPMD:
+                case kBZip2:
+                    throw new NotImplementedException();
+
+                default:
+                    throw new InternalFailureException();
+            }
+        }
+
+        internal int GetOutputCount()
+        {
+            switch (~mSignature)
+            {
+                case kCopy:
+                case kDeflate:
+                case kLZMA:
+                case kLZMA2:
+                case kAES:
+                case kBCJ:
+                case kBCJ2:
+                    return 1;
+
+                case kDelta:
+                case kPPMD:
+                case kBZip2:
+                    throw new NotImplementedException();
+
+                default:
+                    throw new InvalidOperationException();
+            }
+        }
+
         public DecoderNode CreateDecoder(ImmutableArray<byte> settings, ImmutableArray<DecoderOutputMetadata> output, Lazy<string> password)
         {
             switch (~mSignature)

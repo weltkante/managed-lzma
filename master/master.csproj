@@ -110,8 +110,14 @@
     <Compile Include="api\7z\decoders\BcjDecoder.cs" />
     <Compile Include="api\7z\decoders\AesDecoder.cs" />
     <Compile Include="api\7z\decoders\LzmaDecoder.cs" />
+    <Compile Include="api\7z\encoders\AesEncoder.cs" />
+    <Compile Include="api\7z\encoders\CopyEncoder.cs" />
+    <Compile Include="api\7z\encoders\Lzma2Encoder.cs" />
+    <Compile Include="api\7z\encoders\LzmaEncoder.cs" />
     <Compile Include="api\Checksum.cs" />
     <Compile Include="api\ConstrainedReadStream.cs" />
+    <Compile Include="api\lzma2\Encoder.cs" />
+    <Compile Include="api\lzma2\EncoderSettings.cs" />
     <Compile Include="api\lzma\Decoder.cs" />
     <Compile Include="api\lzma\DecoderSettings.cs" />
     <Compile Include="api\lzma\DecoderStream.cs" />
