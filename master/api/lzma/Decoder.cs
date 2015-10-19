@@ -374,6 +374,9 @@ namespace ManagedLzma.LZMA
                 if (mDisposeTask != null)
                     throw new ObjectDisposedException(null);
 
+                if (mFlushed)
+                    throw new InvalidOperationException();
+
                 mInputQueue.Enqueue(frame);
                 TryStartDecoding();
             }

@@ -8,5 +8,9 @@ namespace ManagedLzma.LZMA2
 {
     public sealed class EncoderSettings
     {
+        private LZMA.EncoderSettings mBaseSettings;
+        private long mBlockSize;
+        private int mBlockThreadCount;
+        private int mTotalThreadCount;
     }
 }
