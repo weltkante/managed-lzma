@@ -51,26 +51,46 @@ namespace ManagedLzma.SevenZip.FileModel
     {
         public new sealed class Builder : ArchivedItem.Builder
         {
-            public Checksum Checksum { get; set; }
+            public long Length { get; set; }
+            public Checksum? Checksum { get; set; }
+            public FileAttributes? Attributes { get; set; }
+            public DateTime? Creation { get; set; }
+            public DateTime? LastWrite { get; set; }
+            public DateTime? LastAccess { get; set; }
 
             public Builder() { }
 
             public Builder(ArchivedFile original)
                 : base(original)
             {
+                Length = original.Length;
                 Checksum = original.Checksum;
+                Attributes = original.Attributes;
+                Creation = original.Creation;
+                LastWrite = original.LastWrite;
+                LastAccess = original.LastAccess;
             }
 
             internal override ArchivedItem ToImmutableCore() => ToImmutable();
-            public new ArchivedFile ToImmutable() => new ArchivedFile(Name, Checksum);
+            public new ArchivedFile ToImmutable() => new ArchivedFile(Name, Length, Checksum, Attributes, Creation, LastWrite, LastAccess);
         }
 
-        public Checksum Checksum { get; }
+        public long Length { get; }
+        public Checksum? Checksum { get; }
+        public FileAttributes? Attributes { get; }
+        public DateTime? Creation { get; }
+        public DateTime? LastWrite { get; }
+        public DateTime? LastAccess { get; }
 
-        public ArchivedFile(string Name, Checksum Checksum)
+        public ArchivedFile(string Name, long Length, Checksum? Checksum, FileAttributes? Attributes, DateTime? Creation, DateTime? LastWrite, DateTime? LastAccess)
             : base(Name)
         {
+            this.Length = Length;
             this.Checksum = Checksum;
+            this.Attributes = Attributes;
+            this.Creation = Creation;
+            this.LastWrite = LastWrite;
+            this.LastAccess = LastAccess;
         }
     }
 
