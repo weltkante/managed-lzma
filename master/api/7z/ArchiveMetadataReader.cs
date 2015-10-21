@@ -121,6 +121,7 @@ namespace ManagedLzma.SevenZip
         private const int kHeaderLength = 0x20;
 
         public static ImmutableArray<byte> FileSignature => kFileSignature;
+        internal static int HeaderLength => kHeaderLength;
 
         private Lazy<string> mPassword;
         private StreamScope mScope;

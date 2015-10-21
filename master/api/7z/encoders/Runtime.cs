@@ -171,6 +171,11 @@ namespace ManagedLzma.SevenZip
         }
     }
 
+    internal interface IArchiveEncoderNode : IDisposable
+    {
+        void Start();
+    }
+
     internal interface IArchiveEncoderInputStream : IDisposable
     {
         Task<int> ReadAsync(byte[] buffer, int offset, int count);
@@ -179,6 +184,7 @@ namespace ManagedLzma.SevenZip
     internal interface IArchiveEncoderOutputStream : IDisposable
     {
         int Write(byte[] buffer, int offset, int count);
+        void Done();
     }
 
     internal sealed class ArchiveEncoderInput : IArchiveEncoderInputStream

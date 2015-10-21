@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -24,9 +25,24 @@ namespace ManagedLzma.SevenZip
         }
 
         private Stream mArchiveStream;
+        private ImmutableArray<ArchiveFileSection>.Builder mFileSections;
+        private ImmutableArray<ArchiveDecoderSection>.Builder mDecoderSections;
         private ArchiveWriterStreamProvider mStreamProvider;
         private List<ArchiveEncoderSession> mEncoderSessions = new List<ArchiveEncoderSession>();
-        private List<Stream> mPendingStreams = new List<Stream>();
+        private long mAppendPosition;
+
+        private ArchiveWriter(Stream stream, ArchiveMetadata metadata)
+        {
+            mArchiveStream = stream;
+            mFileSections = metadata.FileSections.ToBuilder();
+            mDecoderSections = metadata.DecoderSections.ToBuilder();
+
+            var lastSection = mFileSections.LastOrDefault();
+            if (lastSection != null)
+                mAppendPosition = lastSection.Offset + lastSection.Length;
+            else
+                mAppendPosition = ArchiveMetadataReader.HeaderLength;
+        }
 
         public void Dispose()
         {
@@ -102,12 +118,25 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
-        internal void CompleteEncoderSession(ArchiveEncoderSession session, Stream[] storage)
+        internal void CompleteEncoderSession(ArchiveEncoderSession session, Tuple<Stream, Checksum?>[] storage)
         {
             if (!mEncoderSessions.Remove(session))
                 throw new InternalFailureException();
 
-            mPendingStreams.AddRange(storage);
+            // TODO: we can write storage lazily (just remember the streams in a list) and don't have to block the caller
+
+            foreach (var pair in storage)
+            {
+                var stream = pair.Item1;
+                var offset = mAppendPosition;
+                var length = stream.Length;
+                mAppendPosition = offset + length;
+                var checksum = pair.Item2;
+                mFileSections.Add(new ArchiveFileSection(offset, length, checksum));
+                mArchiveStream.Position = offset;
+                stream.Position = 0;
+                stream.CopyTo(mArchiveStream);
+            }
         }
     }
 
