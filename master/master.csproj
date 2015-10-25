@@ -126,6 +126,7 @@
     <Compile Include="api\lzma\Encoder.cs" />
     <Compile Include="api\lzma\EncoderSettings.cs" />
     <Compile Include="api\lzma\EncoderStream.cs" />
+    <Compile Include="api\Password.cs" />
     <Compile Include="api\Utilities.cs" />
     <Compile Include="core\Core.cs" />
     <Compile Include="core\CRC.cs" />
