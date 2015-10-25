@@ -10,7 +10,7 @@ namespace ManagedLzma.SevenZip
     public sealed class ArchiveEncoderDefinition
     {
         private ArchiveEncoderOutputSlot mContent;
-        private List<ArchiveEncoderNode> mEncoders;
+        private List<EncoderNodeDefinition> mEncoders;
         private List<ArchiveEncoderInputSlot> mStorage;
         private bool mComplete;
 
@@ -20,11 +20,11 @@ namespace ManagedLzma.SevenZip
         public ArchiveEncoderDefinition()
         {
             mContent = new ArchiveEncoderOutputSlot(this);
-            mEncoders = new List<ArchiveEncoderNode>();
+            mEncoders = new List<EncoderNodeDefinition>();
             mStorage = new List<ArchiveEncoderInputSlot>();
         }
 
-        public ArchiveEncoderNode GetEncoder(int index)
+        public EncoderNodeDefinition GetEncoder(int index)
         {
             if (index < 0 || index >= mEncoders.Count)
                 throw new ArgumentOutOfRangeException(nameof(index));
@@ -51,14 +51,14 @@ namespace ManagedLzma.SevenZip
                 throw new InvalidOperationException("Complete encoder definitions cannot be modified.");
         }
 
-        public ArchiveEncoderNode CreateEncoder(ArchiveEncoderSettings settings)
+        public EncoderNodeDefinition CreateEncoder(EncoderSettings settings)
         {
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings));
 
             CheckComplete();
 
-            var encoder = new ArchiveEncoderNode(this, mEncoders.Count, settings);
+            var encoder = new EncoderNodeDefinition(this, mEncoders.Count, settings);
             mEncoders.Add(encoder);
             return encoder;
         }
@@ -125,7 +125,7 @@ namespace ManagedLzma.SevenZip
             }
         }
 
-        internal ArchiveEncoderSession CreateEncoderSession(ArchiveWriter writer, Stream[] storage)
+        internal EncoderSession CreateEncoderSession(ArchiveWriter writer, Stream[] storage)
         {
             if (!mComplete)
                 throw new InvalidOperationException("Incomplete ArchiveEncoderDefinition.");
@@ -136,9 +136,9 @@ namespace ManagedLzma.SevenZip
             if (storage.Length != mStorage.Count)
                 throw new ArgumentException("Number of provided storage streams does not match number of declared storage streams.", nameof(storage));
 
-            var storageStreams = new ArchiveEncoderStorage[storage.Length];
+            var storageStreams = new EncoderStorage[storage.Length];
             for (int i = 0; i < storage.Length; i++)
-                storageStreams[i] = new ArchiveEncoderStorage(storage[i]);
+                storageStreams[i] = new EncoderStorage(storage[i]);
 
             int totalInputCount = 0;
             var firstInputOffset = new int[mEncoders.Count];
@@ -150,67 +150,67 @@ namespace ManagedLzma.SevenZip
 
             var contentTarget = mContent.Target;
             var contentIndex = firstInputOffset[contentTarget.Node.Index] + contentTarget.Index;
-            var contentStream = new ArchiveEncoderInput();
+            var contentStream = new EncoderInput();
 
-            var linkedStreams = new ArchiveEncoderConnection[totalInputCount];
+            var linkedStreams = new EncoderConnection[totalInputCount];
             for (int i = 0; i < totalInputCount; i++)
                 if (i != contentIndex)
-                    linkedStreams[i] = new ArchiveEncoderConnection();
+                    linkedStreams[i] = new EncoderConnection();
 
             var encoders = new IDisposable[mEncoders.Count];
             for (int i = 0; i < mEncoders.Count; i++)
             {
-                var inputStreams = new IArchiveEncoderInputStream[mEncoders[i].InputCount];
-                for (int j = 0; j < inputStreams.Length; j++)
+                var settings = mEncoders[i].Settings;
+                var encoder = settings.CreateEncoder();
+                encoders[i] = encoder;
+
+                for (int n = settings.GetInputSlots(), j = 0; j < n; j++)
                 {
                     var source = mEncoders[i].GetInput(j).Source;
                     if (source.IsContent)
-                        inputStreams[j] = contentStream;
+                        contentStream.SetInputStream(encoder, j);
                     else
-                        inputStreams[j] = linkedStreams[firstInputOffset[i] + j];
+                        linkedStreams[firstInputOffset[i] + j].SetInputStream(encoder, j);
                 }
 
-                var outputStreams = new IArchiveEncoderOutputStream[mEncoders[i].OutputCount];
-                for (int j = 0; j < outputStreams.Length; j++)
+                for (int n = settings.GetOutputSlots(), j = 0; j < n; j++)
                 {
                     var target = mEncoders[i].GetOutput(j).Target;
                     if (target.IsStorage)
-                        outputStreams[j] = storageStreams[target.Index];
+                        storageStreams[target.Index].SetOutputStream(encoder, j);
                     else
-                        outputStreams[j] = linkedStreams[firstInputOffset[target.Node.Index] + target.Index];
+                        linkedStreams[firstInputOffset[target.Node.Index] + target.Index].SetOutputStream(encoder, j);
                 }
-
-                encoders[i] = mEncoders[i].Settings.CreateEncoder(inputStreams, outputStreams);
             }
 
-            return new ArchiveEncoderSession(writer, encoders, contentStream);
+            return new EncoderSession(writer, encoders, contentStream);
         }
     }
 
-    public abstract class ArchiveEncoderSettings
+    public abstract class EncoderSettings
     {
-        internal ArchiveEncoderSettings() { }
+        internal EncoderSettings() { }
         internal abstract CompressionMethod GetDecoderType();
-        internal abstract IDisposable CreateEncoder(IArchiveEncoderInputStream[] input, IArchiveEncoderOutputStream[] output);
+        internal abstract EncoderNode CreateEncoder();
         internal int GetInputSlots() => GetDecoderType().GetOutputCount(); // encoder input = decoder output
         internal int GetOutputSlots() => GetDecoderType().GetInputCount(); // encoder output = decoder input
     }
 
-    public sealed class ArchiveEncoderNode
+    public sealed class EncoderNodeDefinition
     {
         private readonly ArchiveEncoderDefinition mDefinition;
-        private readonly ArchiveEncoderSettings mSettings;
+        private readonly EncoderSettings mSettings;
         private readonly ArchiveEncoderInputSlot[] mInputSlots;
         private readonly ArchiveEncoderOutputSlot[] mOutputSlots;
         private readonly int mIndex;
 
         public ArchiveEncoderDefinition Definition => mDefinition;
         public int Index => mIndex;
-        public ArchiveEncoderSettings Settings => mSettings;
+        public EncoderSettings Settings => mSettings;
         public int InputCount => mInputSlots.Length;
         public int OutputCount => mOutputSlots.Length;
 
-        internal ArchiveEncoderNode(ArchiveEncoderDefinition definition, int index, ArchiveEncoderSettings settings)
+        internal EncoderNodeDefinition(ArchiveEncoderDefinition definition, int index, EncoderSettings settings)
         {
             mDefinition = definition;
             mIndex = index;
@@ -239,12 +239,12 @@ namespace ManagedLzma.SevenZip
     public sealed class ArchiveEncoderInputSlot
     {
         private readonly ArchiveEncoderDefinition mDefinition;
-        private readonly ArchiveEncoderNode mNode;
+        private readonly EncoderNodeDefinition mNode;
         private ArchiveEncoderOutputSlot mSource;
         private readonly int mIndex;
 
         public ArchiveEncoderDefinition Definition => mDefinition;
-        public ArchiveEncoderNode Node => mNode;
+        public EncoderNodeDefinition Node => mNode;
         public int Index => mIndex;
         public bool IsStorage => mNode == null;
         public bool IsConnected => mSource != null;
@@ -256,7 +256,7 @@ namespace ManagedLzma.SevenZip
             mIndex = index;
         }
 
-        internal ArchiveEncoderInputSlot(ArchiveEncoderNode node, int index)
+        internal ArchiveEncoderInputSlot(EncoderNodeDefinition node, int index)
         {
             mDefinition = node.Definition;
             mNode = node;
@@ -272,12 +272,12 @@ namespace ManagedLzma.SevenZip
     public sealed class ArchiveEncoderOutputSlot
     {
         private readonly ArchiveEncoderDefinition mDefinition;
-        private readonly ArchiveEncoderNode mNode;
+        private readonly EncoderNodeDefinition mNode;
         private ArchiveEncoderInputSlot mTarget;
         private readonly int mIndex;
 
         public ArchiveEncoderDefinition Definition => mDefinition;
-        public ArchiveEncoderNode Node => mNode;
+        public EncoderNodeDefinition Node => mNode;
         public int Index => mIndex;
         public bool IsContent => mNode == null;
         public bool IsConnected => mTarget != null;
@@ -288,7 +288,7 @@ namespace ManagedLzma.SevenZip
             mDefinition = definition;
         }
 
-        internal ArchiveEncoderOutputSlot(ArchiveEncoderNode node, int index)
+        internal ArchiveEncoderOutputSlot(EncoderNodeDefinition node, int index)
         {
             mDefinition = node.Definition;
             mNode = node;

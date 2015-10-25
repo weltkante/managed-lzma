@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ManagedLzma.SevenZip
@@ -12,16 +13,16 @@ namespace ManagedLzma.SevenZip
     {
         private sealed class PasswordProvider : master._7zip.Legacy.IPasswordProvider
         {
-            private readonly Lazy<string> mPassword;
+            private readonly PasswordStorage mPassword;
 
-            public PasswordProvider(Lazy<string> password)
+            public PasswordProvider(PasswordStorage password)
             {
                 mPassword = password;
             }
 
             string master._7zip.Legacy.IPasswordProvider.CryptoGetTextPassword()
             {
-                return mPassword.Value;
+                return new string(mPassword.GetPassword());
             }
         }
 
@@ -100,7 +101,7 @@ namespace ManagedLzma.SevenZip
         private long mLength;
         private long mPosition;
 
-        public AesArchiveDecoder(ImmutableArray<byte> settings, Lazy<string> password, long length)
+        public AesArchiveDecoder(ImmutableArray<byte> settings, PasswordStorage password, long length)
         {
             if (password == null)
                 throw new InvalidOperationException("Password required.");

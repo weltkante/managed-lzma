@@ -207,7 +207,7 @@ namespace ManagedLzma.LZMA
             public int mOffset;
             public int mEnding;
             public TaskCompletionSource<int> mCompletion = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-            public ReadMode mMode;
+            public StreamMode mMode;
         }
 
         // immutable
@@ -338,7 +338,7 @@ namespace ManagedLzma.LZMA
         /// or wether to return as soon as some data is available.
         /// </param>
         /// <returns>A task which, when completed, tells you how much data has been read.</returns>
-        public Task<int> ReadOutputAsync(byte[] buffer, int offset, int length, ReadMode mode)
+        public Task<int> ReadOutputAsync(byte[] buffer, int offset, int length, StreamMode mode)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -349,7 +349,7 @@ namespace ManagedLzma.LZMA
             if (length < 0 || length > buffer.Length - offset)
                 throw new ArgumentOutOfRangeException(nameof(length));
 
-            if (mode != ReadMode.FillBuffer && mode != ReadMode.ReturnEarly)
+            if (mode != StreamMode.Complete && mode != StreamMode.Partial)
                 throw new ArgumentOutOfRangeException(nameof(mode));
 
             var frame = new OutputFrame();
@@ -433,7 +433,7 @@ namespace ManagedLzma.LZMA
                 mDecoder.ReadOutputData(frame.mBuffer, frame.mOffset, copySize);
                 frame.mOffset += copySize;
 
-                if (copySize == capacity || frame.mMode == ReadMode.ReturnEarly)
+                if (copySize == capacity || frame.mMode == StreamMode.Partial)
                 {
                     frame.mCompletion.SetResult(frame.mOffset - frame.mOrigin);
 

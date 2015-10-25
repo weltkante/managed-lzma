@@ -18,7 +18,7 @@ namespace ManagedLzma.SevenZip
         private DecodedStream mCurrentStream;
         private int mIndex;
 
-        public DecodedSectionReader(Stream stream, ArchiveMetadata metadata, int index, Lazy<string> password)
+        public DecodedSectionReader(Stream stream, ArchiveMetadata metadata, int index, PasswordStorage password)
         {
             mDecodedStream = new ArchiveSectionDecoder(stream, metadata, index, password);
             mMetadata = metadata;

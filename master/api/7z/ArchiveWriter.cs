@@ -28,7 +28,7 @@ namespace ManagedLzma.SevenZip
         private ImmutableArray<ArchiveFileSection>.Builder mFileSections;
         private ImmutableArray<ArchiveDecoderSection>.Builder mDecoderSections;
         private ArchiveWriterStreamProvider mStreamProvider;
-        private List<ArchiveEncoderSession> mEncoderSessions = new List<ArchiveEncoderSession>();
+        private List<EncoderSession> mEncoderSessions = new List<EncoderSession>();
         private long mAppendPosition;
 
         private ArchiveWriter(Stream stream, ArchiveMetadata metadata)
@@ -71,7 +71,7 @@ namespace ManagedLzma.SevenZip
         {
         }
 
-        public ArchiveEncoderSession BeginEncoding(ArchiveEncoderDefinition definition)
+        public EncoderSession BeginEncoding(ArchiveEncoderDefinition definition)
         {
             if (definition == null)
                 throw new ArgumentNullException(nameof(definition));
@@ -118,7 +118,7 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
-        internal void CompleteEncoderSession(ArchiveEncoderSession session, Tuple<Stream, Checksum?>[] storage)
+        internal void CompleteEncoderSession(EncoderSession session, Tuple<Stream, Checksum?>[] storage)
         {
             if (!mEncoderSessions.Remove(session))
                 throw new InternalFailureException();

@@ -148,7 +148,7 @@ namespace ManagedLzma.SevenZip
             }
         }
 
-        public DecoderNode CreateDecoder(ImmutableArray<byte> settings, ImmutableArray<DecoderOutputMetadata> output, Lazy<string> password)
+        public DecoderNode CreateDecoder(ImmutableArray<byte> settings, ImmutableArray<DecoderOutputMetadata> output, PasswordStorage password)
         {
             switch (~mSignature)
             {

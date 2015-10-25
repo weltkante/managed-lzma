@@ -114,7 +114,7 @@ namespace ManagedLzma.SevenZip
         private DecoderNode[] mDecoders;
         private ReaderNode mOutputStream;
 
-        public ArchiveSectionDecoder(Stream stream, ArchiveMetadata metadata, int index, Lazy<string> password)
+        public ArchiveSectionDecoder(Stream stream, ArchiveMetadata metadata, int index, PasswordStorage password)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -197,7 +197,7 @@ namespace ManagedLzma.SevenZip
         private long mLength;
         private long mPosition;
 
-        public DecodedArchiveSectionStream(Stream stream, ArchiveMetadata metadata, int index, Lazy<string> password)
+        public DecodedArchiveSectionStream(Stream stream, ArchiveMetadata metadata, int index, PasswordStorage password)
         {
             mReader = new ArchiveSectionDecoder(stream, metadata, index, password);
         }

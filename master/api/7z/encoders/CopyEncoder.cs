@@ -2,76 +2,159 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ManagedLzma.SevenZip.Encoders
 {
-    public sealed class CopyEncoderNodeSettings : ArchiveEncoderSettings
+    public sealed class CopyEncoderSettings : EncoderSettings
     {
-        public static readonly CopyEncoderNodeSettings Instance = new CopyEncoderNodeSettings();
+        public static readonly CopyEncoderSettings Instance = new CopyEncoderSettings();
 
         internal override CompressionMethod GetDecoderType() => CompressionMethod.Copy;
 
-        private CopyEncoderNodeSettings() { }
+        private CopyEncoderSettings() { }
 
-        internal override IDisposable CreateEncoder(IArchiveEncoderInputStream[] input, IArchiveEncoderOutputStream[] output)
+        internal override EncoderNode CreateEncoder()
         {
-            return new CopyEncoderNode(input[0], output[0]);
+            return new CopyEncoderNode();
         }
     }
 
-    internal sealed class CopyEncoderNode : IArchiveEncoderNode
+    internal sealed class CopyEncoderNode : EncoderNode, IStreamReader, IStreamWriter
     {
-        private IArchiveEncoderInputStream mInput;
-        private IArchiveEncoderOutputStream mOutput;
-        private Task mTask;
         private byte[] mBuffer;
         private int mOffset;
-        private int mEnding;
+        private int mLength;
         private bool mComplete;
 
-        public CopyEncoderNode(IArchiveEncoderInputStream input, IArchiveEncoderOutputStream output)
+        public override IStreamWriter GetInputSink(int index)
         {
-            mInput = input;
-            mOutput = output;
-            mBuffer = new byte[0x10000];
+            if (index != 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            return this;
         }
 
-        public void Dispose()
+        public override void SetInputSource(int index, IStreamReader stream)
         {
-            mInput.Dispose();
-            mOutput.Dispose();
+            throw new InternalFailureException();
         }
 
-        public void Start()
+        public override IStreamReader GetOutputSource(int index)
         {
-            mTask = Task.Run(async () => {
-                for (;;)
+            if (index != 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            return this;
+        }
+
+        public override void SetOutputSink(int index, IStreamWriter stream)
+        {
+            throw new InternalFailureException();
+        }
+
+        public override void Start()
+        {
+        }
+
+        public override void Dispose()
+        {
+        }
+
+        Task<int> IStreamReader.ReadAsync(byte[] buffer, int offset, int length, StreamMode mode)
+        {
+            Utilities.DebugCheckStreamArguments(buffer, offset, length, mode);
+
+            lock (this)
+            {
+                int total = 0;
+
+                while (length > 0)
                 {
-                    if (!mComplete && mEnding < mBuffer.Length)
+                    while (mBuffer == null)
                     {
-                        var fetched = await mInput.ReadAsync(mBuffer, mEnding, mBuffer.Length - mEnding);
-                        if (fetched == 0)
-                            mComplete = true;
-                        else
-                            mEnding += fetched;
+                        if (mComplete)
+                            return Task.FromResult(total);
+
+                        Monitor.Wait(this);
                     }
 
-                    if (mOffset < mEnding)
+                    int copied = Math.Min(length, mLength);
+                    System.Diagnostics.Debug.Assert(copied > 0);
+                    Buffer.BlockCopy(mBuffer, mOffset, buffer, offset, copied);
+                    mOffset += copied;
+                    mLength -= copied;
+                    offset += copied;
+                    length -= copied;
+                    total += copied;
+
+                    if (mLength == 0)
                     {
-                        var written = mOutput.Write(mBuffer, mOffset, mEnding - mOffset);
-                        mOffset += written;
-                        if (mOffset == mEnding)
-                            mOffset = mEnding = 0;
+                        mBuffer = null;
+                        Monitor.PulseAll(this);
                     }
 
-                    if (mComplete && mOffset == mEnding)
-                    {
-                        mOutput.Done();
+                    if (mode == StreamMode.Partial)
                         break;
+                }
+
+                return Task.FromResult(total);
+            }
+        }
+
+        Task<int> IStreamWriter.WriteAsync(byte[] buffer, int offset, int length, StreamMode mode)
+        {
+            Utilities.DebugCheckStreamArguments(buffer, offset, length, mode);
+
+            lock (this)
+            {
+                System.Diagnostics.Debug.Assert(!mComplete);
+
+                while (mBuffer != null)
+                {
+                    Monitor.Wait(this);
+                    System.Diagnostics.Debug.Assert(!mComplete);
+                }
+
+                mBuffer = buffer;
+                mOffset = offset;
+                mLength = length;
+
+                Monitor.PulseAll(this);
+
+                while (mBuffer != null)
+                {
+                    Monitor.Wait(this);
+                    System.Diagnostics.Debug.Assert(!mComplete);
+                    System.Diagnostics.Debug.Assert(mBuffer == null || mBuffer == buffer);
+
+                    if (mode == StreamMode.Partial && mBuffer != null && mLength < length)
+                    {
+                        mBuffer = null;
+                        Monitor.PulseAll(this);
+                        return Task.FromResult(length - mLength);
                     }
                 }
-            });
+
+                return Task.FromResult(length);
+            }
+        }
+
+        Task IStreamWriter.CompleteAsync()
+        {
+            lock (this)
+            {
+                System.Diagnostics.Debug.Assert(!mComplete);
+
+                mComplete = true;
+                Monitor.PulseAll(this);
+
+                while (mBuffer != null)
+                    Monitor.Wait(this);
+            }
+
+            return Task.CompletedTask;
         }
     }
 }
