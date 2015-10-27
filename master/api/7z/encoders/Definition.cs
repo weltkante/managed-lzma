@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma.SevenZip
 {
-    public sealed class ArchiveEncoderDefinition
+    public sealed class EncoderDefinition
     {
         private ArchiveEncoderOutputSlot mContent;
         private List<EncoderNodeDefinition> mEncoders;
@@ -17,7 +18,7 @@ namespace ManagedLzma.SevenZip
         public int EncoderCount => mEncoders.Count;
         public int StorageCount => mStorage.Count;
 
-        public ArchiveEncoderDefinition()
+        public EncoderDefinition()
         {
             mContent = new ArchiveEncoderOutputSlot(this);
             mEncoders = new List<EncoderNodeDefinition>();
@@ -125,7 +126,7 @@ namespace ManagedLzma.SevenZip
             }
         }
 
-        internal EncoderSession CreateEncoderSession(ArchiveWriter writer, Stream[] storage)
+        internal EncoderSession CreateEncoderSession(ArchiveWriter writer, int section, Stream[] storage)
         {
             if (!mComplete)
                 throw new InvalidOperationException("Incomplete ArchiveEncoderDefinition.");
@@ -157,7 +158,8 @@ namespace ManagedLzma.SevenZip
                 if (i != contentIndex)
                     linkedStreams[i] = new EncoderConnection();
 
-            var encoders = new IDisposable[mEncoders.Count];
+            var encoders = new EncoderNode[mEncoders.Count];
+
             for (int i = 0; i < mEncoders.Count; i++)
             {
                 var settings = mEncoders[i].Settings;
@@ -183,7 +185,20 @@ namespace ManagedLzma.SevenZip
                 }
             }
 
-            return new EncoderSession(writer, encoders, contentStream);
+            var session = new EncoderSession(writer, section, encoders, contentStream);
+
+            contentStream.Start();
+
+            foreach (var stream in storageStreams)
+                stream.Start();
+
+            foreach (var stream in linkedStreams)
+                stream?.Start();
+
+            foreach (var encoder in encoders)
+                encoder.Start();
+
+            return session;
         }
     }
 
@@ -192,25 +207,26 @@ namespace ManagedLzma.SevenZip
         internal EncoderSettings() { }
         internal abstract CompressionMethod GetDecoderType();
         internal abstract EncoderNode CreateEncoder();
+        internal abstract ImmutableArray<byte> SerializeSettings();
         internal int GetInputSlots() => GetDecoderType().GetOutputCount(); // encoder input = decoder output
         internal int GetOutputSlots() => GetDecoderType().GetInputCount(); // encoder output = decoder input
     }
 
     public sealed class EncoderNodeDefinition
     {
-        private readonly ArchiveEncoderDefinition mDefinition;
+        private readonly EncoderDefinition mDefinition;
         private readonly EncoderSettings mSettings;
         private readonly ArchiveEncoderInputSlot[] mInputSlots;
         private readonly ArchiveEncoderOutputSlot[] mOutputSlots;
         private readonly int mIndex;
 
-        public ArchiveEncoderDefinition Definition => mDefinition;
+        public EncoderDefinition Definition => mDefinition;
         public int Index => mIndex;
         public EncoderSettings Settings => mSettings;
         public int InputCount => mInputSlots.Length;
         public int OutputCount => mOutputSlots.Length;
 
-        internal EncoderNodeDefinition(ArchiveEncoderDefinition definition, int index, EncoderSettings settings)
+        internal EncoderNodeDefinition(EncoderDefinition definition, int index, EncoderSettings settings)
         {
             mDefinition = definition;
             mIndex = index;
@@ -238,19 +254,19 @@ namespace ManagedLzma.SevenZip
 
     public sealed class ArchiveEncoderInputSlot
     {
-        private readonly ArchiveEncoderDefinition mDefinition;
+        private readonly EncoderDefinition mDefinition;
         private readonly EncoderNodeDefinition mNode;
         private ArchiveEncoderOutputSlot mSource;
         private readonly int mIndex;
 
-        public ArchiveEncoderDefinition Definition => mDefinition;
+        public EncoderDefinition Definition => mDefinition;
         public EncoderNodeDefinition Node => mNode;
         public int Index => mIndex;
         public bool IsStorage => mNode == null;
         public bool IsConnected => mSource != null;
         public ArchiveEncoderOutputSlot Source => mSource;
 
-        internal ArchiveEncoderInputSlot(ArchiveEncoderDefinition definition, int index)
+        internal ArchiveEncoderInputSlot(EncoderDefinition definition, int index)
         {
             mDefinition = definition;
             mIndex = index;
@@ -271,19 +287,19 @@ namespace ManagedLzma.SevenZip
 
     public sealed class ArchiveEncoderOutputSlot
     {
-        private readonly ArchiveEncoderDefinition mDefinition;
+        private readonly EncoderDefinition mDefinition;
         private readonly EncoderNodeDefinition mNode;
         private ArchiveEncoderInputSlot mTarget;
         private readonly int mIndex;
 
-        public ArchiveEncoderDefinition Definition => mDefinition;
+        public EncoderDefinition Definition => mDefinition;
         public EncoderNodeDefinition Node => mNode;
         public int Index => mIndex;
         public bool IsContent => mNode == null;
         public bool IsConnected => mTarget != null;
         public ArchiveEncoderInputSlot Target => mTarget;
 
-        internal ArchiveEncoderOutputSlot(ArchiveEncoderDefinition definition)
+        internal ArchiveEncoderOutputSlot(EncoderDefinition definition)
         {
             mDefinition = definition;
         }

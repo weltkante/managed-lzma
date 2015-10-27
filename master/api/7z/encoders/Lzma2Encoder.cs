@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,6 +18,11 @@ namespace ManagedLzma.SevenZip.Encoders
             mSettings = settings;
         }
 
+        internal override ImmutableArray<byte> SerializeSettings()
+        {
+            throw new NotImplementedException();
+        }
+
         internal override EncoderNode CreateEncoder()
         {
             return new Lzma2EncoderNode(mSettings);
@@ -25,41 +31,75 @@ namespace ManagedLzma.SevenZip.Encoders
 
     internal sealed class Lzma2EncoderNode : EncoderNode
     {
-        private readonly LZMA2.EncoderSettings mSettings;
+        private LZMA2.AsyncEncoder mEncoder;
+        private Task mTask;
+        private IStreamReader mInput;
+        private IStreamWriter mOutput;
 
         public Lzma2EncoderNode(LZMA2.EncoderSettings settings)
         {
-            mSettings = settings;
+            mEncoder = new LZMA2.AsyncEncoder(settings);
         }
 
         public override IStreamWriter GetInputSink(int index)
         {
-            throw new NotImplementedException();
+            if (index != 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            return null;
         }
 
         public override void SetInputSource(int index, IStreamReader stream)
         {
-            throw new NotImplementedException();
+            if (index != 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            if (mInput != null)
+                throw new InvalidOperationException();
+
+            mInput = stream;
         }
 
         public override IStreamReader GetOutputSource(int index)
         {
-            throw new NotImplementedException();
+            if (index != 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            return null;
         }
 
         public override void SetOutputSink(int index, IStreamWriter stream)
         {
-            throw new NotImplementedException();
+            if (index != 0)
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            if (mOutput != null)
+                throw new InvalidOperationException();
+
+            mOutput = stream;
         }
 
         public override void Start()
         {
-            throw new NotImplementedException();
+            if (mTask != null)
+                throw new InvalidOperationException();
+
+            mTask = mEncoder.EncodeAsync(mInput, mOutput);
         }
 
         public override void Dispose()
         {
-            throw new NotImplementedException();
+            mEncoder.Dispose();
+
+            // We must observe potential exceptions on our tasks, otherwise the whole process will get killed.
+            try { mTask?.GetAwaiter().GetResult(); }
+            catch (OperationCanceledException) { }
         }
     }
 }

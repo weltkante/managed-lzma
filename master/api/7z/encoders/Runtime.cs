@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -25,6 +26,16 @@ namespace ManagedLzma.SevenZip
         }
 
         public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int GetFinalLength()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Checksum? GetFinalChecksum()
         {
             throw new NotImplementedException();
         }
@@ -102,6 +113,16 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
+        public Stream GetFinalStream()
+        {
+            return mStream;
+        }
+
+        public Checksum? GetFinalChecksum()
+        {
+            throw new NotImplementedException();
+        }
+
         public void SetOutputStream(EncoderNode encoder, int index)
         {
             mEncoderOutput = encoder.GetOutputSource(index);
@@ -174,6 +195,11 @@ namespace ManagedLzma.SevenZip
         #region Implementation
 
         public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        public long GetFinalLength()
         {
             throw new NotImplementedException();
         }
@@ -335,6 +361,11 @@ namespace ManagedLzma.SevenZip
                 mStream = stream;
             }
 
+            public Checksum GetChecksum()
+            {
+                throw new NotImplementedException();
+            }
+
             public override bool CanRead => true;
             public override bool CanSeek => false;
             public override bool CanWrite => false;
@@ -382,13 +413,24 @@ namespace ManagedLzma.SevenZip
 
         private object mLockObject = new object();
         private ArchiveWriter mWriter;
-        private IDisposable[] mEncoders;
+        private EncoderDefinition mDefinition;
+        private EncoderInput mInput;
+        private EncoderStorage[] mStorage;
+        private EncoderConnection[] mConnections;
+        private EncoderNode[] mEncoders;
+        private ImmutableArray<DecodedStreamMetadata>.Builder mContent;
         private Stream mPendingStream;
         private long mPendingLength;
+        private int mSection;
 
-        internal EncoderSession(ArchiveWriter writer, IDisposable[] encoders, EncoderInput source)
+        internal EncoderSession(ArchiveWriter writer, int section, EncoderDefinition definition, EncoderInput input, EncoderStorage[] storage, EncoderConnection[] connections, EncoderNode[] encoders, EncoderInput source)
         {
             mWriter = writer;
+            mSection = section;
+            mDefinition = definition;
+            mInput = input;
+            mStorage = storage;
+            mConnections = connections;
             mEncoders = encoders;
             source.Connect(this);
         }
@@ -434,6 +476,14 @@ namespace ManagedLzma.SevenZip
         {
             foreach (var encoder in mEncoders)
                 encoder.Dispose();
+
+            foreach (var stream in mConnections)
+                stream.Dispose();
+
+            foreach (var stream in mStorage)
+                stream.Dispose();
+
+            mInput.Dispose();
         }
 
         public void Discard()
@@ -441,9 +491,98 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
+        public void Complete()
+        {
+            var decoders = ImmutableArray.CreateBuilder<DecoderMetadata>(mEncoders.Length);
+            for (int i = 0; i < mEncoders.Length; i++)
+            {
+                var encoder = mDefinition.GetEncoder(i);
+                var settings = encoder.Settings;
+                var decoderType = settings.GetDecoderType();
+
+                var decoderInputCount = decoderType.GetInputCount();
+                var decoderInputs = ImmutableArray.CreateBuilder<DecoderInputMetadata>(decoderInputCount);
+                for (int j = 0; j < decoderInputCount; j++)
+                {
+                    var encoderOutput = encoder.GetOutput(j).Target;
+                    if (encoderOutput.IsStorage)
+                        decoderInputs.Add(new DecoderInputMetadata(null, encoderOutput.Index));
+                    else
+                        decoderInputs.Add(new DecoderInputMetadata(encoderOutput.Node.Index, encoderOutput.Index));
+                }
+
+                var decoderOutputCount = decoderType.GetOutputCount();
+                var decoderOutputs = ImmutableArray.CreateBuilder<DecoderOutputMetadata>(decoderOutputCount);
+                for (int j = 0; j < decoderOutputCount; j++)
+                {
+                    var encoderInput = encoder.GetInput(j).Source;
+                    if (encoderInput.IsContent)
+                        decoderOutputs.Add(new DecoderOutputMetadata(mInput.GetFinalLength()));
+                    else
+                        decoderOutputs.Add(new DecoderOutputMetadata(mConnections[].GetFinalLength()));
+                }
+
+                decoders.Add(new DecoderMetadata(decoderType, settings.SerializeSettings(), decoderInputs.MoveToImmutable(), decoderOutputs.MoveToImmutable()));
+            }
+
+            var inputSource = mDefinition.GetContentSource().Target;
+            var definition = new ArchiveDecoderSection(
+                decoders.MoveToImmutable(),
+                new DecoderInputMetadata(inputSource.Node.Index, inputSource.Index),
+                mInput.GetFinalLength(),
+                mInput.GetFinalChecksum(),
+                mContent.ToImmutable());
+
+            mWriter.CompleteEncoderSession(this, mSection, definition, mStorage);
+        }
+
+        private static List<string> GetDirectoryPath(DirectoryInfo directory)
+        {
+            var list = new List<string>();
+            do
+            {
+                list.Add(directory.Name);
+                directory = directory.Parent;
+            }
+            while (directory != null);
+            return list;
+        }
+
         public void AppendFile(FileInfo file, DirectoryInfo root)
         {
-            throw new NotImplementedException();
+            if (file == null)
+                throw new ArgumentNullException(nameof(file));
+
+            if (root == null)
+                throw new ArgumentNullException(nameof(root));
+
+            // TODO: is there are better way to get relative paths in a platform-independant way?
+            //       maybe we should get rid of this overload and just let the caller specify the relative name
+            StringComparer comparer;
+            var platform = Environment.OSVersion.Platform;
+            if (platform == PlatformID.Unix || platform == PlatformID.MacOSX)
+                comparer = StringComparer.Ordinal;
+            else
+                comparer = StringComparer.OrdinalIgnoreCase;
+
+            if (!comparer.Equals(file.Directory.Root.Name, root.Root.Name))
+                throw new ArgumentException("File is not on the same drive as the given root directory.", nameof(file));
+
+            var rootList = GetDirectoryPath(root);
+            var fileList = GetDirectoryPath(file.Directory);
+
+            if (rootList.Count > fileList.Count)
+                throw new ArgumentException("File is not related to the given root directory.", nameof(file));
+
+            for (int i = 0; i < rootList.Count; i++)
+                if (!comparer.Equals(rootList[i], fileList[i]))
+                    throw new ArgumentException("File is not related to the given root directory.", nameof(file));
+
+            fileList.RemoveRange(0, rootList.Count);
+            fileList.Reverse();
+            fileList.Add(file.Name);
+
+            AppendFile(file, String.Join("/", fileList));
         }
 
         public void AppendFile(FileInfo file, string name)
@@ -452,19 +591,21 @@ namespace ManagedLzma.SevenZip
                 AppendFile(stream, stream.Length, name, true, file.Attributes, file.CreationTimeUtc, file.LastWriteTimeUtc, file.LastAccessTimeUtc);
         }
 
-        public void AppendFile(Stream stream, long length, string name, bool checksum, FileAttributes? attributes, DateTime? creationTime, DateTime? lastWriteTime, DateTime? lastAccessTime)
+        public void AppendFile(Stream stream, long length, string name, bool checksum, FileAttributes? attributes, DateTime? creation, DateTime? lastWrite, DateTime? lastAccess)
         {
-            if (stream == null && length > 0)
-                throw new ArgumentNullException(nameof(stream));
+            // TODO: validate relative filename (in particular the directory separator and checking for invalid components like drives, '..' and '.')
 
             if (length < 0)
                 throw new ArgumentOutOfRangeException(nameof(length));
 
-            if (checksum)
-                stream = new ChecksumStream(stream);
-
             if (length > 0)
             {
+                if (stream == null)
+                    throw new ArgumentNullException(nameof(stream));
+
+                if (checksum)
+                    stream = new ChecksumStream(stream);
+
                 lock (mLockObject)
                 {
                     if (mPendingStream != null)
@@ -478,10 +619,17 @@ namespace ManagedLzma.SevenZip
                     while (mPendingStream != null)
                         Monitor.Wait(mLockObject);
                 }
-            }
 
-            // TODO: record metadata
-            throw new NotImplementedException();
+                var checksumResult = default(Checksum?);
+                if (checksum)
+                    checksumResult = ((ChecksumStream)stream).GetChecksum();
+
+                mWriter.AppendFileInternal(mSection, name, length, checksumResult, attributes, creation, lastWrite, lastAccess);
+            }
+            else
+            {
+                mWriter.AppendEmptyFileInternal(mSection, name, attributes, creation, lastWrite, lastAccess);
+            }
         }
     }
 }

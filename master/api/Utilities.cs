@@ -65,6 +65,15 @@ namespace ManagedLzma
 
     internal static class Utilities
     {
+        internal static void ClearBuffer<T>(ref T[] buffer)
+        {
+            if (buffer != null)
+            {
+                Array.Clear(buffer, 0, buffer.Length);
+                buffer = null;
+            }
+        }
+
         internal static void CheckStreamArguments(byte[] buffer, int offset, int length, StreamMode mode)
         {
             if (buffer == null)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -14,6 +15,11 @@ namespace ManagedLzma.SevenZip.Encoders
         internal override CompressionMethod GetDecoderType() => CompressionMethod.Copy;
 
         private CopyEncoderSettings() { }
+
+        internal override ImmutableArray<byte> SerializeSettings()
+        {
+            throw new NotImplementedException();
+        }
 
         internal override EncoderNode CreateEncoder()
         {
