@@ -185,7 +185,7 @@ namespace ManagedLzma.SevenZip
                 }
             }
 
-            var session = new EncoderSession(writer, section, encoders, contentStream);
+            var session = new EncoderSession(writer, section, this, contentStream, storageStreams, linkedStreams, encoders);
 
             contentStream.Start();
 

@@ -28,44 +28,46 @@ namespace ManagedLzma.SevenZip
             PutInt32(buffer, offset + 4, (int)(value >> 32));
         }
 
-        public static ArchiveWriter Create(Stream stream)
+        public static ArchiveWriter Create(Stream stream, bool dispose)
         {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
+            try
+            {
+                var writer = new ArchiveWriter(stream, dispose);
 
-            if (!stream.CanRead)
-                throw new ArgumentException("Stream must be readable.", nameof(stream));
+                stream.Position = 0;
+                stream.SetLength(ArchiveMetadataReader.HeaderLength);
+                stream.Write(writer.PrepareHeader(), 0, ArchiveMetadataReader.HeaderLength);
 
-            if (!stream.CanSeek)
-                throw new ArgumentException("Stream must be seekable.", nameof(stream));
+                return writer;
+            }
+            catch
+            {
+                if (dispose && stream != null)
+                    stream.Dispose();
 
-            if (!stream.CanWrite)
-                throw new ArgumentException("Stream must be writeable.", nameof(stream));
-
-            stream.SetLength(ArchiveMetadataReader.HeaderLength);
-            var writer = new ArchiveWriter(stream, new ArchiveMetadata());
-            writer.WriteHeader();
-            return writer;
+                throw;
+            }
         }
 
-        public static ArchiveWriter Open(Stream stream, ArchiveMetadata metadata)
+        public static async Task<ArchiveWriter> CreateAsync(Stream stream, bool dispose)
         {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
+            try
+            {
+                var writer = new ArchiveWriter(stream, dispose);
 
-            if (!stream.CanRead)
-                throw new ArgumentException("Stream must be readable.", nameof(stream));
+                stream.Position = 0;
+                stream.SetLength(ArchiveMetadataReader.HeaderLength);
+                await stream.WriteAsync(writer.PrepareHeader(), 0, ArchiveMetadataReader.HeaderLength);
 
-            if (!stream.CanSeek)
-                throw new ArgumentException("Stream must be seekable.", nameof(stream));
+                return writer;
+            }
+            catch
+            {
+                if (dispose && stream != null)
+                    stream.Dispose();
 
-            if (!stream.CanWrite)
-                throw new ArgumentException("Stream must be writeable.", nameof(stream));
-
-            if (metadata == null)
-                throw new ArgumentNullException(nameof(metadata));
-
-            return new ArchiveWriter(stream, metadata);
+                throw;
+            }
         }
 
         private const byte kMajorVersion = 0;
@@ -75,36 +77,32 @@ namespace ManagedLzma.SevenZip
         private ImmutableArray<ArchiveFileSection>.Builder mFileSections;
         private ImmutableArray<ArchiveDecoderSection>.Builder mDecoderSections;
         private ArchiveWriterStreamProvider mStreamProvider;
-        private IArchiveMetadataStorage mMetadataStorage;
         private List<EncoderSession> mEncoderSessions = new List<EncoderSession>();
         private long mAppendPosition;
+        private bool mDisposeStream;
 
-        private ArchiveWriter(Stream stream, ArchiveMetadata metadata)
+        private ArchiveWriter(Stream stream, bool dispose)
         {
-            mArchiveStream = stream;
-            mFileSections = metadata.FileSections.ToBuilder();
-            mDecoderSections = metadata.DecoderSections.ToBuilder();
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
 
-            var lastSection = mFileSections.LastOrDefault();
-            if (lastSection != null)
-                mAppendPosition = lastSection.Offset + lastSection.Length;
-            else
-                mAppendPosition = ArchiveMetadataReader.HeaderLength;
+            if (!stream.CanWrite)
+                throw new ArgumentException("Stream must be writeable.", nameof(stream));
+
+            if (!stream.CanSeek)
+                throw new ArgumentException("Stream must be seekable.", nameof(stream));
+
+            mArchiveStream = stream;
+            mDisposeStream = dispose;
+            mAppendPosition = ArchiveMetadataReader.HeaderLength;
+            mFileSections = ImmutableArray.CreateBuilder<ArchiveFileSection>();
+            mDecoderSections = ImmutableArray.CreateBuilder<ArchiveDecoderSection>();
         }
 
         public void Dispose()
         {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// Removes existing metadata from the end of the file to reduce file size when modifying an existing archive.
-        /// This modifies the file header, terminating the process without writing new metadata means the archive can no longer be opened.
-        /// </summary>
-        public void DiscardMetadata()
-        {
-            // TODO: Get rid of this method? I think it is not possible to have gaps in the file streams
-            //       anyways so you don't get away with leaving the original metadata streams intact.
+            if (mDisposeStream)
+                mArchiveStream.Dispose();
 
             throw new NotImplementedException();
         }
@@ -112,7 +110,7 @@ namespace ManagedLzma.SevenZip
         /// <summary>
         /// Appends a new metadata section to the end of the file.
         /// </summary>
-        public void WriteMetadata()
+        public Task WriteMetadata(ArchiveMetadataProvider metadata)
         {
             throw new NotImplementedException();
         }
@@ -120,7 +118,82 @@ namespace ManagedLzma.SevenZip
         /// <summary>
         /// Updates the file header to refer to the last written metadata section.
         /// </summary>
-        public void WriteHeader()
+        public async Task WriteHeader()
+        {
+            // TODO: wait for completion of pending metadata write (if there is any)
+            // TODO: discard data from sessions which were started after writing metadata
+
+            var header = PrepareHeader();
+            mArchiveStream.Position = 0;
+            await mArchiveStream.WriteAsync(header, 0, header.Length);
+        }
+
+        public EncoderSession BeginEncoding(EncoderDefinition definition)
+        {
+            if (definition == null)
+                throw new ArgumentNullException(nameof(definition));
+
+            var storage = new Stream[definition.StorageCount];
+            for (int i = 0; i < storage.Length; i++)
+                storage[i] = mStreamProvider?.CreateBufferStream() ?? new MemoryStream();
+
+            var session = definition.CreateEncoderSession(this, mDecoderSections.Count, storage);
+            mDecoderSections.Add(null);
+            mEncoderSessions.Add(session);
+            return session;
+        }
+
+        /// <summary>
+        /// Allows to copy complete sections from existing archives into this archive.
+        /// </summary>
+        public async Task TransferSectionAsync(Stream stream, ArchiveMetadata metadata, int section)
+        {
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
+
+            if (metadata == null)
+                throw new ArgumentNullException(nameof(metadata));
+
+            if (section < 0 || section >= metadata.DecoderSections.Length)
+                throw new ArgumentOutOfRangeException(nameof(section));
+
+            var decoderSection = metadata.DecoderSections[section];
+            var count = decoderSection.Streams.Length;
+            if (count == 0)
+                throw new InvalidOperationException();
+
+            // TODO: wait for pending writes
+            // TODO: translate and append decoder section
+
+            foreach (var decoder in decoderSection.Decoders)
+            {
+                foreach (var input in decoder.InputStreams)
+                {
+                    if (!input.DecoderIndex.HasValue)
+                    {
+                        var fileSection = metadata.FileSections[input.StreamIndex];
+                        var offset = mAppendPosition;
+                        var length = fileSection.Length;
+                        mAppendPosition = checked(offset + length);
+                        mFileSections.Add(new ArchiveFileSection(offset, length, fileSection.Checksum));
+                        using (var fileSectionStream = new ConstrainedReadStream(mArchiveStream, fileSection.Offset, fileSection.Length))
+                            await fileSectionStream.CopyToAsync(mArchiveStream);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Allows to copy partial sections from an existing archive, reencoding selected entries on the fly.
+        /// </summary>
+        public Task TranscodeSectionAsync(Stream stream, ArchiveMetadata metadata, int section, Func<int, Task<bool>> selector, EncoderDefinition definition)
+        {
+            throw new NotImplementedException();
+        }
+
+        #region Internal Methods - Encoder Session
+
+        private byte[] PrepareHeader()
         {
             long metadataOffset = ArchiveMetadataReader.HeaderLength;
             long metadataLength = 0;
@@ -145,68 +218,7 @@ namespace ManagedLzma.SevenZip
             PutInt64(buffer, 20, metadataLength);
             PutInt32(buffer, 28, metadataChecksum.Value);
 
-            mArchiveStream.Position = 0;
-            mArchiveStream.Write(buffer, 0, buffer.Length);
-        }
-
-        public EncoderSession BeginEncoding(EncoderDefinition definition)
-        {
-            if (definition == null)
-                throw new ArgumentNullException(nameof(definition));
-
-            var storage = new Stream[definition.StorageCount];
-            for (int i = 0; i < storage.Length; i++)
-                storage[i] = mStreamProvider?.CreateBufferStream() ?? new MemoryStream();
-
-            var session = definition.CreateEncoderSession(this, mDecoderSections.Count, storage);
-            mDecoderSections.Add(null);
-            mEncoderSessions.Add(session);
-            return session;
-        }
-
-        /// <summary>
-        /// Allows to copy complete sections from existing archives into this archive.
-        /// </summary>
-        public TransferSession BeginTransfer()
-        {
-            // TODO: parameters
-            // - source archive from which to copy
-            // - specify which subarchive to copy
-            // - interface to resolve filename conflicts (cannot be null)
-            //   + alternate overload which takes a boolean "overwrite = true/false"
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// Can be used to include an empty directory in the archive metadata.
-        /// Does not need to be called for directories which are not empty.
-        /// </summary>
-        /// <param name="name">The name of the directory relative to the archive root.</param>
-        public void CreateEmptyDirectory(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// Can be used to remove an existing file or directory from archive metadata.
-        /// Removing a directory also removes all contained archive entries.
-        /// </summary>
-        /// <param name="name">The name of the archive entry relative to the archive root.</param>
-        public void DeleteArchiveEntry(string name)
-        {
-            throw new NotImplementedException();
-        }
-
-        #region Internal Methods - Encoder Session
-
-        internal void AppendFileInternal(int section, string name, long length, Checksum? checksum, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
-        {
-            mMetadataStorage.AppendFile(section, name, length, checksum, attributes, creationDate, lastWriteDate, lastAccessDate);
-        }
-
-        internal void AppendEmptyFileInternal(int section, string name, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
-        {
-            mMetadataStorage.AppendEmptyFile(section, name, attributes, creationDate, lastWriteDate, lastAccessDate);
+            return buffer;
         }
 
         internal void CompleteEncoderSession(EncoderSession session, int section, ArchiveDecoderSection definition, EncoderStorage[] storageList)
@@ -240,68 +252,17 @@ namespace ManagedLzma.SevenZip
         public abstract Stream CreateBufferStream();
     }
 
-    public abstract class ArchiveWriterMetadataProvider
+    public abstract class ArchiveMetadataProvider
     {
-        public abstract string GetName(int section, int index);
-        public abstract bool HasStream(int section, int index);
-        public abstract bool IsDirectory(int section, int index);
-        public abstract bool IsDeleted(int section, int index);
-        public abstract long GetLength(int section, int index);
-        public abstract Checksum? GetChecksum(int section, int index);
-        public abstract FileAttributes? GetAttributes(int section, int index);
-        public abstract DateTime? GetCreationDate(int section, int index);
-        public abstract DateTime? GetLastWriteDate(int section, int index);
-        public abstract DateTime? GetLastAccessDate(int section, int index);
-    }
-
-    public interface IArchiveMetadataStorage
-    {
-        void AppendFile(int section, string name, long length, Checksum? checksum, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate);
-        void AppendEmptyFile(int section, string name, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate);
-        void AppendEmptyDirectory(int section, string name);
-    }
-
-    public sealed class TransferSession : IDisposable
-    {
-        // TODO: awaitable
-
-        public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Discard()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void AppendSection(Stream stream, ArchiveMetadata metadata, int section, ArchiveWriterMetadataProvider provider)
-        {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-
-            if (metadata == null)
-                throw new ArgumentNullException(nameof(metadata));
-
-            if (section < 0 || section >= metadata.DecoderSections.Length)
-                throw new ArgumentOutOfRangeException(nameof(section));
-
-            if (provider == null)
-                throw new ArgumentNullException(nameof(provider));
-
-            var decoderSection = metadata.DecoderSections[section];
-            var count = decoderSection.Streams.Length;
-            if (count == 0)
-                return;
-
-            for (int i = 0; i < count; i++)
-            {
-                var name = provider.GetName(section, i);
-
-                // ...
-            }
-
-            throw new NotImplementedException();
-        }
+        public abstract string GetName(int index);
+        public abstract bool HasStream(int index);
+        public abstract bool IsDirectory(int index);
+        public abstract bool IsDeleted(int index);
+        public abstract long GetLength(int index);
+        public abstract Checksum? GetChecksum(int index);
+        public abstract FileAttributes? GetAttributes(int index);
+        public abstract DateTime? GetCreationDate(int index);
+        public abstract DateTime? GetLastWriteDate(int index);
+        public abstract DateTime? GetLastAccessDate(int index);
     }
 }

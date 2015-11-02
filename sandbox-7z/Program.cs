@@ -55,8 +55,8 @@ namespace sandbox_7z
                 }
                 else
                 {
-                    using (var stream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
-                    using (var writer = ManagedLzma.SevenZip.ArchiveWriter.Create(stream))
+                    using (var archiveStream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
+                    using (var archiveWriter = ManagedLzma.SevenZip.ArchiveWriter.Create(archiveStream, false))
                     {
                         var encoder = new ManagedLzma.SevenZip.EncoderDefinition();
                         var lzma2 = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.Lzma2EncoderSettings(new ManagedLzma.LZMA2.EncoderSettings()));
@@ -66,15 +66,16 @@ namespace sandbox_7z
                         encoder.Connect(crypt.GetOutput(0), encoder.CreateStorageSink());
                         encoder.Complete();
 
-                        using (var session = writer.BeginEncoding(encoder))
+                        using (var session = archiveWriter.BeginEncoding(encoder))
                         {
                             var directory = new DirectoryInfo(Path.GetDirectoryName(typeof(Program).Assembly.Location));
                             foreach (var file in directory.EnumerateFiles())
-                                session.AppendFile(file, directory);
+                                using (var fileStream = file.OpenRead())
+                                    session.AppendStream(fileStream, true);
                         }
 
-                        writer.WriteMetadata();
-                        writer.WriteHeader();
+                        archiveWriter.WriteMetadata().GetAwaiter().GetResult();
+                        archiveWriter.WriteHeader().GetAwaiter().GetResult();
                     }
                 }
             }

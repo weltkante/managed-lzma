@@ -420,10 +420,10 @@ namespace ManagedLzma.SevenZip
         private EncoderNode[] mEncoders;
         private ImmutableArray<DecodedStreamMetadata>.Builder mContent;
         private Stream mPendingStream;
-        private long mPendingLength;
+        private long mResultLength;
         private int mSection;
 
-        internal EncoderSession(ArchiveWriter writer, int section, EncoderDefinition definition, EncoderInput input, EncoderStorage[] storage, EncoderConnection[] connections, EncoderNode[] encoders, EncoderInput source)
+        internal EncoderSession(ArchiveWriter writer, int section, EncoderDefinition definition, EncoderInput input, EncoderStorage[] storage, EncoderConnection[] connections, EncoderNode[] encoders)
         {
             mWriter = writer;
             mSection = section;
@@ -432,40 +432,52 @@ namespace ManagedLzma.SevenZip
             mStorage = storage;
             mConnections = connections;
             mEncoders = encoders;
-            source.Connect(this);
+
+            input.Connect(this);
         }
 
         internal async Task<int> ReadInternalAsync(byte[] buffer, int offset, int length, StreamMode mode)
         {
-            Stream stream;
+            Utilities.DebugCheckStreamArguments(buffer, offset, length, mode);
 
+            Stream stream;
             lock (mLockObject)
             {
-                while (mPendingLength == 0)
+                while (mPendingStream == null)
                     Monitor.Wait(mLockObject);
-
-                if (length > mPendingLength)
-                    length = (int)mPendingLength;
 
                 stream = mPendingStream;
             }
 
-            var result = await stream.ReadAsync(buffer, offset, length);
-
-            if (result <= 0 || result > length)
-                throw new InvalidOperationException("Source stream passed to AppendFile violated stream contract.");
-
-            lock (mLockObject)
+            int result = 0;
+            while (result == 0 || mode == StreamMode.Complete && length > 0)
             {
-                if (mPendingStream != stream)
-                    throw new InternalFailureException();
+                var fetched = await stream.ReadAsync(buffer, offset, length);
 
-                mPendingLength -= result;
+                if (fetched < 0 || fetched > length)
+                    throw new InvalidOperationException("Source stream violated stream contract.");
 
-                if (mPendingLength == 0)
+                result += fetched;
+                offset += fetched;
+                length -= fetched;
+
+                mResultLength += fetched; // could be interlocked but doesn't need to be since we are currently 'owning' the stream (and also consider ourselves 'owning' this counter)
+
+                if (fetched == 0)
                 {
-                    mPendingStream = null;
-                    Monitor.PulseAll(mLockObject);
+                    lock (mLockObject)
+                    {
+                        if (mPendingStream != stream)
+                            throw new InternalFailureException();
+
+                        mPendingStream = null;
+                        Monitor.PulseAll(mLockObject);
+
+                        do { Monitor.Wait(mLockObject); }
+                        while (mPendingStream == null);
+
+                        stream = mPendingStream;
+                    }
                 }
             }
 
@@ -493,6 +505,14 @@ namespace ManagedLzma.SevenZip
 
         public void Complete()
         {
+            int totalInputCount = 0;
+            var firstInputOffset = new int[mEncoders.Length];
+            for (int i = 0; i < mEncoders.Length; i++)
+            {
+                firstInputOffset[i] = totalInputCount;
+                totalInputCount += mDefinition.GetEncoder(i).InputCount;
+            }
+
             var decoders = ImmutableArray.CreateBuilder<DecoderMetadata>(mEncoders.Length);
             for (int i = 0; i < mEncoders.Length; i++)
             {
@@ -519,7 +539,7 @@ namespace ManagedLzma.SevenZip
                     if (encoderInput.IsContent)
                         decoderOutputs.Add(new DecoderOutputMetadata(mInput.GetFinalLength()));
                     else
-                        decoderOutputs.Add(new DecoderOutputMetadata(mConnections[].GetFinalLength()));
+                        decoderOutputs.Add(new DecoderOutputMetadata(mConnections[firstInputOffset[encoderInput.Node.Index] + encoderInput.Index].GetFinalLength()));
                 }
 
                 decoders.Add(new DecoderMetadata(decoderType, settings.SerializeSettings(), decoderInputs.MoveToImmutable(), decoderOutputs.MoveToImmutable()));
@@ -536,100 +556,45 @@ namespace ManagedLzma.SevenZip
             mWriter.CompleteEncoderSession(this, mSection, definition, mStorage);
         }
 
-        private static List<string> GetDirectoryPath(DirectoryInfo directory)
-        {
-            var list = new List<string>();
-            do
-            {
-                list.Add(directory.Name);
-                directory = directory.Parent;
-            }
-            while (directory != null);
-            return list;
-        }
-
-        public void AppendFile(FileInfo file, DirectoryInfo root)
-        {
-            if (file == null)
-                throw new ArgumentNullException(nameof(file));
-
-            if (root == null)
-                throw new ArgumentNullException(nameof(root));
-
-            // TODO: is there are better way to get relative paths in a platform-independant way?
-            //       maybe we should get rid of this overload and just let the caller specify the relative name
-            StringComparer comparer;
-            var platform = Environment.OSVersion.Platform;
-            if (platform == PlatformID.Unix || platform == PlatformID.MacOSX)
-                comparer = StringComparer.Ordinal;
-            else
-                comparer = StringComparer.OrdinalIgnoreCase;
-
-            if (!comparer.Equals(file.Directory.Root.Name, root.Root.Name))
-                throw new ArgumentException("File is not on the same drive as the given root directory.", nameof(file));
-
-            var rootList = GetDirectoryPath(root);
-            var fileList = GetDirectoryPath(file.Directory);
-
-            if (rootList.Count > fileList.Count)
-                throw new ArgumentException("File is not related to the given root directory.", nameof(file));
-
-            for (int i = 0; i < rootList.Count; i++)
-                if (!comparer.Equals(rootList[i], fileList[i]))
-                    throw new ArgumentException("File is not related to the given root directory.", nameof(file));
-
-            fileList.RemoveRange(0, rootList.Count);
-            fileList.Reverse();
-            fileList.Add(file.Name);
-
-            AppendFile(file, String.Join("/", fileList));
-        }
-
-        public void AppendFile(FileInfo file, string name)
-        {
-            using (var stream = file.OpenRead())
-                AppendFile(stream, stream.Length, name, true, file.Attributes, file.CreationTimeUtc, file.LastWriteTimeUtc, file.LastAccessTimeUtc);
-        }
-
-        public void AppendFile(Stream stream, long length, string name, bool checksum, FileAttributes? attributes, DateTime? creation, DateTime? lastWrite, DateTime? lastAccess)
+        public Task<EncodedFileResult> AppendStream(Stream stream, bool checksum)
         {
             // TODO: validate relative filename (in particular the directory separator and checking for invalid components like drives, '..' and '.')
 
-            if (length < 0)
-                throw new ArgumentOutOfRangeException(nameof(length));
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
 
-            if (length > 0)
-            {
-                if (stream == null)
-                    throw new ArgumentNullException(nameof(stream));
+            if (checksum)
+                stream = new ChecksumStream(stream);
 
-                if (checksum)
-                    stream = new ChecksumStream(stream);
-
+            return Task.Run(delegate {
                 lock (mLockObject)
                 {
                     if (mPendingStream != null)
                         throw new InvalidOperationException();
 
                     mPendingStream = stream;
-                    mPendingLength = length;
+                    mResultLength = 0;
 
                     Monitor.PulseAll(mLockObject);
 
                     while (mPendingStream != null)
                         Monitor.Wait(mLockObject);
+
+                    return new EncodedFileResult(mResultLength, checksum ? ((ChecksumStream)stream).GetChecksum() : default(Checksum?));
                 }
+            });
+        }
+    }
 
-                var checksumResult = default(Checksum?);
-                if (checksum)
-                    checksumResult = ((ChecksumStream)stream).GetChecksum();
+    public struct EncodedFileResult
+    {
+        public long Length { get; }
+        public Checksum? Checksum { get; }
 
-                mWriter.AppendFileInternal(mSection, name, length, checksumResult, attributes, creation, lastWrite, lastAccess);
-            }
-            else
-            {
-                mWriter.AppendEmptyFileInternal(mSection, name, attributes, creation, lastWrite, lastAccess);
-            }
+        public EncodedFileResult(long length, Checksum? checksum)
+        {
+            this.Length = length;
+            this.Checksum = checksum;
         }
     }
 }
