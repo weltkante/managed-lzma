@@ -48,21 +48,21 @@ namespace ManagedLzma.SevenZip
             mMetadataLength = 0;
             mMetadataChecksum = default(Checksum);
 
-            var header = new byte[kHeaderLength];
+            var header = new byte[ArchiveMetadataFormat.kHeaderLength];
 
             int offset = 0;
             do
             {
-                int result = stream.Read(header, offset, kHeaderLength - offset);
+                int result = stream.Read(header, offset, ArchiveMetadataFormat.kHeaderLength - offset);
                 if (result <= 0)
                     return new EndOfStreamException();
 
                 offset += result;
             }
-            while (offset < kHeaderLength);
+            while (offset < ArchiveMetadataFormat.kHeaderLength);
 
             for (int i = 0; i < 6; i++)
-                if (header[i] != kFileSignature[i])
+                if (header[i] != ArchiveMetadataFormat.kFileSignature[i])
                     return new InvalidDataException("File is not a 7z archive.");
 
             mMajorVersion = header[6];
@@ -84,10 +84,10 @@ namespace ManagedLzma.SevenZip
             if ((int)crc != GetInt32(header, 8))
                 return new InvalidDataException("Invalid header checksum.");
 
-            if (mMetadataOffset < header.Length || mMetadataOffset > mStreamLength - kHeaderLength)
+            if (mMetadataOffset < header.Length || mMetadataOffset > mStreamLength - ArchiveMetadataFormat.kHeaderLength)
                 return new InvalidDataException("Invalid metadata offset.");
 
-            if (mMetadataLength < 0 || mMetadataLength > mStreamLength - kHeaderLength - mMetadataOffset)
+            if (mMetadataLength < 0 || mMetadataLength > mStreamLength - ArchiveMetadataFormat.kHeaderLength - mMetadataOffset)
                 return new InvalidDataException("Invalid metadata length.");
 
             return null;
@@ -117,11 +117,7 @@ namespace ManagedLzma.SevenZip
 
         #region Variables
 
-        private static readonly ImmutableArray<byte> kFileSignature = ImmutableArray.Create<byte>((byte)'7', (byte)'z', 0xBC, 0xAF, 0x27, 0x1C);
-        private const int kHeaderLength = 0x20;
-
-        public static ImmutableArray<byte> FileSignature => kFileSignature;
-        internal static int HeaderLength => kHeaderLength;
+        public static ImmutableArray<byte> FileSignature => ArchiveMetadataFormat.kFileSignature;
 
         private Lazy<string> mPassword;
         private StreamScope mScope;
@@ -164,7 +160,7 @@ namespace ManagedLzma.SevenZip
 
                 // TODO: validate metadata stream checksum
 
-                using (var metadataStream = new ConstrainedReadStream(mStream, kHeaderLength + mMetadataOffset, mMetadataLength))
+                using (var metadataStream = new ConstrainedReadStream(mStream, ArchiveMetadataFormat.kHeaderLength + mMetadataOffset, mMetadataLength))
                 using (var scope = new StreamScope(this))
                 {
                     scope.SetSource(metadataStream);
@@ -206,7 +202,7 @@ namespace ManagedLzma.SevenZip
         {
             // The metadata stream can either be inlined or compressed
             var token = ReadToken();
-            if (token == Token.PackedHeader)
+            if (token == ArchiveMetadataToken.PackedHeader)
             {
                 var streams = ReadPackedStreams();
 
@@ -224,7 +220,7 @@ namespace ManagedLzma.SevenZip
             }
 
             // The metadata stream must start with this token.
-            if (token != Token.Header)
+            if (token != ArchiveMetadataToken.Header)
                 throw new InvalidDataException();
 
             return true;
@@ -234,14 +230,14 @@ namespace ManagedLzma.SevenZip
         {
             var token = ReadToken();
 
-            if (token == Token.ArchiveProperties)
+            if (token == ArchiveMetadataToken.ArchiveProperties)
             {
                 ReadArchiveProperties();
                 token = ReadToken();
             }
 
             var streams = ImmutableArray<Stream>.Empty;
-            if (token == Token.AdditionalStreams)
+            if (token == ArchiveMetadataToken.AdditionalStreams)
             {
                 streams = ReadPackedStreams();
                 token = ReadToken();
@@ -251,7 +247,7 @@ namespace ManagedLzma.SevenZip
             List<Checksum?> checksums;
 
             ArchiveMetadata metadata;
-            if (token == Token.MainStreams)
+            if (token == ArchiveMetadataToken.MainStreams)
             {
                 metadata = ReadMetadata(streams, true);
                 token = ReadToken();
@@ -263,9 +259,9 @@ namespace ManagedLzma.SevenZip
 
             int? emptyStreamCount = null;
 
-            if (token != Token.End)
+            if (token != ArchiveMetadataToken.End)
             {
-                if (token != Token.Files)
+                if (token != ArchiveMetadataToken.Files)
                     throw new InvalidDataException();
 
                 var fileCount = ReadNumberAsInt32();
@@ -273,7 +269,7 @@ namespace ManagedLzma.SevenZip
                 for (;;)
                 {
                     token = ReadToken();
-                    if (token == Token.End)
+                    if (token == ArchiveMetadataToken.End)
                         break;
 
                     var recordSize = (long)ReadNumber();
@@ -286,7 +282,7 @@ namespace ManagedLzma.SevenZip
 
                     switch (token)
                     {
-                        case Token.Name:
+                        case ArchiveMetadataToken.Name:
                             using (SelectStream(streams))
                             {
                                 var reader = new MetadataStringReader(this, fileCount);
@@ -295,7 +291,7 @@ namespace ManagedLzma.SevenZip
                             }
                             break;
 
-                        case Token.WinAttributes:
+                        case ArchiveMetadataToken.WinAttributes:
                             {
                                 var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
@@ -308,7 +304,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.EmptyStream:
+                        case ArchiveMetadataToken.EmptyStream:
                             {
                                 var emptyStreams = ReadRequiredBitVector(fileCount);
                                 emptyStreamCount = emptyStreams.CountSetBits();
@@ -319,7 +315,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.EmptyFile:
+                        case ArchiveMetadataToken.EmptyFile:
                             {
                                 if (emptyStreamCount == null)
                                     throw new InvalidDataException();
@@ -330,7 +326,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.Anti:
+                        case ArchiveMetadataToken.Anti:
                             {
                                 if (emptyStreamCount == null)
                                     throw new InvalidDataException();
@@ -341,7 +337,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.StartPos:
+                        case ArchiveMetadataToken.StartPos:
                             {
                                 var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
@@ -354,7 +350,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.CTime:
+                        case ArchiveMetadataToken.CTime:
                             {
                                 var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
@@ -367,7 +363,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.ATime:
+                        case ArchiveMetadataToken.ATime:
                             {
                                 var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
@@ -380,7 +376,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.MTime:
+                        case ArchiveMetadataToken.MTime:
                             {
                                 var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
@@ -393,7 +389,7 @@ namespace ManagedLzma.SevenZip
                                 break;
                             }
 
-                        case Token.Dummy:
+                        case ArchiveMetadataToken.Padding:
                             // TODO: what does the reference implementation do here? just skip it? then we shouldn't throw an exception!
                             for (int i = 0; i < recordSize; i++)
                                 if (ReadByte() != 0)
@@ -449,22 +445,22 @@ namespace ManagedLzma.SevenZip
             {
                 switch (ReadToken())
                 {
-                    case Token.PackInfo:
+                    case ArchiveMetadataToken.PackInfo:
                         rawStreams = ReadRawStreamList();
                         break;
 
-                    case Token.UnpackInfo:
+                    case ArchiveMetadataToken.UnpackInfo:
                         sections = ReadSectionHeader(streams);
                         break;
 
-                    case Token.SubStreamsInfo:
+                    case ArchiveMetadataToken.SubStreamsInfo:
                         if (sections == null)
                             throw new InvalidDataException();
 
                         ReadSectionDetails(sections);
                         break;
 
-                    case Token.End:
+                    case ArchiveMetadataToken.End:
                         if (rawStreams.IsDefault || sections == null)
                             throw new InvalidDataException();
 
@@ -501,13 +497,13 @@ namespace ManagedLzma.SevenZip
 
         private ImmutableArray<ArchiveFileSection> ReadRawStreamList()
         {
-            var rawStreamBaseOffset = ReadNumberAsInt64() + kHeaderLength;
+            var rawStreamBaseOffset = ReadNumberAsInt64() + ArchiveMetadataFormat.kHeaderLength;
             if (rawStreamBaseOffset < 0)
                 throw new InvalidDataException();
 
             var rawStreamCount = ReadNumberAsInt32();
 
-            SkipToToken(Token.Size);
+            SkipToToken(ArchiveMetadataToken.Size);
 
             var rawStreamSizes = new long[rawStreamCount];
             for (int i = 0; i < rawStreamCount; i++)
@@ -518,7 +514,7 @@ namespace ManagedLzma.SevenZip
             for (;;)
             {
                 var token = ReadToken();
-                if (token == Token.CRC)
+                if (token == ArchiveMetadataToken.CRC)
                 {
                     var vector = ReadOptionalBitVector(rawStreamCount);
                     var rawStreamOffset = rawStreamBaseOffset;
@@ -535,7 +531,7 @@ namespace ManagedLzma.SevenZip
                         rawStreamOffset += length;
                     }
                 }
-                else if (token == Token.End)
+                else if (token == ArchiveMetadataToken.End)
                 {
                     if (rawStreamListBuilder == null)
                     {
@@ -561,7 +557,7 @@ namespace ManagedLzma.SevenZip
 
         private ArchiveSectionMetadataBuilder[] ReadSectionHeader(ImmutableArray<Stream> streams)
         {
-            SkipToToken(Token.Folder);
+            SkipToToken(ArchiveMetadataToken.Folder);
 
             var sectionCount = ReadNumberAsInt32();
             var sections = new ArchiveSectionMetadataBuilder[sectionCount];
@@ -577,7 +573,7 @@ namespace ManagedLzma.SevenZip
                 }
             }
 
-            SkipToToken(Token.CodersUnpackSize);
+            SkipToToken(ArchiveMetadataToken.CodersUnpackSize);
 
             foreach (var section in sections)
             {
@@ -604,10 +600,10 @@ namespace ManagedLzma.SevenZip
             for (;;)
             {
                 var token = ReadToken();
-                if (token == Token.End)
+                if (token == ArchiveMetadataToken.End)
                     break;
 
-                if (token == Token.CRC)
+                if (token == ArchiveMetadataToken.CRC)
                 {
                     var vector = ReadOptionalBitVector(sectionCount);
 
@@ -634,14 +630,14 @@ namespace ManagedLzma.SevenZip
 
             bool hasStreamCounts = false;
 
-            Token token;
+            ArchiveMetadataToken token;
             for (;;)
             {
                 token = ReadToken();
-                if (token == Token.End || token == Token.CRC || token == Token.Size)
+                if (token == ArchiveMetadataToken.End || token == ArchiveMetadataToken.CRC || token == ArchiveMetadataToken.Size)
                     break;
 
-                if (token == Token.NumUnpackStream)
+                if (token == ArchiveMetadataToken.NumUnpackStream)
                 {
                     hasStreamCounts = true;
 
@@ -674,7 +670,7 @@ namespace ManagedLzma.SevenZip
 
                 for (int i = 0; i < subsections.Length - 1; i++)
                 {
-                    if (token == Token.Size)
+                    if (token == ArchiveMetadataToken.Size)
                     {
                         var size = ReadNumberAsInt64();
                         if (size == 0 || size >= remaining)
@@ -692,7 +688,7 @@ namespace ManagedLzma.SevenZip
                 section.Subsections = subsections;
             }
 
-            if (token == Token.Size)
+            if (token == ArchiveMetadataToken.Size)
                 token = ReadToken();
 
             #endregion
@@ -715,7 +711,7 @@ namespace ManagedLzma.SevenZip
 
             for (;;)
             {
-                if (token == Token.End)
+                if (token == ArchiveMetadataToken.End)
                 {
                     if (checksums == null)
                     {
@@ -726,7 +722,7 @@ namespace ManagedLzma.SevenZip
 
                     break;
                 }
-                else if (token == Token.CRC)
+                else if (token == ArchiveMetadataToken.CRC)
                 {
                     checksums = ImmutableArray.CreateBuilder<Checksum?>(totalChecksumCount);
 
@@ -1085,16 +1081,16 @@ namespace ManagedLzma.SevenZip
             return scope;
         }
 
-        private Token ReadToken()
+        private ArchiveMetadataToken ReadToken()
         {
             var token = ReadNumber();
             if (token > 25)
-                return Token.Unknown;
+                return ArchiveMetadataToken.Unknown;
             else
-                return (Token)token;
+                return (ArchiveMetadataToken)token;
         }
 
-        private void SkipToToken(Token token)
+        private void SkipToToken(ArchiveMetadataToken token)
         {
             while (ReadToken() != token)
                 SkipDataBlock();
@@ -1103,42 +1099,6 @@ namespace ManagedLzma.SevenZip
         private void SkipDataBlock()
         {
             mScope.Skip(ReadNumberAsInt64());
-        }
-
-        private enum Token
-        {
-            #region Constants
-
-            Unknown = -1,
-
-            End = 0,
-            Header = 1,
-            ArchiveProperties = 2,
-            AdditionalStreams = 3,
-            MainStreams = 4,
-            Files = 5,
-            PackInfo = 6,
-            UnpackInfo = 7,
-            SubStreamsInfo = 8,
-            Size = 9,
-            CRC = 10,
-            Folder = 11,
-            CodersUnpackSize = 12,
-            NumUnpackStream = 13,
-            EmptyStream = 14,
-            EmptyFile = 15,
-            Anti = 16,
-            Name = 17,
-            CTime = 18,
-            ATime = 19,
-            MTime = 20,
-            WinAttributes = 21,
-            Comment = 22,
-            PackedHeader = 23,
-            StartPos = 24,
-            Dummy = 25,
-
-            #endregion
         }
 
         #endregion

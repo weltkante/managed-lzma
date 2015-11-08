@@ -35,8 +35,8 @@ namespace ManagedLzma.SevenZip
                 var writer = new ArchiveWriter(stream, dispose);
 
                 stream.Position = 0;
-                stream.SetLength(ArchiveMetadataReader.HeaderLength);
-                stream.Write(writer.PrepareHeader(), 0, ArchiveMetadataReader.HeaderLength);
+                stream.SetLength(ArchiveMetadataFormat.kHeaderLength);
+                stream.Write(writer.PrepareHeader(), 0, ArchiveMetadataFormat.kHeaderLength);
 
                 return writer;
             }
@@ -56,8 +56,8 @@ namespace ManagedLzma.SevenZip
                 var writer = new ArchiveWriter(stream, dispose);
 
                 stream.Position = 0;
-                stream.SetLength(ArchiveMetadataReader.HeaderLength);
-                await stream.WriteAsync(writer.PrepareHeader(), 0, ArchiveMetadataReader.HeaderLength);
+                stream.SetLength(ArchiveMetadataFormat.kHeaderLength);
+                await stream.WriteAsync(writer.PrepareHeader(), 0, ArchiveMetadataFormat.kHeaderLength);
 
                 return writer;
             }
@@ -79,6 +79,9 @@ namespace ManagedLzma.SevenZip
         private ArchiveWriterStreamProvider mStreamProvider;
         private List<EncoderSession> mEncoderSessions = new List<EncoderSession>();
         private long mAppendPosition;
+        private long mMetadataPosition;
+        private long mMetadataLength;
+        private Checksum mMetadataChecksum;
         private bool mDisposeStream;
 
         private ArchiveWriter(Stream stream, bool dispose)
@@ -94,7 +97,10 @@ namespace ManagedLzma.SevenZip
 
             mArchiveStream = stream;
             mDisposeStream = dispose;
-            mAppendPosition = ArchiveMetadataReader.HeaderLength;
+            mMetadataPosition = ArchiveMetadataFormat.kHeaderLength;
+            mMetadataLength = 0;
+            mAppendPosition = ArchiveMetadataFormat.kHeaderLength;
+            mMetadataChecksum = Checksum.GetEmptyStreamChecksum();
             mFileSections = ImmutableArray.CreateBuilder<ArchiveFileSection>();
             mDecoderSections = ImmutableArray.CreateBuilder<ArchiveDecoderSection>();
         }
@@ -112,8 +118,362 @@ namespace ManagedLzma.SevenZip
         /// </summary>
         public Task WriteMetadata(ArchiveMetadataProvider metadata)
         {
+            if (metadata == null)
+                throw new ArgumentNullException(nameof(metadata));
+
+            int metadataCount = metadata.GetCount();
+            if (metadataCount < 0)
+                throw new InvalidOperationException(nameof(ArchiveMetadataProvider) + " returned negative count.");
+
+            // TODO: wait for completion of pending writes
+
+            mMetadataPosition = mAppendPosition;
+            mArchiveStream.Position = mAppendPosition;
+
+            var subStreamCount = mDecoderSections.Sum(x => x.Streams.Length);
+
+            WriteToken(ArchiveMetadataToken.Header);
+
+            if (mDecoderSections.Count > 0)
+            {
+                WriteToken(ArchiveMetadataToken.MainStreams);
+                WritePackInfo();
+                WriteUnpackInfo();
+                WriteSubStreamsInfo();
+                WriteToken(ArchiveMetadataToken.End);
+            }
+
+            if (subStreamCount > 0)
+            {
+                WriteToken(ArchiveMetadataToken.Files);
+                WriteNumber(metadataCount);
+
+                // TODO: empty streams
+                // TODO: names
+                // TODO: CTime
+                // TODO: ATime
+                // TODO: MTime
+                // TODO: start positions
+                // TODO: attributes
+
+                WriteToken(ArchiveMetadataToken.End);
+            }
+
+            WriteToken(ArchiveMetadataToken.End);
+
             throw new NotImplementedException();
         }
+
+        #region Writer - Structured Data
+
+        private void WriteBitVector(IEnumerable<bool> bits)
+        {
+            byte b = 0;
+            byte mask = 0x80;
+
+            foreach (bool bit in bits)
+            {
+                if (bit)
+                    b |= mask;
+
+                mask >>= 1;
+
+                if (mask == 0)
+                {
+                    WriteByte(b);
+                    mask = 0x80;
+                    b = 0;
+                }
+            }
+
+            if (mask != 0x80)
+                WriteByte(b);
+        }
+
+        private void WriteAlignedHeaderWithBitVector(IEnumerable<bool> bits, int vectorCount, int itemCount, ArchiveMetadataToken token, int itemSize)
+        {
+            var vectorSize = (itemCount == vectorCount) ? 0 : (vectorCount + 7) / 8;
+            var contentSize = 2 + vectorSize + itemCount * itemSize;
+
+            // Insert padding to align the begin of the content vector at a multiple of the given item size.
+            WritePadding(3 + vectorSize + GetNumberSize(contentSize), itemSize);
+
+            WriteToken(token);
+            WriteNumber(contentSize);
+
+            if (itemCount == vectorCount)
+            {
+                WriteByte(1); // all items defined == true
+            }
+            else
+            {
+                WriteByte(0); // all items defined == false, followed by a bitvector for the defined items
+                WriteBitVector(bits);
+            }
+
+            WriteByte(0); // content vector is inline and not packed into a separate stream
+
+            // caller inserts content vector (itemCount * itemSize) right behind this call
+        }
+
+        private void WriteChecksumVector(IEnumerable<Checksum?> checksums)
+        {
+            if (checksums.Any(x => x.HasValue))
+            {
+                WriteToken(ArchiveMetadataToken.CRC);
+
+                if (checksums.All(x => x.HasValue))
+                {
+                    WriteByte(1);
+                }
+                else
+                {
+                    WriteByte(0);
+                    WriteBitVector(checksums.Select(x => x.HasValue));
+                }
+
+                foreach (var checksum in checksums)
+                    if (checksum.HasValue)
+                        WriteInt32(checksum.Value.Value);
+            }
+        }
+
+        private void WriteDateVector(IEnumerable<DateTime?> dates, ArchiveMetadataToken token)
+        {
+            WriteUInt64Vector(dates.Select(x => x.HasValue ? (ulong)x.Value.ToFileTimeUtc() : default(ulong?)), token);
+        }
+
+        private void WriteUInt64Vector(IEnumerable<ulong?> vector, ArchiveMetadataToken token)
+        {
+            var count = vector.Count();
+            var defined = vector.Count(x => x.HasValue);
+
+            if (defined > 0)
+            {
+                WriteAlignedHeaderWithBitVector(vector.Select(x => x.HasValue), count, defined, token, 8);
+                System.Diagnostics.Debug.Assert((mArchiveStream.Position & 7) == 0);
+
+                foreach (var slot in vector)
+                    if (slot.HasValue)
+                        WriteUInt64(slot.Value);
+            }
+        }
+
+        private void WriteUInt32Vector(IEnumerable<uint?> vector, ArchiveMetadataToken token)
+        {
+            var count = vector.Count();
+            var defined = vector.Count(x => x.HasValue);
+
+            if (defined > 0)
+            {
+                WriteAlignedHeaderWithBitVector(vector.Select(x => x.HasValue), count, defined, token, 4);
+                System.Diagnostics.Debug.Assert((mArchiveStream.Position & 3) == 0);
+
+                foreach (var slot in vector)
+                    if (slot.HasValue)
+                        WriteInt32((int)slot.Value);
+            }
+        }
+
+        private void WritePackInfo()
+        {
+            if (mFileSections.Count > 0)
+            {
+#if DEBUG
+                System.Diagnostics.Debug.Assert(mFileSections[0].Offset == ArchiveMetadataFormat.kHeaderLength);
+                for (int i = 1; i < mFileSections.Count; i++)
+                    System.Diagnostics.Debug.Assert(mFileSections[i].Offset == mFileSections[i - 1].Offset + mFileSections[i - 1].Length);
+#endif
+
+                WriteToken(ArchiveMetadataToken.PackInfo);
+                WriteNumber(mFileSections[0].Offset - ArchiveMetadataFormat.kHeaderLength);
+                WriteNumber(mFileSections.Count);
+
+                WriteToken(ArchiveMetadataToken.Size);
+                foreach (var fileSection in mFileSections)
+                    WriteNumber(fileSection.Length);
+
+                WriteChecksumVector(mFileSections.Select(x => x.Checksum));
+
+                WriteToken(ArchiveMetadataToken.End);
+            }
+        }
+
+        private void WriteUnpackInfo()
+        {
+            if (mDecoderSections.Count > 0)
+            {
+                WriteToken(ArchiveMetadataToken.UnpackInfo);
+
+                WriteToken(ArchiveMetadataToken.Folder);
+                WriteNumber(mDecoderSections.Count);
+                WriteByte(0);
+
+                int index = 0;
+                foreach (var decoder in mDecoderSections)
+                    WriteDecoderSection(decoder, ref index);
+
+                WriteToken(ArchiveMetadataToken.CodersUnpackSize);
+                foreach (var decoder in mDecoderSections)
+                    WriteNumber(decoder.Length);
+
+                WriteChecksumVector(mDecoderSections.SelectMany(x => x.Streams).Select(x => x.Checksum));
+
+                WriteToken(ArchiveMetadataToken.End);
+            }
+        }
+
+        private void WriteDecoderSection(ArchiveDecoderSection definition, ref int firstStreamIndex)
+        {
+            WriteNumber(definition.Decoders.Length);
+
+            var inputOffset = new int[definition.Decoders.Length];
+            var outputOffset = new int[definition.Decoders.Length];
+
+            for (int i = 1; i < definition.Decoders.Length; i++)
+            {
+                inputOffset[i] = inputOffset[i - 1] + definition.Decoders[i - 1].InputStreams.Length;
+                outputOffset[i] = outputOffset[i - 1] + definition.Decoders[i - 1].OutputStreams.Length;
+            }
+
+            for (int i = 0; i < definition.Decoders.Length; i++)
+            {
+                var decoder = definition.Decoders[i];
+
+                for (int j = 0; j < decoder.InputStreams.Length; j++)
+                {
+                    var input = decoder.InputStreams[j];
+
+                    if (input.DecoderIndex.HasValue)
+                    {
+                        WriteNumber(inputOffset[i] + j);
+                        WriteNumber(outputOffset[input.DecoderIndex.Value] + input.StreamIndex);
+                    }
+                }
+            }
+
+            int fileStreamSections = 0;
+
+            foreach (var decoder in definition.Decoders)
+            {
+                foreach (var input in decoder.InputStreams)
+                {
+                    if (!input.DecoderIndex.HasValue)
+                    {
+                        WriteNumber(input.StreamIndex - firstStreamIndex);
+                        fileStreamSections += 1;
+                    }
+                }
+            }
+
+            firstStreamIndex += fileStreamSections;
+        }
+
+        private void WriteSubStreamsInfo()
+        {
+            WriteToken(ArchiveMetadataToken.SubStreamsInfo);
+
+            if (mDecoderSections.Any(x => x.Streams.Length != 1))
+            {
+                WriteToken(ArchiveMetadataToken.NumUnpackStream);
+                foreach (var decoderSection in mDecoderSections)
+                    WriteNumber(decoderSection.Streams.Length);
+            }
+
+            if (mDecoderSections.Any(x => x.Streams.Length > 1))
+            {
+                WriteToken(ArchiveMetadataToken.Size);
+                foreach (var decoderSection in mDecoderSections)
+                {
+                    var decodedStreams = decoderSection.Streams;
+                    for (int i = 0; i < decodedStreams.Length - 1; i++)
+                        WriteNumber(decodedStreams[i].Length);
+                }
+            }
+
+            WriteChecksumVector(
+                from decoderSection in mDecoderSections
+                where !(decoderSection.Streams.Length == 1 && decoderSection.Checksum.HasValue)
+                from decodedStream in decoderSection.Streams
+                select decodedStream.Checksum);
+
+            WriteToken(ArchiveMetadataToken.End);
+        }
+
+        #endregion
+
+        #region Writer - Raw Data
+
+        private void WriteToken(ArchiveMetadataToken token)
+        {
+            System.Diagnostics.Debug.Assert(0 <= (int)token && (int)token <= 25);
+            WriteByte((byte)token);
+        }
+
+        private void WritePadding(int offset, int alignment)
+        {
+            // 7-Zip 4.50 - 4.58 contain BUG, so they do not support .7z archives with Unknown field.
+
+            offset = (int)(mArchiveStream.Position + offset) & (alignment - 1);
+
+            if (offset > 0)
+            {
+                var padding = alignment - offset;
+
+                if (padding < 2)
+                    padding += alignment;
+
+                padding -= 2;
+
+                WriteToken(ArchiveMetadataToken.Padding);
+                WriteByte((byte)padding);
+
+                for (int i = 0; i < padding; i++)
+                    WriteByte(0);
+            }
+        }
+
+        private void WriteByte(byte value)
+        {
+            mArchiveStream.WriteByte(value);
+        }
+
+        private void WriteInt32(int value)
+        {
+            WriteByte((byte)value);
+            WriteByte((byte)(value >> 8));
+            WriteByte((byte)(value >> 16));
+            WriteByte((byte)(value >> 24));
+        }
+
+        private void WriteUInt64(ulong value)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                WriteByte((byte)value);
+                value >>= 8;
+            }
+        }
+
+        private void WriteNumber(long value)
+        {
+            System.Diagnostics.Debug.Assert(value >= 0);
+            throw new NotImplementedException();
+        }
+
+        private int GetNumberSize(long value)
+        {
+            System.Diagnostics.Debug.Assert(value >= 0);
+
+            int length = 1;
+
+            while (length < 9 && value < (1L << (length * 7)))
+                length++;
+
+            return length;
+        }
+
+        #endregion
 
         /// <summary>
         /// Updates the file header to refer to the last written metadata section.
@@ -195,28 +555,24 @@ namespace ManagedLzma.SevenZip
 
         private byte[] PrepareHeader()
         {
-            long metadataOffset = ArchiveMetadataReader.HeaderLength;
-            long metadataLength = 0;
-            Checksum metadataChecksum = new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(LZMA.Master.SevenZip.CRC.kInitCRC));
-
             uint crc = LZMA.Master.SevenZip.CRC.kInitCRC;
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, metadataOffset);
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, metadataLength);
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, metadataChecksum.Value);
+            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataPosition);
+            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataLength);
+            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataChecksum.Value);
             crc = LZMA.Master.SevenZip.CRC.Finish(crc);
 
-            var buffer = new byte[ArchiveMetadataReader.HeaderLength];
+            var buffer = new byte[ArchiveMetadataFormat.kHeaderLength];
 
-            var signature = ArchiveMetadataReader.FileSignature;
+            var signature = ArchiveMetadataFormat.kFileSignature;
             for (int i = 0; i < signature.Length; i++)
                 buffer[i] = signature[i];
 
             buffer[6] = kMajorVersion;
             buffer[7] = kMinorVersion;
             PutInt32(buffer, 8, (int)crc);
-            PutInt64(buffer, 12, metadataOffset);
-            PutInt64(buffer, 20, metadataLength);
-            PutInt32(buffer, 28, metadataChecksum.Value);
+            PutInt64(buffer, 12, mMetadataPosition);
+            PutInt64(buffer, 20, mMetadataLength);
+            PutInt32(buffer, 28, mMetadataChecksum.Value);
 
             return buffer;
         }
@@ -254,6 +610,7 @@ namespace ManagedLzma.SevenZip
 
     public abstract class ArchiveMetadataProvider
     {
+        public abstract int GetCount();
         public abstract string GetName(int index);
         public abstract bool HasStream(int index);
         public abstract bool IsDirectory(int index);

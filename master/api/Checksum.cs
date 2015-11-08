@@ -10,6 +10,11 @@ namespace ManagedLzma
     /// <summary>CRC checksum used by 7z archives.</summary>
     public struct Checksum : IEquatable<Checksum>
     {
+        public static Checksum GetEmptyStreamChecksum()
+        {
+            return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(LZMA.Master.SevenZip.CRC.kInitCRC));
+        }
+
         public static Checksum Parse(string text)
         {
             return new Checksum(Int32.Parse(text, NumberStyles.AllowHexSpecifier));

@@ -7,8 +7,46 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma.SevenZip
 {
-    internal sealed class ArchiveMetadataFileFormat
+    internal static class ArchiveMetadataFormat
     {
+        internal static readonly ImmutableArray<byte> kFileSignature = ImmutableArray.Create<byte>((byte)'7', (byte)'z', 0xBC, 0xAF, 0x27, 0x1C);
+        internal const int kHeaderLength = 0x20;
+    }
+
+    internal enum ArchiveMetadataToken
+    {
+        #region Constants
+
+        Unknown = -1,
+
+        End = 0,
+        Header = 1,
+        ArchiveProperties = 2,
+        AdditionalStreams = 3,
+        MainStreams = 4,
+        Files = 5,
+        PackInfo = 6,
+        UnpackInfo = 7,
+        SubStreamsInfo = 8,
+        Size = 9,
+        CRC = 10,
+        Folder = 11,
+        CodersUnpackSize = 12,
+        NumUnpackStream = 13,
+        EmptyStream = 14,
+        EmptyFile = 15,
+        Anti = 16,
+        Name = 17,
+        CTime = 18,
+        ATime = 19,
+        MTime = 20,
+        WinAttributes = 21,
+        Comment = 22,
+        PackedHeader = 23,
+        StartPos = 24,
+        Padding = 25, // called 'Dummy' in the original implementation
+
+        #endregion
     }
 
     internal sealed class ArchiveSectionMetadataBuilder
