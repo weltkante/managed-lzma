@@ -28,7 +28,14 @@ namespace ManagedLzma
             }
 
             var capacity = size < Int32.MaxValue ? (int)size : Int32.MaxValue;
-            var fetched = mStream.ReadAsync(buf.mBuffer, buf.mOffset, capacity, StreamMode.Partial).GetAwaiter().GetResult();
+
+            int fetched;
+            try { fetched = mStream.ReadAsync(buf.mBuffer, buf.mOffset, capacity, StreamMode.Partial).GetAwaiter().GetResult(); }
+            catch (OperationCanceledException)
+            {
+                size = 0;
+                return LZMA.Master.LZMA.SZ_ERROR_FAIL;
+            }
 
             if (fetched < 0 || fetched > capacity)
                 throw new InvalidOperationException("IInputStream.ReadAsync returned an invalid result.");
@@ -60,7 +67,10 @@ namespace ManagedLzma
 
             while (size > Int32.MaxValue)
             {
-                var written = mStream.WriteAsync(buffer, offset, Int32.MaxValue, StreamMode.Partial).GetAwaiter().GetResult();
+                int written;
+                try { written = mStream.WriteAsync(buffer, offset, Int32.MaxValue, StreamMode.Partial).GetAwaiter().GetResult(); }
+                catch (OperationCanceledException) { return 0; }
+
                 if (written <= 0)
                     throw new InvalidOperationException("IOutputStream.WriteAsync returned an invalid result.");
 
@@ -70,7 +80,10 @@ namespace ManagedLzma
 
             if (size > 0)
             {
-                var written = mStream.WriteAsync(buffer, offset, (int)size, StreamMode.Complete).GetAwaiter().GetResult();
+                int written;
+                try { written = mStream.WriteAsync(buffer, offset, (int)size, StreamMode.Complete).GetAwaiter().GetResult(); }
+                catch (OperationCanceledException) { return 0; }
+
                 if (written != size)
                     throw new InvalidOperationException("IOutputStream.WriteAsync returned an invalid result.");
             }

@@ -18,9 +18,25 @@ namespace ManagedLzma.SevenZip.Encoders
             mSettings = settings;
         }
 
+        private static uint LZMA2_DIC_SIZE_FROM_PROP(int p)
+        {
+            return (uint)(2 | (p & 1)) << (p / 2 + 11);
+        }
+
+        public static byte Lzma2Enc_WriteProperties(LZMA2.EncoderSettings mProps)
+        {
+            uint dicSize = mProps.GetInternalSettings().mLzmaProps.LzmaEncProps_GetDictSize();
+
+            int i = 0;
+            while (i < 40 && dicSize > LZMA2_DIC_SIZE_FROM_PROP(i))
+                i++;
+
+            return (byte)i;
+        }
+
         internal override ImmutableArray<byte> SerializeSettings()
         {
-            throw new NotImplementedException();
+            return ImmutableArray.Create(Lzma2Enc_WriteProperties(mSettings));
         }
 
         internal override EncoderNode CreateEncoder()

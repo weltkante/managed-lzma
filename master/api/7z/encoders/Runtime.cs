@@ -19,6 +19,8 @@ namespace ManagedLzma.SevenZip
         private EncoderSession mSession;
         private IStreamWriter mEncoderInput;
         private Task mTransferTask;
+        private long mLength;
+        private uint mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
 
         internal void Connect(EncoderSession session)
         {
@@ -30,14 +32,14 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
-        public int GetFinalLength()
+        public long GetFinalLength()
         {
-            throw new NotImplementedException();
+            return mLength;
         }
 
         public Checksum? GetFinalChecksum()
         {
-            throw new NotImplementedException();
+            return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum));
         }
 
         public void SetInputStream(EncoderNode encoder, int index)
@@ -70,22 +72,22 @@ namespace ManagedLzma.SevenZip
                     return;
                 }
 
-                int offset = 0;
-                while (fetched > 0)
-                {
-                    var written = await mEncoderInput.WriteAsync(buffer, offset, fetched, StreamMode.Complete).ConfigureAwait(false);
-                    System.Diagnostics.Debug.Assert(0 < written && written <= fetched);
-                    offset += written;
-                    fetched -= written;
-                }
+                var written = await mEncoderInput.WriteAsync(buffer, 0, fetched, StreamMode.Complete).ConfigureAwait(false);
+                System.Diagnostics.Debug.Assert(written == fetched);
             }
         }
 
-        public Task<int> ReadAsync(byte[] buffer, int offset, int length, StreamMode mode)
+        public async Task<int> ReadAsync(byte[] buffer, int offset, int length, StreamMode mode)
         {
             System.Diagnostics.Debug.Assert(mEncoderInput == null);
 
-            return mSession.ReadInternalAsync(buffer, offset, length, mode);
+            var result = await mSession.ReadInternalAsync(buffer, offset, length, mode);
+
+            mLength += result;
+            for (int i = 0; i < result; i++)
+                mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer[offset + i]);
+
+            return result;
         }
 
         #endregion
@@ -102,10 +104,13 @@ namespace ManagedLzma.SevenZip
         private IStreamReader mEncoderOutput;
         private Task mTransferTask;
         private bool mComplete;
+        private bool mCalculateChecksum;
+        private uint mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
 
-        public EncoderStorage(Stream stream)
+        public EncoderStorage(Stream stream, bool checksum)
         {
             mStream = stream;
+            mCalculateChecksum = checksum;
         }
 
         public void Dispose()
@@ -120,7 +125,7 @@ namespace ManagedLzma.SevenZip
 
         public Checksum? GetFinalChecksum()
         {
-            throw new NotImplementedException();
+            return mCalculateChecksum ? new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum)) : default(Checksum?);
         }
 
         public void SetOutputStream(EncoderNode encoder, int index)
@@ -143,7 +148,7 @@ namespace ManagedLzma.SevenZip
             var buffer = new byte[0x10000];
             for (;;)
             {
-                var fetched = await mEncoderOutput.ReadAsync(buffer, 0, buffer.Length, StreamMode.Partial);
+                var fetched = await mEncoderOutput.ReadAsync(buffer, 0, buffer.Length, StreamMode.Partial).ConfigureAwait(false);
                 System.Diagnostics.Debug.Assert(0 <= fetched && fetched <= buffer.Length);
                 if (fetched == 0)
                 {
@@ -159,6 +164,12 @@ namespace ManagedLzma.SevenZip
         {
             System.Diagnostics.Debug.Assert(mEncoderOutput == null);
             System.Diagnostics.Debug.Assert(!mComplete);
+
+            // TODO: calculate checksum asynchronously?
+            if (mCalculateChecksum)
+                for (int i = 0; i < length; i++)
+                    mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer[offset + i]);
+
             await mStream.WriteAsync(buffer, offset, length);
             return length;
         }
@@ -188,7 +199,9 @@ namespace ManagedLzma.SevenZip
         private byte[] mBuffer;
         private int mOffset;
         private int mEnding;
+        private long mTotalLength;
         private bool mComplete;
+        private bool mDisposed;
 
         #endregion
 
@@ -196,12 +209,18 @@ namespace ManagedLzma.SevenZip
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            if (!mDisposed)
+            {
+                mDisposed = true;
+
+                if (!mComplete)
+                    throw new NotImplementedException();
+            }
         }
 
         public long GetFinalLength()
         {
-            throw new NotImplementedException();
+            return mTotalLength;
         }
 
         public void SetInputStream(EncoderNode encoder, int index)
@@ -238,7 +257,7 @@ namespace ManagedLzma.SevenZip
             {
                 if (!mComplete && ending < buffer.Length)
                 {
-                    var fetched = await mEncoderOutputToConnectionInput.ReadAsync(buffer, ending, buffer.Length - ending, StreamMode.Partial);
+                    var fetched = await mEncoderOutputToConnectionInput.ReadAsync(buffer, ending, buffer.Length - ending, StreamMode.Partial).ConfigureAwait(false);
                     System.Diagnostics.Debug.Assert(0 <= fetched && fetched <= buffer.Length - ending);
 
                     if (fetched == 0)
@@ -249,7 +268,7 @@ namespace ManagedLzma.SevenZip
 
                 if (offset < ending)
                 {
-                    var written = await mConnectionOutputToEncoderInput.WriteAsync(buffer, offset, ending - offset, StreamMode.Partial);
+                    var written = await mConnectionOutputToEncoderInput.WriteAsync(buffer, offset, ending - offset, StreamMode.Partial).ConfigureAwait(false);
                     System.Diagnostics.Debug.Assert(0 < written && written <= ending - offset);
 
                     offset += written;
@@ -262,7 +281,7 @@ namespace ManagedLzma.SevenZip
 
                     if (mComplete)
                     {
-                        await mConnectionOutputToEncoderInput.CompleteAsync();
+                        await mConnectionOutputToEncoderInput.CompleteAsync().ConfigureAwait(false);
                         return;
                     }
                 }
@@ -298,21 +317,32 @@ namespace ManagedLzma.SevenZip
             System.Diagnostics.Debug.Assert(mEncoderOutputToConnectionInput == null);
             System.Diagnostics.Debug.Assert(buffer != null);
             System.Diagnostics.Debug.Assert(0 <= offset && offset < buffer.Length);
-            System.Diagnostics.Debug.Assert(0 <= count && count < buffer.Length - offset);
+            System.Diagnostics.Debug.Assert(0 < count && count <= buffer.Length - offset);
 
             if (mConnectionOutputToEncoderInput != null)
                 return mConnectionOutputToEncoderInput.WriteAsync(buffer, offset, count, mode);
 
-            lock (this)
-            {
-                while (mBuffer == null)
-                    Monitor.Wait(this);
+            int result = 0;
 
-                var result = Math.Min(count, mEnding - mOffset);
-                Buffer.BlockCopy(buffer, offset, mBuffer, mOffset, result);
-                mResult.SetResult(result);
-                return Task.FromResult(result);
+            do
+            {
+                lock (this)
+                {
+                    while (mBuffer == null)
+                        Monitor.Wait(this);
+
+                    var written = Math.Min(count, mEnding - mOffset);
+                    Buffer.BlockCopy(buffer, offset, mBuffer, mOffset, written);
+                    mTotalLength += written;
+                    result += written;
+                    offset += written;
+                    count -= written;
+                    mResult.SetResult(written);
+                }
             }
+            while (mode == StreamMode.Complete && count > 0);
+
+            return Task.FromResult(result);
         }
 
         public Task CompleteAsync()
@@ -355,15 +385,17 @@ namespace ManagedLzma.SevenZip
         private sealed class ChecksumStream : Stream
         {
             private Stream mStream;
+            private uint mChecksum;
 
             public ChecksumStream(Stream stream)
             {
                 mStream = stream;
+                mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
             }
 
             public Checksum GetChecksum()
             {
-                throw new NotImplementedException();
+                return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum));
             }
 
             public override bool CanRead => true;
@@ -372,7 +404,10 @@ namespace ManagedLzma.SevenZip
 
             public override int Read(byte[] buffer, int offset, int count)
             {
-                return mStream.Read(buffer, offset, count);
+                var result = mStream.Read(buffer, offset, count);
+                for (int i = 0; i < result; i++)
+                    mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer[offset + i]);
+                return result;
             }
 
             #region Invalid Operations
@@ -418,10 +453,11 @@ namespace ManagedLzma.SevenZip
         private EncoderStorage[] mStorage;
         private EncoderConnection[] mConnections;
         private EncoderNode[] mEncoders;
-        private ImmutableArray<DecodedStreamMetadata>.Builder mContent;
+        private ImmutableArray<DecodedStreamMetadata>.Builder mContent = ImmutableArray.CreateBuilder<DecodedStreamMetadata>();
         private Stream mPendingStream;
         private long mResultLength;
         private int mSection;
+        private bool mComplete;
 
         internal EncoderSession(ArchiveWriter writer, int section, EncoderDefinition definition, EncoderInput input, EncoderStorage[] storage, EncoderConnection[] connections, EncoderNode[] encoders)
         {
@@ -444,13 +480,18 @@ namespace ManagedLzma.SevenZip
             lock (mLockObject)
             {
                 while (mPendingStream == null)
+                {
+                    if (mComplete)
+                        return 0;
+
                     Monitor.Wait(mLockObject);
+                }
 
                 stream = mPendingStream;
             }
 
             int result = 0;
-            while (result == 0 || mode == StreamMode.Complete && length > 0)
+            for (;;)
             {
                 var fetched = await stream.ReadAsync(buffer, offset, length);
 
@@ -463,7 +504,12 @@ namespace ManagedLzma.SevenZip
 
                 mResultLength += fetched; // could be interlocked but doesn't need to be since we are currently 'owning' the stream (and also consider ourselves 'owning' this counter)
 
-                if (fetched == 0)
+                if (fetched > 0)
+                {
+                    if (mode == StreamMode.Partial || length == 0)
+                        return result;
+                }
+                else
                 {
                     lock (mLockObject)
                     {
@@ -473,15 +519,18 @@ namespace ManagedLzma.SevenZip
                         mPendingStream = null;
                         Monitor.PulseAll(mLockObject);
 
-                        do { Monitor.Wait(mLockObject); }
-                        while (mPendingStream == null);
+                        while (mPendingStream == null)
+                        {
+                            if (mComplete)
+                                return result;
+
+                            Monitor.Wait(mLockObject);
+                        }
 
                         stream = mPendingStream;
                     }
                 }
             }
-
-            return result;
         }
 
         public void Dispose()
@@ -490,7 +539,7 @@ namespace ManagedLzma.SevenZip
                 encoder.Dispose();
 
             foreach (var stream in mConnections)
-                stream.Dispose();
+                stream?.Dispose();
 
             foreach (var stream in mStorage)
                 stream.Dispose();
@@ -503,8 +552,22 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
-        public void Complete()
+        public Task Complete()
         {
+            lock (mLockObject)
+            {
+                if (mComplete)
+                    throw new InvalidOperationException();
+
+                mComplete = true;
+                Monitor.PulseAll(mLockObject);
+
+                while (mPendingStream != null)
+                    Monitor.Wait(mLockObject);
+            }
+
+            // TODO: do we need to wait on stuff? or will the dispose method do that?
+
             int totalInputCount = 0;
             var firstInputOffset = new int[mEncoders.Length];
             for (int i = 0; i < mEncoders.Length; i++)
@@ -537,9 +600,14 @@ namespace ManagedLzma.SevenZip
                 {
                     var encoderInput = encoder.GetInput(j).Source;
                     if (encoderInput.IsContent)
+                    {
+                        System.Diagnostics.Debug.Assert(mConnections[firstInputOffset[i] + j] == null);
                         decoderOutputs.Add(new DecoderOutputMetadata(mInput.GetFinalLength()));
+                    }
                     else
-                        decoderOutputs.Add(new DecoderOutputMetadata(mConnections[firstInputOffset[encoderInput.Node.Index] + encoderInput.Index].GetFinalLength()));
+                    {
+                        decoderOutputs.Add(new DecoderOutputMetadata(mConnections[firstInputOffset[i] + j].GetFinalLength()));
+                    }
                 }
 
                 decoders.Add(new DecoderMetadata(decoderType, settings.SerializeSettings(), decoderInputs.MoveToImmutable(), decoderOutputs.MoveToImmutable()));
@@ -554,6 +622,7 @@ namespace ManagedLzma.SevenZip
                 mContent.ToImmutable());
 
             mWriter.CompleteEncoderSession(this, mSection, definition, mStorage);
+            return Task.CompletedTask;
         }
 
         public Task<EncodedFileResult> AppendStream(Stream stream, bool checksum)
@@ -580,7 +649,9 @@ namespace ManagedLzma.SevenZip
                     while (mPendingStream != null)
                         Monitor.Wait(mLockObject);
 
-                    return new EncodedFileResult(mResultLength, checksum ? ((ChecksumStream)stream).GetChecksum() : default(Checksum?));
+                    var resultChecksum = checksum ? ((ChecksumStream)stream).GetChecksum() : default(Checksum?);
+                    mContent.Add(new DecodedStreamMetadata(mResultLength, resultChecksum));
+                    return new EncodedFileResult(mResultLength, resultChecksum);
                 }
             });
         }

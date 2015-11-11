@@ -148,13 +148,87 @@ namespace ManagedLzma.SevenZip
                 WriteToken(ArchiveMetadataToken.Files);
                 WriteNumber(metadataCount);
 
-                // TODO: empty streams
-                // TODO: names
-                // TODO: CTime
-                // TODO: ATime
-                // TODO: MTime
-                // TODO: start positions
-                // TODO: attributes
+                #region Types
+                {
+                    int emptyStreamCount = 0;
+
+                    for (int i = 0; i < metadataCount; i++)
+                        if (!metadata.HasStream(i))
+                            emptyStreamCount++;
+
+                    if (emptyStreamCount > 0)
+                    {
+                        WriteBitVectorWithHeader(ArchiveMetadataToken.EmptyStream,
+                            Enumerable.Range(0, metadataCount)
+                            .Select(x => !metadata.HasStream(x)),
+                            metadataCount);
+
+                        if (Enumerable.Range(0, metadataCount).Where(x => !metadata.HasStream(x)).Any(x => !metadata.IsDirectory(x)))
+                            WriteBitVectorWithHeader(ArchiveMetadataToken.EmptyFile,
+                                Enumerable.Range(0, metadataCount)
+                                .Where(x => !metadata.HasStream(x))
+                                .Select(x => !metadata.IsDirectory(x)),
+                                emptyStreamCount);
+
+                        if (Enumerable.Range(0, metadataCount).Where(x => !metadata.HasStream(x)).Any(x => metadata.IsDeleted(x)))
+                            WriteBitVectorWithHeader(ArchiveMetadataToken.Anti,
+                                Enumerable.Range(0, metadataCount)
+                                .Where(x => !metadata.HasStream(x))
+                                .Select(x => metadata.IsDeleted(x)),
+                                emptyStreamCount);
+                    }
+                }
+                #endregion
+
+                #region Names
+                {
+                    bool hasNames = false;
+                    int nameSize = 1;
+
+                    for (int i = 0; i < subStreamCount; i++)
+                    {
+                        var name = metadata.GetName(i);
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            hasNames = true;
+                            nameSize += (name.Length + 1) * 2;
+                        }
+                        else
+                        {
+                            nameSize += 2;
+                        }
+                    }
+
+                    if (hasNames)
+                    {
+                        WritePadding(2 + GetNumberSize(nameSize), 16);
+                        WriteToken(ArchiveMetadataToken.Name);
+                        WriteNumber(nameSize);
+                        WriteByte(0);
+
+                        System.Diagnostics.Debug.Assert((mArchiveStream.Position & 15) == 0);
+
+                        for (int i = 0; i < subStreamCount; i++)
+                        {
+                            var name = metadata.GetName(i);
+                            foreach (char ch in name)
+                            {
+                                WriteByte((byte)ch);
+                                WriteByte((byte)(ch >> 8));
+                            }
+                        }
+                    }
+                }
+                #endregion
+
+                WriteDateVector(Enumerable.Range(0, metadataCount).Select(x => metadata.GetCreationDate(x)), ArchiveMetadataToken.CTime);
+                WriteDateVector(Enumerable.Range(0, metadataCount).Select(x => metadata.GetLastAccessDate(x)), ArchiveMetadataToken.ATime);
+                WriteDateVector(Enumerable.Range(0, metadataCount).Select(x => metadata.GetLastWriteDate(x)), ArchiveMetadataToken.MTime);
+                WriteUInt64Vector(Enumerable.Range(0, metadataCount).Select(x => (ulong?)metadata.GetLength(x)), ArchiveMetadataToken.StartPos);
+                WriteUInt32Vector(Enumerable.Range(0, metadataCount).Select(x => {
+                    var attr = metadata.GetAttributes(x);
+                    return attr.HasValue ? (uint)attr.Value : default(uint?);
+                }), ArchiveMetadataToken.WinAttributes);
 
                 WriteToken(ArchiveMetadataToken.End);
             }
@@ -165,6 +239,13 @@ namespace ManagedLzma.SevenZip
         }
 
         #region Writer - Structured Data
+
+        private void WriteBitVectorWithHeader(ArchiveMetadataToken token, IEnumerable<bool> bits, int count)
+        {
+            WriteToken(token);
+            WriteNumber((count + 7) / 8);
+            WriteBitVector(bits);
+        }
 
         private void WriteBitVector(IEnumerable<bool> bits)
         {
@@ -488,7 +569,7 @@ namespace ManagedLzma.SevenZip
             await mArchiveStream.WriteAsync(header, 0, header.Length);
         }
 
-        public EncoderSession BeginEncoding(EncoderDefinition definition)
+        public EncoderSession BeginEncoding(EncoderDefinition definition, bool calculateChecksums)
         {
             if (definition == null)
                 throw new ArgumentNullException(nameof(definition));
@@ -497,7 +578,7 @@ namespace ManagedLzma.SevenZip
             for (int i = 0; i < storage.Length; i++)
                 storage[i] = mStreamProvider?.CreateBufferStream() ?? new MemoryStream();
 
-            var session = definition.CreateEncoderSession(this, mDecoderSections.Count, storage);
+            var session = definition.CreateEncoderSession(this, mDecoderSections.Count, storage, calculateChecksums);
             mDecoderSections.Add(null);
             mEncoderSessions.Add(session);
             return session;
@@ -621,5 +702,135 @@ namespace ManagedLzma.SevenZip
         public abstract DateTime? GetCreationDate(int index);
         public abstract DateTime? GetLastWriteDate(int index);
         public abstract DateTime? GetLastAccessDate(int index);
+    }
+
+    public sealed class ArchiveMetadataRecorder : ArchiveMetadataProvider
+    {
+        private struct Entry
+        {
+            public string Name;
+            public bool HasStream;
+            public bool IsDirectory;
+            public bool IsDeleted;
+            public long Length;
+            public Checksum? Checksum;
+            public FileAttributes? Attributes;
+            public DateTime? CreationDate;
+            public DateTime? LastWriteDate;
+            public DateTime? LastAccessDate;
+        }
+
+        private DateTimeKind mUnspecifiedDateTimeKind = DateTimeKind.Unspecified;
+        private List<Entry> mEntries = new List<Entry>();
+
+        public ArchiveMetadataRecorder() { }
+
+        public ArchiveMetadataRecorder(DateTimeKind unspecifiedDateTimeKind)
+        {
+            switch (unspecifiedDateTimeKind)
+            {
+                case DateTimeKind.Unspecified:
+                case DateTimeKind.Utc:
+                case DateTimeKind.Local:
+                    mUnspecifiedDateTimeKind = unspecifiedDateTimeKind;
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(unspecifiedDateTimeKind));
+            }
+        }
+
+        private void CheckDate(ref DateTime? date)
+        {
+            if (date.HasValue)
+            {
+                var kind = date.Value.Kind;
+
+                if (kind == DateTimeKind.Unspecified)
+                {
+                    if (mUnspecifiedDateTimeKind == DateTimeKind.Unspecified)
+                        throw new InvalidOperationException("You did not specify how to treat DateTime values which do not provide their own DateTimeKind.");
+
+                    kind = mUnspecifiedDateTimeKind;
+                    date = new DateTime(date.Value.Ticks, kind);
+                }
+
+                if (kind == DateTimeKind.Local)
+                    date = date.Value.ToUniversalTime();
+
+                System.Diagnostics.Debug.Assert(date.Value.Kind == DateTimeKind.Utc);
+            }
+        }
+
+        public void AppendFile(string name, long length, Checksum? checksum, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
+        {
+            CheckDate(ref creationDate);
+            CheckDate(ref lastWriteDate);
+            CheckDate(ref lastAccessDate);
+
+            // TODO: check arguments and replicate the checks when the metadata is queried from the provider
+            //       (in particular don't forget to check that timestamps are UTC)
+
+            mEntries.Add(new Entry {
+                Name = name,
+                HasStream = true,
+                IsDirectory = false,
+                IsDeleted = false,
+                Length = length,
+                Checksum = checksum,
+                Attributes = attributes,
+                CreationDate = creationDate,
+                LastWriteDate = lastWriteDate,
+                LastAccessDate = lastAccessDate,
+            });
+        }
+
+        public void AppendDirectory(string name, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
+        {
+            CheckDate(ref creationDate);
+            CheckDate(ref lastWriteDate);
+            CheckDate(ref lastAccessDate);
+
+            // TODO: check attributes and reject invalid ones (replicate the check when writing the attributes so other metadata providers get the check too)
+
+            mEntries.Add(new Entry {
+                Name = name,
+                IsDirectory = true,
+                Attributes = attributes,
+            });
+        }
+
+        public void AppendFileDeletion(string name)
+        {
+            // TODO: check name
+
+            mEntries.Add(new Entry {
+                Name = name,
+                IsDeleted = true,
+            });
+        }
+
+        public void AppendDirectoryDeletion(string name)
+        {
+            // TODO: check name
+
+            mEntries.Add(new Entry {
+                Name = name,
+                IsDirectory = true,
+                IsDeleted = true,
+            });
+        }
+
+        public override int GetCount() => mEntries.Count;
+        public override string GetName(int index) => mEntries[index].Name;
+        public override bool HasStream(int index) => mEntries[index].HasStream;
+        public override bool IsDirectory(int index) => mEntries[index].IsDirectory;
+        public override bool IsDeleted(int index) => mEntries[index].IsDeleted;
+        public override long GetLength(int index) => mEntries[index].Length;
+        public override Checksum? GetChecksum(int index) => mEntries[index].Checksum;
+        public override FileAttributes? GetAttributes(int index) => mEntries[index].Attributes;
+        public override DateTime? GetCreationDate(int index) => mEntries[index].CreationDate;
+        public override DateTime? GetLastWriteDate(int index) => mEntries[index].LastWriteDate;
+        public override DateTime? GetLastAccessDate(int index) => mEntries[index].LastAccessDate;
     }
 }

@@ -126,7 +126,7 @@ namespace ManagedLzma.SevenZip
             }
         }
 
-        internal EncoderSession CreateEncoderSession(ArchiveWriter writer, int section, Stream[] storage)
+        internal EncoderSession CreateEncoderSession(ArchiveWriter writer, int section, Stream[] storage, bool calculateStorageChecksums)
         {
             if (!mComplete)
                 throw new InvalidOperationException("Incomplete ArchiveEncoderDefinition.");
@@ -139,7 +139,7 @@ namespace ManagedLzma.SevenZip
 
             var storageStreams = new EncoderStorage[storage.Length];
             for (int i = 0; i < storage.Length; i++)
-                storageStreams[i] = new EncoderStorage(storage[i]);
+                storageStreams[i] = new EncoderStorage(storage[i], calculateStorageChecksums);
 
             int totalInputCount = 0;
             var firstInputOffset = new int[mEncoders.Count];

@@ -169,7 +169,8 @@ namespace ManagedLzma.SevenZip.Encoders
                     if (mOffset == 16)
                     {
                         mEncoder.TransformBlock(mBuffer1, 0, 16, mBuffer2, 0);
-                        await mOutput.WriteAsync(mBuffer2, 0, 16, StreamMode.Complete);
+                        var written = await mOutput.WriteAsync(mBuffer2, 0, 16, StreamMode.Complete).ConfigureAwait(false);
+                        System.Diagnostics.Debug.Assert(written == 16);
                         mOffset = 0;
                     }
 
@@ -180,7 +181,7 @@ namespace ManagedLzma.SevenZip.Encoders
                     length -= copy;
                 }
 
-                return length;
+                return result;
             }
 
             public async Task CompleteAsync()
@@ -194,12 +195,13 @@ namespace ManagedLzma.SevenZip.Encoders
 
                     System.Diagnostics.Debug.Assert(mOffset == 16);
                     mBuffer2 = mEncoder.TransformFinalBlock(mBuffer1, 0, 16);
-                    await mOutput.WriteAsync(mBuffer2, 0, 16, StreamMode.Complete);
+                    var written = await mOutput.WriteAsync(mBuffer2, 0, 16, StreamMode.Complete).ConfigureAwait(false);
+                    System.Diagnostics.Debug.Assert(written == 16);
                     mOffset = 0;
                 }
 
                 System.Diagnostics.Debug.Assert(mOffset == 0);
-                await mOutput.CompleteAsync();
+                await mOutput.CompleteAsync().ConfigureAwait(false);
             }
 
             public void DisposeInternal()

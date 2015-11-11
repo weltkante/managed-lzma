@@ -55,28 +55,40 @@ namespace sandbox_7z
                 }
                 else
                 {
-                    using (var archiveStream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
-                    using (var archiveWriter = ManagedLzma.SevenZip.ArchiveWriter.Create(archiveStream, false))
-                    {
-                        var encoder = new ManagedLzma.SevenZip.EncoderDefinition();
-                        var lzma2 = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.Lzma2EncoderSettings(new ManagedLzma.LZMA2.EncoderSettings()));
-                        var crypt = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.AesEncoderSettings(ManagedLzma.PasswordStorage.Create("test")));
-                        encoder.Connect(encoder.GetContentSource(), lzma2.GetInput(0));
-                        encoder.Connect(lzma2.GetOutput(0), crypt.GetInput(0));
-                        encoder.Connect(crypt.GetOutput(0), encoder.CreateStorageSink());
-                        encoder.Complete();
-
-                        using (var session = archiveWriter.BeginEncoding(encoder))
+                    Task.Run(async delegate {
+                        using (var archiveStream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
+                        using (var archiveWriter = ManagedLzma.SevenZip.ArchiveWriter.Create(archiveStream, false))
                         {
-                            var directory = new DirectoryInfo(Path.GetDirectoryName(typeof(Program).Assembly.Location));
-                            foreach (var file in directory.EnumerateFiles())
-                                using (var fileStream = file.OpenRead())
-                                    session.AppendStream(fileStream, true);
-                        }
+                            var encoder = new ManagedLzma.SevenZip.EncoderDefinition();
+                            var lzma2 = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.Lzma2EncoderSettings(new ManagedLzma.LZMA2.EncoderSettings()));
+                            var crypt = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.AesEncoderSettings(ManagedLzma.PasswordStorage.Create("test")));
+                            encoder.Connect(encoder.GetContentSource(), lzma2.GetInput(0));
+                            encoder.Connect(lzma2.GetOutput(0), crypt.GetInput(0));
+                            encoder.Connect(crypt.GetOutput(0), encoder.CreateStorageSink());
+                            encoder.Complete();
 
-                        archiveWriter.WriteMetadata().GetAwaiter().GetResult();
-                        archiveWriter.WriteHeader().GetAwaiter().GetResult();
-                    }
+                            var metadata = new ManagedLzma.SevenZip.ArchiveMetadataRecorder();
+
+                            using (var session = archiveWriter.BeginEncoding(encoder, true))
+                            {
+                                var directory = new DirectoryInfo(Path.GetDirectoryName(typeof(Program).Assembly.Location));
+                                foreach (var file in directory.EnumerateFiles())
+                                {
+                                    using (var fileStream = file.OpenRead())
+                                    {
+                                        var result = await session.AppendStream(fileStream, true);
+                                        metadata.AppendFile(file.Name, result.Length, result.Checksum, file.Attributes, file.CreationTimeUtc, file.LastWriteTimeUtc, file.LastAccessTimeUtc);
+                                    }
+                                }
+
+                                // TODO: ensure that everything still terminates properly if we don't call complete
+                                await session.Complete();
+                            }
+
+                            await archiveWriter.WriteMetadata(metadata);
+                            await archiveWriter.WriteHeader();
+                        }
+                    }).GetAwaiter().GetResult();
                 }
             }
 
