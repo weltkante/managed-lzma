@@ -221,6 +221,8 @@ namespace ManagedLzma.SevenZip
                                 WriteByte((byte)ch);
                                 WriteByte((byte)(ch >> 8));
                             }
+                            WriteByte(0);
+                            WriteByte(0);
                         }
                     }
                 }
@@ -420,10 +422,12 @@ namespace ManagedLzma.SevenZip
                     WriteDecoderSection(decoder, ref index);
 
                 WriteToken(ArchiveMetadataToken.CodersUnpackSize);
-                foreach (var decoder in mDecoderSections)
-                    WriteNumber(decoder.Length);
+                foreach (var section in mDecoderSections)
+                    foreach (var decoder in section.Decoders)
+                        foreach (var stream in decoder.OutputStreams)
+                            WriteNumber(stream.Length);
 
-                WriteChecksumVector(mDecoderSections.SelectMany(x => x.Streams).Select(x => x.Checksum));
+                WriteChecksumVector(mDecoderSections.Select(x => x.Checksum));
 
                 WriteToken(ArchiveMetadataToken.End);
             }
@@ -445,6 +449,38 @@ namespace ManagedLzma.SevenZip
             for (int i = 0; i < definition.Decoders.Length; i++)
             {
                 var decoder = definition.Decoders[i];
+                var id = decoder.DecoderType.Encode();
+                var multiStream = decoder.InputStreams.Length != 1 || decoder.OutputStreams.Length != 1;
+
+                var settings = decoder.Settings;
+                var hasSettings = !settings.IsDefaultOrEmpty;
+
+                System.Diagnostics.Debug.Assert(!id.IsDefaultOrEmpty && id.Length <= 15);
+                var flags = (byte)id.Length;
+                if (multiStream) flags |= 0x10;
+                if (hasSettings) flags |= 0x20;
+
+                WriteByte(flags);
+                foreach (var bt in id)
+                    WriteByte(bt);
+
+                if (multiStream)
+                {
+                    WriteNumber(decoder.InputStreams.Length);
+                    WriteNumber(decoder.OutputStreams.Length);
+                }
+
+                if (hasSettings)
+                {
+                    WriteNumber(settings.Length);
+                    foreach (var bt in settings)
+                        WriteByte(bt);
+                }
+            }
+
+            for (int i = 0; i < definition.Decoders.Length; i++)
+            {
+                var decoder = definition.Decoders[i];
 
                 for (int j = 0; j < decoder.InputStreams.Length; j++)
                 {
@@ -459,18 +495,16 @@ namespace ManagedLzma.SevenZip
             }
 
             int fileStreamSections = 0;
-
             foreach (var decoder in definition.Decoders)
-            {
                 foreach (var input in decoder.InputStreams)
-                {
                     if (!input.DecoderIndex.HasValue)
-                    {
-                        WriteNumber(input.StreamIndex - firstStreamIndex);
                         fileStreamSections += 1;
-                    }
-                }
-            }
+
+            if (fileStreamSections > 1)
+                foreach (var decoder in definition.Decoders)
+                    foreach (var input in decoder.InputStreams)
+                        if (!input.DecoderIndex.HasValue)
+                            WriteNumber(input.StreamIndex - firstStreamIndex);
 
             firstStreamIndex += fileStreamSections;
         }
@@ -686,8 +720,12 @@ namespace ManagedLzma.SevenZip
 
         private byte[] PrepareHeader()
         {
+            var metadataOffset = mMetadataPosition - ArchiveMetadataFormat.kHeaderLength;
+            if (metadataOffset < 0)
+                throw new InternalFailureException();
+
             uint crc = LZMA.Master.SevenZip.CRC.kInitCRC;
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataPosition);
+            crc = LZMA.Master.SevenZip.CRC.Update(crc, metadataOffset);
             crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataLength);
             crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataChecksum.Value);
             crc = LZMA.Master.SevenZip.CRC.Finish(crc);
@@ -701,7 +739,7 @@ namespace ManagedLzma.SevenZip
             buffer[6] = kMajorVersion;
             buffer[7] = kMinorVersion;
             PutInt32(buffer, 8, (int)crc);
-            PutInt64(buffer, 12, mMetadataPosition);
+            PutInt64(buffer, 12, metadataOffset);
             PutInt64(buffer, 20, mMetadataLength);
             PutInt32(buffer, 28, mMetadataChecksum.Value);
 

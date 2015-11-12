@@ -17,6 +17,17 @@ namespace ManagedLzma.SevenZip
     /// </remarks>
     public struct CompressionMethod : IEquatable<CompressionMethod>
     {
+        private static ImmutableArray<byte> SignatureCopy => ImmutableArray.Create<byte>(0x00);
+        private static ImmutableArray<byte> SignatureDelta => ImmutableArray.Create<byte>(0x03);
+        private static ImmutableArray<byte> SignatureLZMA2 => ImmutableArray.Create<byte>(0x21);
+        private static ImmutableArray<byte> SignatureLZMA => ImmutableArray.Create<byte>(0x03, 0x01, 0x01);
+        private static ImmutableArray<byte> SignaturePPMD => ImmutableArray.Create<byte>(0x03, 0x04, 0x01);
+        private static ImmutableArray<byte> SignatureBCJ => ImmutableArray.Create<byte>(0x03, 0x03, 0x01, 0x03);
+        private static ImmutableArray<byte> SignatureBCJ2 => ImmutableArray.Create<byte>(0x03, 0x03, 0x01, 0x1B);
+        private static ImmutableArray<byte> SignatureDeflate => ImmutableArray.Create<byte>(0x04, 0x01, 0x08);
+        private static ImmutableArray<byte> SignatureBZip2 => ImmutableArray.Create<byte>(0x04, 0x02, 0x02);
+        private static ImmutableArray<byte> SignatureAES => ImmutableArray.Create<byte>(0x06, 0xF1, 0x07, 0x01);
+
         private const int kCopy = 0x00;
         private const int kDelta = 0x03;
         private const int kLZMA2 = 0x21;
@@ -60,6 +71,24 @@ namespace ManagedLzma.SevenZip
 
                 default:
                     return Undefined;
+            }
+        }
+
+        internal ImmutableArray<byte> Encode()
+        {
+            switch (~mSignature)
+            {
+                case kCopy: return SignatureCopy;
+                case kDelta: return SignatureDelta;
+                case kLZMA2: return SignatureLZMA2;
+                case kLZMA: return SignatureLZMA;
+                case kPPMD: return SignaturePPMD;
+                case kBCJ: return SignatureBCJ;
+                case kBCJ2: return SignatureBCJ2;
+                case kDeflate: return SignatureDeflate;
+                case kBZip2: return SignatureBZip2;
+                case kAES: return SignatureAES;
+                default: throw new InvalidOperationException();
             }
         }
 

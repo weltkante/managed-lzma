@@ -130,7 +130,7 @@ namespace ManagedLzma.SevenZip
 
             if (mVector[mIndex])
             {
-                var number = mReader.ReadNumberInternal();
+                var number = mReader.ReadInt64Internal();
                 mIndex += 1;
                 return number;
             }
@@ -154,7 +154,6 @@ namespace ManagedLzma.SevenZip
             mReader = reader;
             mVector = defined;
             mCount = count;
-            throw new NotImplementedException();
         }
 
         internal void Complete()
