@@ -21,6 +21,7 @@ namespace ManagedLzma.SevenZip
         private Task mTransferTask;
         private long mLength;
         private uint mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
+        private int mFinalized;
 
         internal void Connect(EncoderSession session)
         {
@@ -29,16 +30,19 @@ namespace ManagedLzma.SevenZip
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            if (mFinalized != 3)
+                throw new NotImplementedException();
         }
 
         public long GetFinalLength()
         {
+            mFinalized |= 1;
             return mLength;
         }
 
         public Checksum? GetFinalChecksum()
         {
+            mFinalized |= 2;
             return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum));
         }
 
@@ -81,7 +85,10 @@ namespace ManagedLzma.SevenZip
         {
             System.Diagnostics.Debug.Assert(mEncoderInput == null);
 
-            var result = await mSession.ReadInternalAsync(buffer, offset, length, mode);
+            if (mode == StreamMode.Complete)
+                throw new NotImplementedException();
+
+            var result = await mSession.ReadInternalAsync(buffer, offset, length, mode).ConfigureAwait(false);
 
             mLength += result;
             for (int i = 0; i < result; i++)
@@ -103,7 +110,7 @@ namespace ManagedLzma.SevenZip
         private Stream mStream;
         private IStreamReader mEncoderOutput;
         private Task mTransferTask;
-        private bool mComplete;
+        private TaskCompletionSource<object> mCompletionTask = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
         private bool mCalculateChecksum;
         private uint mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
 
@@ -115,12 +122,16 @@ namespace ManagedLzma.SevenZip
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            if (mStream != null)
+                throw new NotImplementedException();
         }
 
         public Stream GetFinalStream()
         {
-            return mStream;
+            var stream = mStream;
+            System.Diagnostics.Debug.Assert(stream != null);
+            mStream = null;
+            return stream;
         }
 
         public Checksum? GetFinalChecksum()
@@ -152,34 +163,39 @@ namespace ManagedLzma.SevenZip
                 System.Diagnostics.Debug.Assert(0 <= fetched && fetched <= buffer.Length);
                 if (fetched == 0)
                 {
-                    mComplete = true;
+                    mCompletionTask.SetResult(null);
                     return;
                 }
 
-                await mStream.WriteAsync(buffer, 0, fetched);
+                await mStream.WriteAsync(buffer, 0, fetched).ConfigureAwait(false);
             }
         }
 
         public async Task<int> WriteAsync(byte[] buffer, int offset, int length, StreamMode mode)
         {
             System.Diagnostics.Debug.Assert(mEncoderOutput == null);
-            System.Diagnostics.Debug.Assert(!mComplete);
+            System.Diagnostics.Debug.Assert(!mCompletionTask.Task.IsCompleted);
 
             // TODO: calculate checksum asynchronously?
             if (mCalculateChecksum)
                 for (int i = 0; i < length; i++)
                     mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer[offset + i]);
 
-            await mStream.WriteAsync(buffer, offset, length);
+            await mStream.WriteAsync(buffer, offset, length).ConfigureAwait(false);
             return length;
         }
 
         public Task CompleteAsync()
         {
             System.Diagnostics.Debug.Assert(mEncoderOutput == null);
-            System.Diagnostics.Debug.Assert(!mComplete);
-            mComplete = true;
+            System.Diagnostics.Debug.Assert(!mCompletionTask.Task.IsCompleted);
+            mCompletionTask.SetResult(null);
             return Task.CompletedTask;
+        }
+
+        public Task GetCompletionTask()
+        {
+            return mCompletionTask.Task;
         }
 
         #endregion
@@ -213,7 +229,7 @@ namespace ManagedLzma.SevenZip
             {
                 mDisposed = true;
 
-                if (!mComplete)
+                if (!mComplete && mConnectionOutputToEncoderInput != null && mEncoderOutputToConnectionInput != null)
                     throw new NotImplementedException();
             }
         }
@@ -306,7 +322,7 @@ namespace ManagedLzma.SevenZip
                 mBuffer = buffer;
                 mOffset = offset;
                 mEnding = offset + count;
-                mResult = new TaskCompletionSource<int>();
+                mResult = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously); // do we need this here? I didn't have it previously
                 Monitor.PulseAll(this);
                 return mResult.Task;
             }
@@ -458,6 +474,7 @@ namespace ManagedLzma.SevenZip
         private long mResultLength;
         private int mSection;
         private bool mComplete;
+        private bool mCompleteAck;
 
         internal EncoderSession(ArchiveWriter writer, int section, EncoderDefinition definition, EncoderInput input, EncoderStorage[] storage, EncoderConnection[] connections, EncoderNode[] encoders)
         {
@@ -482,7 +499,11 @@ namespace ManagedLzma.SevenZip
                 while (mPendingStream == null)
                 {
                     if (mComplete)
+                    {
+                        mCompleteAck = true;
+                        Monitor.PulseAll(mLockObject);
                         return 0;
+                    }
 
                     Monitor.Wait(mLockObject);
                 }
@@ -493,7 +514,7 @@ namespace ManagedLzma.SevenZip
             int result = 0;
             for (;;)
             {
-                var fetched = await stream.ReadAsync(buffer, offset, length);
+                var fetched = await stream.ReadAsync(buffer, offset, length).ConfigureAwait(false);
 
                 if (fetched < 0 || fetched > length)
                     throw new InvalidOperationException("Source stream violated stream contract.");
@@ -522,7 +543,11 @@ namespace ManagedLzma.SevenZip
                         while (mPendingStream == null)
                         {
                             if (mComplete)
+                            {
+                                mCompleteAck = true;
+                                Monitor.PulseAll(mLockObject);
                                 return result;
+                            }
 
                             Monitor.Wait(mLockObject);
                         }
@@ -552,7 +577,7 @@ namespace ManagedLzma.SevenZip
             throw new NotImplementedException();
         }
 
-        public Task Complete()
+        public async Task Complete()
         {
             lock (mLockObject)
             {
@@ -562,11 +587,18 @@ namespace ManagedLzma.SevenZip
                 mComplete = true;
                 Monitor.PulseAll(mLockObject);
 
-                while (mPendingStream != null)
+                while (!mCompleteAck)
                     Monitor.Wait(mLockObject);
             }
 
-            // TODO: do we need to wait on stuff? or will the dispose method do that?
+#if NET_4_6_2
+            // This will probably deadlock up to .NET 4.6.1 and might be fixed in .NET 4.6.2
+            // The cause is that Task.WhenAll does not respect TaskCreationOptions.RunContinuationsAsynchronously
+            await Task.WhenAll(mStorage.Select(x => x.GetCompletionTask())).ConfigureAwait(false);
+#else
+            foreach (var stream in mStorage)
+                await stream.GetCompletionTask().ConfigureAwait(false);
+#endif
 
             int totalInputCount = 0;
             var firstInputOffset = new int[mEncoders.Length];
@@ -622,7 +654,6 @@ namespace ManagedLzma.SevenZip
                 mContent.ToImmutable());
 
             mWriter.CompleteEncoderSession(this, mSection, definition, mStorage);
-            return Task.CompletedTask;
         }
 
         public Task<EncodedFileResult> AppendStream(Stream stream, bool checksum)

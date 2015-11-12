@@ -57,7 +57,7 @@ namespace ManagedLzma.SevenZip
 
                 stream.Position = 0;
                 stream.SetLength(ArchiveMetadataFormat.kHeaderLength);
-                await stream.WriteAsync(writer.PrepareHeader(), 0, ArchiveMetadataFormat.kHeaderLength);
+                await stream.WriteAsync(writer.PrepareHeader(), 0, ArchiveMetadataFormat.kHeaderLength).ConfigureAwait(false);
 
                 return writer;
             }
@@ -130,7 +130,7 @@ namespace ManagedLzma.SevenZip
             mMetadataPosition = mAppendPosition;
             mArchiveStream.Position = mAppendPosition;
 
-            var subStreamCount = mDecoderSections.Sum(x => x.Streams.Length);
+            var subStreamCount = mDecoderSections.Sum(x => x != null ? x.Streams.Length : 0);
 
             WriteToken(ArchiveMetadataToken.Header);
 
@@ -539,7 +539,32 @@ namespace ManagedLzma.SevenZip
         private void WriteNumber(long value)
         {
             System.Diagnostics.Debug.Assert(value >= 0);
-            throw new NotImplementedException();
+
+            byte header = 0;
+            byte mask = 0x80;
+            byte count = 0;
+
+            while (count < 8)
+            {
+                if (value < (1L << (7 * (count + 1))))
+                {
+                    header |= (byte)(value >> (8 * count));
+                    break;
+                }
+
+                header |= mask;
+                mask >>= 1;
+                count += 1;
+            }
+
+            WriteByte(header);
+
+            while (count > 0)
+            {
+                WriteByte((byte)value);
+                value >>= 8;
+                count -= 1;
+            }
         }
 
         private int GetNumberSize(long value)
@@ -566,7 +591,7 @@ namespace ManagedLzma.SevenZip
 
             var header = PrepareHeader();
             mArchiveStream.Position = 0;
-            await mArchiveStream.WriteAsync(header, 0, header.Length);
+            await mArchiveStream.WriteAsync(header, 0, header.Length).ConfigureAwait(false);
         }
 
         public EncoderSession BeginEncoding(EncoderDefinition definition, bool calculateChecksums)
@@ -618,7 +643,7 @@ namespace ManagedLzma.SevenZip
                         mAppendPosition = checked(offset + length);
                         mFileSections.Add(new ArchiveFileSection(offset, length, fileSection.Checksum));
                         using (var fileSectionStream = new ConstrainedReadStream(mArchiveStream, fileSection.Offset, fileSection.Length))
-                            await fileSectionStream.CopyToAsync(mArchiveStream);
+                            await fileSectionStream.CopyToAsync(mArchiveStream).ConfigureAwait(false);
                     }
                 }
             }

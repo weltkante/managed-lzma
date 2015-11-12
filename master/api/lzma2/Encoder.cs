@@ -96,10 +96,12 @@ namespace ManagedLzma.LZMA2
                 mRunning = true;
             }
 
-            var task = Task.Run(delegate {
+            var task = Task.Run(async delegate {
                 var result = mEncoder.Lzma2Enc_Encode(new AsyncOutputProvider(output), new AsyncInputProvider(input), null);
                 if (result != LZMA.Master.LZMA.SZ_OK)
                     throw new InvalidOperationException();
+
+                await output.CompleteAsync().ConfigureAwait(false);
             });
 
             mEncoderTask = task.ContinueWith(delegate {
