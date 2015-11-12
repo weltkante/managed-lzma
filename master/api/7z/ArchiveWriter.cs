@@ -110,7 +110,8 @@ namespace ManagedLzma.SevenZip
             if (mDisposeStream)
                 mArchiveStream.Dispose();
 
-            throw new NotImplementedException();
+            if (mEncoderSessions.Count > 0)
+                throw new NotImplementedException();
         }
 
         /// <summary>
@@ -129,6 +130,10 @@ namespace ManagedLzma.SevenZip
 
             mMetadataPosition = mAppendPosition;
             mArchiveStream.Position = mAppendPosition;
+
+            // TODO: we'll want to write the metadata into a stream, compress it, calculate the checksum on the fly
+            // TODO: we'll probably also want to have a scratch buffer to assembly vectors with no allocation overhead and in a single iteration
+            //       (a scratch buffer allows to record the vector in a single iteration and if it was unnecessary it doesn't need to be forwarded to the actual stream)
 
             var subStreamCount = mDecoderSections.Sum(x => x != null ? x.Streams.Length : 0);
 
@@ -235,7 +240,27 @@ namespace ManagedLzma.SevenZip
 
             WriteToken(ArchiveMetadataToken.End);
 
-            throw new NotImplementedException();
+            mMetadataLength = mArchiveStream.Position - mMetadataPosition;
+
+            // TODO: this is only a temporary implementation; the checksum can be calculated on the fly in the final implementation
+            {
+                var buffer = new byte[0x1000];
+                mArchiveStream.Position = mMetadataPosition;
+                var checksum = LZMA.Master.SevenZip.CRC.kInitCRC;
+                int offset = 0;
+                while (offset < mMetadataLength)
+                {
+                    var fetched = mArchiveStream.Read(buffer, 0, (int)Math.Min(mMetadataLength - offset, buffer.Length));
+                    if (fetched <= 0 || fetched > mMetadataLength - offset)
+                        throw new InternalFailureException();
+
+                    offset += fetched;
+                    checksum = LZMA.Master.SevenZip.CRC.Update(checksum, buffer, 0, fetched);
+                }
+                mMetadataChecksum = new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(checksum));
+            }
+
+            return Task.CompletedTask;
         }
 
         #region Writer - Structured Data
@@ -573,7 +598,7 @@ namespace ManagedLzma.SevenZip
 
             int length = 1;
 
-            while (length < 9 && value < (1L << (length * 7)))
+            while (length < 9 && value >= (1L << (length * 7)))
                 length++;
 
             return length;
@@ -688,7 +713,8 @@ namespace ManagedLzma.SevenZip
             if (!mEncoderSessions.Remove(session))
                 throw new InternalFailureException();
 
-            mDecoderSections.Add(definition);
+            System.Diagnostics.Debug.Assert(mDecoderSections[section] == null);
+            mDecoderSections[section] = definition;
 
             // TODO: we can write storage lazily (just remember the streams in a list) and don't have to block the caller
 
