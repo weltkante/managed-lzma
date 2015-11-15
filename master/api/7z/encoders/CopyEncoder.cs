@@ -18,7 +18,7 @@ namespace ManagedLzma.SevenZip.Encoders
 
         internal override ImmutableArray<byte> SerializeSettings()
         {
-            throw new NotImplementedException();
+            return ImmutableArray<byte>.Empty;
         }
 
         internal override EncoderNode CreateEncoder()

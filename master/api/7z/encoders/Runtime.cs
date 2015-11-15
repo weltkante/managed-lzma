@@ -77,6 +77,7 @@ namespace ManagedLzma.SevenZip
                 }
 
                 var written = await mEncoderInput.WriteAsync(buffer, 0, fetched, StreamMode.Complete).ConfigureAwait(false);
+                mLength += written;
                 System.Diagnostics.Debug.Assert(written == fetched);
             }
         }
