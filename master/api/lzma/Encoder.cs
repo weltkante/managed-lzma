@@ -81,7 +81,7 @@ namespace ManagedLzma.LZMA
             // mDisposeTask may not be set yet if we complete mEncoderTask from another thread.
             // However even if mDisposeTask is not set we can be sure that the encoder is not running.
 
-            mEncoder.LzmaEnc_Destroy(null, null);
+            mEncoder.LzmaEnc_Destroy(Master.LZMA.ISzAlloc.SmallAlloc, Master.LZMA.ISzAlloc.BigAlloc);
         }
 
         public Task EncodeAsync(IStreamReader input, IStreamWriter output, CancellationToken ct = default(CancellationToken))
@@ -103,10 +103,12 @@ namespace ManagedLzma.LZMA
                 mRunning = true;
             }
 
-            var task = Task.Run(delegate {
-                var res = mEncoder.LzmaEnc_Encode(new AsyncOutputProvider(output), new AsyncInputProvider(input), null, null, null);
+            var task = Task.Run(async delegate {
+                var res = mEncoder.LzmaEnc_Encode(new AsyncOutputProvider(output), new AsyncInputProvider(input), null, Master.LZMA.ISzAlloc.SmallAlloc, Master.LZMA.ISzAlloc.BigAlloc);
                 if (res != Master.LZMA.SZ_OK)
                     throw new InvalidOperationException();
+
+                await output.CompleteAsync().ConfigureAwait(false);
             }, ct);
 
             mEncoderTask = task.ContinueWith(delegate {

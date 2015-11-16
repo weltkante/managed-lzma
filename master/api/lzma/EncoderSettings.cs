@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -199,6 +200,38 @@ namespace ManagedLzma.LZMA
             settings.mWriteEndMark = mWriteEndMark ? 1u : 0u;
             settings.mNumThreads = mMultiThreaded ? 2 : 1;
             return settings;
+        }
+
+        private static void LzmaEnc_WriteProperties(Master.LZMA.CLzmaEncProps settings, ImmutableArray<byte>.Builder props)
+        {
+            settings.LzmaEncProps_Normalize();
+
+            uint dictSize = settings.mDictSize;
+            props.Add((byte)((settings.mPB * 5 + settings.mLP) * 9 + settings.mLC));
+
+            for (int i = 11; i <= 30; i++)
+            {
+                if (dictSize <= (2u << i))
+                {
+                    dictSize = (2u << i);
+                    break;
+                }
+                if (dictSize <= (3u << i))
+                {
+                    dictSize = (3u << i);
+                    break;
+                }
+            }
+
+            for (int i = 0; i < 4; i++)
+                props.Add((byte)(dictSize >> (8 * i)));
+        }
+
+        internal ImmutableArray<byte> GetSerializedSettings()
+        {
+            var props = ImmutableArray.CreateBuilder<byte>(5);
+            LzmaEnc_WriteProperties(GetInternalSettings(), props);
+            return props.MoveToImmutable();
         }
     }
 }
