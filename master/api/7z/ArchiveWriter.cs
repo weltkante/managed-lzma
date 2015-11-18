@@ -231,7 +231,8 @@ namespace ManagedLzma.SevenZip
                 WriteDateVector(Enumerable.Range(0, metadataCount).Select(x => metadata.GetCreationDate(x)), ArchiveMetadataToken.CTime);
                 WriteDateVector(Enumerable.Range(0, metadataCount).Select(x => metadata.GetLastAccessDate(x)), ArchiveMetadataToken.ATime);
                 WriteDateVector(Enumerable.Range(0, metadataCount).Select(x => metadata.GetLastWriteDate(x)), ArchiveMetadataToken.MTime);
-                WriteUInt64Vector(Enumerable.Range(0, metadataCount).Select(x => (ulong?)metadata.GetLength(x)), ArchiveMetadataToken.StartPos);
+                // TODO: what does the start position mean? it doesn't seem to be what I thought it was.
+                WriteUInt64Vector(Enumerable.Range(0, metadataCount).Select(x => default(ulong?)), ArchiveMetadataToken.StartPos);
                 WriteUInt32Vector(Enumerable.Range(0, metadataCount).Select(x => {
                     var attr = metadata.GetAttributes(x);
                     return attr.HasValue ? (uint)attr.Value : default(uint?);
