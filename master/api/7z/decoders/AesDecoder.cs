@@ -40,6 +40,7 @@ namespace ManagedLzma.SevenZip
                     throw new InvalidOperationException();
 
                 mInput = stream;
+                mInputLength = length;
             }
 
             public override int Read(byte[] buffer, int offset, int count)

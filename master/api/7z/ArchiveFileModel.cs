@@ -158,7 +158,7 @@ namespace ManagedLzma.SevenZip.FileModel
 
         public ArchiveFileModel ReadMetadata(Stream stream) => ReadMetadata(stream, null);
 
-        public ArchiveFileModel ReadMetadata(Stream stream, Lazy<string> password)
+        public ArchiveFileModel ReadMetadata(Stream stream, PasswordStorage password)
         {
             if (mRootFolder != null)
                 throw new InvalidOperationException("Recursive invocation.");

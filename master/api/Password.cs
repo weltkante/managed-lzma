@@ -152,12 +152,7 @@ namespace ManagedLzma
 
         public void Dispose()
         {
-            var password = mPassword;
-            if (password != null)
-            {
-                mPassword = null;
-                Array.Clear(password, 0, password.Length);
-            }
+            Utilities.ClearBuffer(ref mPassword);
         }
 
         public char[] Password

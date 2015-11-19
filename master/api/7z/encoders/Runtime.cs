@@ -22,6 +22,12 @@ namespace ManagedLzma.SevenZip
         private long mLength;
         private uint mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
         private int mFinalized;
+        private bool mCalculateChecksum;
+
+        internal EncoderInput(bool checksum)
+        {
+            mCalculateChecksum = checksum;
+        }
 
         internal void Connect(EncoderSession session)
         {
@@ -31,7 +37,7 @@ namespace ManagedLzma.SevenZip
         public void Dispose()
         {
             if (mFinalized != 3)
-                throw new NotImplementedException();
+                System.Diagnostics.Debugger.Break();
         }
 
         public long GetFinalLength()
@@ -43,6 +49,8 @@ namespace ManagedLzma.SevenZip
         public Checksum? GetFinalChecksum()
         {
             mFinalized |= 2;
+            if (!mCalculateChecksum) return null;
+            System.Diagnostics.Debug.Assert(mChecksum != LZMA.Master.SevenZip.CRC.kInitCRC || mLength == 0);
             return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum));
         }
 
@@ -77,8 +85,10 @@ namespace ManagedLzma.SevenZip
                 }
 
                 var written = await mEncoderInput.WriteAsync(buffer, 0, fetched, StreamMode.Complete).ConfigureAwait(false);
-                mLength += written;
                 System.Diagnostics.Debug.Assert(written == fetched);
+
+                mLength += written;
+                mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer, 0, written);
             }
         }
 
@@ -92,8 +102,7 @@ namespace ManagedLzma.SevenZip
             var result = await mSession.ReadInternalAsync(buffer, offset, length, mode).ConfigureAwait(false);
 
             mLength += result;
-            for (int i = 0; i < result; i++)
-                mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer[offset + i]);
+            mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer, offset, result);
 
             return result;
         }
@@ -167,6 +176,10 @@ namespace ManagedLzma.SevenZip
                     mCompletionTask.SetResult(null);
                     return;
                 }
+
+                // TODO: calculate checksum asynchronously?
+                if (mCalculateChecksum)
+                    mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer, 0, fetched);
 
                 await mStream.WriteAsync(buffer, 0, fetched).ConfigureAwait(false);
             }
@@ -280,7 +293,10 @@ namespace ManagedLzma.SevenZip
                     if (fetched == 0)
                         mComplete = true;
                     else
+                    {
                         ending += fetched;
+                        mTotalLength += fetched;
+                    }
                 }
 
                 if (offset < ending)
@@ -310,20 +326,26 @@ namespace ManagedLzma.SevenZip
             System.Diagnostics.Debug.Assert(mConnectionOutputToEncoderInput == null);
             System.Diagnostics.Debug.Assert(buffer != null);
             System.Diagnostics.Debug.Assert(0 <= offset && offset < buffer.Length);
-            System.Diagnostics.Debug.Assert(0 <= count && count < buffer.Length - offset);
+            System.Diagnostics.Debug.Assert(0 < count && count <= buffer.Length - offset);
 
             if (mEncoderOutputToConnectionInput != null)
                 return mEncoderOutputToConnectionInput.ReadAsync(buffer, offset, count, mode);
 
             lock (this)
             {
+                // Multiple outstanding ReadAsync calls are not allowed.
                 if (mBuffer != null)
                     throw new InternalFailureException();
+
+                if (mComplete)
+                    return Task.FromResult(0);
 
                 mBuffer = buffer;
                 mOffset = offset;
                 mEnding = offset + count;
-                mResult = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously); // do we need this here? I didn't have it previously
+                // CompletionSource must be async so we can complete it from within the lock.
+                // If we move the completion outside the lock we may be able to do inline completion?
+                mResult = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
                 Monitor.PulseAll(this);
                 return mResult.Task;
             }
@@ -354,6 +376,7 @@ namespace ManagedLzma.SevenZip
                     result += written;
                     offset += written;
                     count -= written;
+                    mBuffer = null;
                     mResult.SetResult(written);
                 }
             }
@@ -369,7 +392,21 @@ namespace ManagedLzma.SevenZip
             if (mConnectionOutputToEncoderInput != null)
                 return mConnectionOutputToEncoderInput.CompleteAsync();
 
-            throw new NotImplementedException();
+            lock (this)
+            {
+                if (mComplete)
+                    throw new InternalFailureException();
+
+                mComplete = true;
+
+                if (mBuffer != null)
+                {
+                    mBuffer = null;
+                    mResult.SetResult(0);
+                }
+            }
+
+            return Task.CompletedTask;
         }
 
         #endregion

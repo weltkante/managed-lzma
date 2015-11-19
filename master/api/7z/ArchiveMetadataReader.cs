@@ -119,7 +119,7 @@ namespace ManagedLzma.SevenZip
 
         public static ImmutableArray<byte> FileSignature => ArchiveMetadataFormat.kFileSignature;
 
-        private Lazy<string> mPassword;
+        private PasswordStorage mPassword;
         private StreamScope mScope;
         private Stream mStream;
         private long mStreamLength;
@@ -133,7 +133,7 @@ namespace ManagedLzma.SevenZip
 
         #region Protected API
 
-        protected ArchiveMetadata ReadMetadataCore(Stream stream, Lazy<string> password)
+        protected ArchiveMetadata ReadMetadataCore(Stream stream, PasswordStorage password)
         {
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
@@ -433,7 +433,14 @@ namespace ManagedLzma.SevenZip
         private Stream CreateCachedDecoderStream(ArchiveMetadata metadata, int section)
         {
             // TODO: decode stream once then reuse the cached data
-            throw new NotImplementedException();
+
+            // HACK: this implementation is just a dirty hack to test something
+            var buffer = new MemoryStream();
+            using (var reader = new DecodedSectionReader(mStream, metadata, section, mPassword))
+            using (var stream = reader.OpenStream())
+                stream.CopyTo(buffer);
+            buffer.Position = 0;
+            return buffer;
         }
 
         private ArchiveMetadata ReadMetadata(ImmutableArray<Stream> streams, bool main)
@@ -477,6 +484,13 @@ namespace ManagedLzma.SevenZip
                                     decoder.Settings,
                                     decoder.InputInfo.MoveToImmutable(),
                                     decoder.OutputInfo.MoveToImmutable()));
+                            }
+
+                            // HACK: I did not verify if this is actually correct! need to review original source!
+                            if (section.Subsections == null && section.SubStreamCount == null)
+                            {
+                                section.SubStreamCount = 1;
+                                section.Subsections = new[] { new DecodedStreamMetadata(section.OutputLength, section.OutputChecksum) };
                             }
 
                             sectionListBuilder.Add(new ArchiveDecoderSection(
@@ -1261,7 +1275,7 @@ namespace ManagedLzma.SevenZip
     {
         public ArchiveMetadata ReadMetadata(Stream stream) => ReadMetadata(stream, null);
 
-        public ArchiveMetadata ReadMetadata(Stream stream, Lazy<string> password)
+        public ArchiveMetadata ReadMetadata(Stream stream, PasswordStorage password)
         {
             return ReadMetadataCore(stream, password);
         }

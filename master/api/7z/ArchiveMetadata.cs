@@ -128,7 +128,7 @@ namespace ManagedLzma.SevenZip
     }
 
     /// <summary>Describes how to configure a decoder and how to connect it to other decoders.</summary>
-    [System.Diagnostics.DebuggerDisplay(@"\{DecoderMetadata {DecoderType.Name,nq}\}")]
+    [System.Diagnostics.DebuggerDisplay(@"\{DecoderMetadata {DecoderType,nq}\}")]
     public sealed class DecoderMetadata
     {
         /// <summary>The type of the decoder.</summary>

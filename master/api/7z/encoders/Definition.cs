@@ -151,7 +151,7 @@ namespace ManagedLzma.SevenZip
 
             var contentTarget = mContent.Target;
             var contentIndex = firstInputOffset[contentTarget.Node.Index] + contentTarget.Index;
-            var contentStream = new EncoderInput();
+            var contentStream = new EncoderInput(true); // TODO: make checksum calculation configurable? I think normal 7z archives skip this one, at least with copy-aes encoder graphs?
 
             var linkedStreams = new EncoderConnection[totalInputCount];
             for (int i = 0; i < totalInputCount; i++)

@@ -106,9 +106,11 @@ namespace ManagedLzma.SevenZip
         {
             if (mBufferOffset == mBufferEnding)
             {
+#if DEBUG
                 // Avoid confusing people if they break into the debugger before mBufferOffset has been updated.
                 mBufferOffset = 0;
                 mBufferEnding = 0;
+#endif
 
                 mBufferEnding = mInput.Read(mBuffer, 0, mBuffer.Length);
                 mBufferOffset = mDecoder.Decode(mBuffer, 0, mBufferEnding, null, mBufferEnding == 0);
