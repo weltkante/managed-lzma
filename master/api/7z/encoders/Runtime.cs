@@ -293,10 +293,7 @@ namespace ManagedLzma.SevenZip
                     if (fetched == 0)
                         mComplete = true;
                     else
-                    {
                         ending += fetched;
-                        mTotalLength += fetched;
-                    }
                 }
 
                 if (offset < ending)
@@ -351,7 +348,7 @@ namespace ManagedLzma.SevenZip
             }
         }
 
-        public Task<int> WriteAsync(byte[] buffer, int offset, int count, StreamMode mode)
+        public async Task<int> WriteAsync(byte[] buffer, int offset, int count, StreamMode mode)
         {
             System.Diagnostics.Debug.Assert(mEncoderOutputToConnectionInput == null);
             System.Diagnostics.Debug.Assert(buffer != null);
@@ -359,7 +356,11 @@ namespace ManagedLzma.SevenZip
             System.Diagnostics.Debug.Assert(0 < count && count <= buffer.Length - offset);
 
             if (mConnectionOutputToEncoderInput != null)
-                return mConnectionOutputToEncoderInput.WriteAsync(buffer, offset, count, mode);
+            {
+                var written = await mConnectionOutputToEncoderInput.WriteAsync(buffer, offset, count, mode);
+                mTotalLength += written;
+                return written;
+            }
 
             int result = 0;
 
@@ -382,7 +383,7 @@ namespace ManagedLzma.SevenZip
             }
             while (mode == StreamMode.Complete && count > 0);
 
-            return Task.FromResult(result);
+            return result;
         }
 
         public Task CompleteAsync()
