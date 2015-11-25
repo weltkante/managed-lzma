@@ -10,65 +10,6 @@ namespace ManagedLzma.SevenZip
 {
     internal sealed class Lzma2ArchiveDecoder : DecoderNode
     {
-        private sealed class InputStream : Stream
-        {
-            private ReaderNode mInput;
-
-            public void SetInput(ReaderNode stream)
-            {
-                if (stream == null)
-                    throw new ArgumentNullException(nameof(stream));
-
-                if (mInput != null)
-                    throw new InvalidOperationException();
-
-                mInput = stream;
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                if (mInput == null)
-                    throw new InvalidOperationException();
-
-                return mInput.Read(buffer, offset, count);
-            }
-
-            public override bool CanRead => true;
-            public override bool CanSeek => false;
-            public override bool CanWrite => false;
-
-            public override long Length
-            {
-                get { throw new InvalidOperationException(); }
-            }
-
-            public override long Position
-            {
-                get { throw new InvalidOperationException(); }
-                set { throw new InvalidOperationException(); }
-            }
-
-            public override void Flush()
-            {
-                throw new InvalidOperationException();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new InvalidOperationException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new InvalidOperationException();
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new InvalidOperationException();
-            }
-        }
-
         private sealed class OutputStream : ReaderNode
         {
             private Lzma2ArchiveDecoder mOwner;
@@ -78,23 +19,32 @@ namespace ManagedLzma.SevenZip
             public override int Read(byte[] buffer, int offset, int count) => mOwner.Read(buffer, offset, count);
         }
 
-        private master._7zip.Legacy.Lzma2DecoderStream mDecoder;
-        private InputStream mInput;
+        private LZMA2.Decoder mDecoder;
+        private ReaderNode mInput;
         private OutputStream mOutput;
+        private byte[] mBuffer;
+        private int mOffset;
+        private int mEnding;
         private long mLength;
         private long mPosition;
 
         public Lzma2ArchiveDecoder(ImmutableArray<byte> settings, long length)
         {
-            mInput = new InputStream();
+            System.Diagnostics.Debug.Assert(!settings.IsDefault && settings.Length == 1 && length >= 0);
+
+            mDecoder = new LZMA2.Decoder(new LZMA2.DecoderSettings(settings[0]));
             mOutput = new OutputStream(this);
-            mDecoder = new master._7zip.Legacy.Lzma2DecoderStream(mInput, settings.Single(), length);
+            mBuffer = new byte[4 << 10]; // TODO: We shouldn't have to use a buffer here. Let the input stream submit directly into the decoder.
             mLength = length;
         }
 
         public override void Dispose()
         {
-            throw new NotImplementedException();
+            mDecoder?.Dispose();
+            mDecoder = null;
+            mOutput?.Dispose();
+            mOutput = null;
+            mBuffer = null;
         }
 
         public override void SetInputStream(int index, ReaderNode stream, long length)
@@ -105,7 +55,7 @@ namespace ManagedLzma.SevenZip
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream));
 
-            mInput.SetInput(stream);
+            mInput = stream;
         }
 
         public override ReaderNode GetOutputStream(int index)
@@ -116,16 +66,61 @@ namespace ManagedLzma.SevenZip
             return mOutput;
         }
 
+        private void EnsureOutputData()
+        {
+            while (mDecoder.AvailableOutputLength == 0 && !mDecoder.IsOutputComplete)
+            {
+                if (mOffset == mEnding)
+                {
+                    mOffset = 0;
+                    mEnding = 0;
+
+                    var fetched = mInput.Read(mBuffer, 0, mBuffer.Length);
+                    System.Diagnostics.Debug.Assert(0 <= fetched && fetched <= mBuffer.Length);
+
+                    if (fetched == 0)
+                    {
+                        mDecoder.Decode(null, 0, 0, null, true);
+                        System.Diagnostics.Debug.Assert(mDecoder.AvailableOutputLength > 0 || mDecoder.IsOutputComplete);
+                        continue;
+                    }
+
+                    mEnding = fetched;
+                }
+
+                var written = mDecoder.Decode(mBuffer, mOffset, mEnding - mOffset, (int)Math.Min(Int32.MaxValue, mLength - mPosition), false);
+                System.Diagnostics.Debug.Assert(0 <= written && written <= mEnding - mOffset);
+                mOffset += written;
+            }
+        }
+
         private void Skip(int count)
         {
-            throw new NotImplementedException();
+            System.Diagnostics.Debug.Assert(count > 0);
+
+            while (count > 0)
+            {
+                EnsureOutputData();
+
+                var skipped = mDecoder.SkipOutputData(count);
+                System.Diagnostics.Debug.Assert(0 < skipped && skipped <= count);
+                count -= skipped;
+                mPosition += skipped;
+            }
         }
 
         private int Read(byte[] buffer, int offset, int count)
         {
-            var result = mDecoder.Read(buffer, offset, count);
-            mPosition += result;
-            return result;
+            System.Diagnostics.Debug.Assert(buffer != null);
+            System.Diagnostics.Debug.Assert(0 <= offset && offset < buffer.Length);
+            System.Diagnostics.Debug.Assert(0 < count && count <= buffer.Length - offset);
+
+            EnsureOutputData();
+
+            var fetched = mDecoder.ReadOutputData(buffer, offset, count);
+            System.Diagnostics.Debug.Assert(0 <= fetched && fetched <= count);
+            mPosition += fetched;
+            return fetched;
         }
     }
 }
