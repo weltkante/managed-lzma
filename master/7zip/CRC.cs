@@ -65,6 +65,11 @@ namespace ManagedLzma.LZMA.Master.SevenZip
                 ^ kTable[0x000 + (crc >> 24)];
         }
 
+        public static uint Update(uint crc, int value)
+        {
+            return Update(crc, (uint)value);
+        }
+
         public static uint Update(uint crc, ulong value)
         {
             return Update(Update(crc, (uint)value), (uint)(value >> 32));
