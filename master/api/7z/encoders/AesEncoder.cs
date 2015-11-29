@@ -136,7 +136,7 @@ namespace ManagedLzma.SevenZip.Encoders
             {
                 passwordAccess = mPassword.GetPassword();
                 passwordBytes = Encoding.Unicode.GetBytes(passwordAccess);
-                encryptionKey = master._7zip.Legacy.AesDecoderStream.InitKey(mSlowdown, mSeed.mSalt, passwordBytes);
+                encryptionKey = AesArchiveDecoder.InitKey(mSlowdown, mSeed.mSalt, passwordBytes);
 
                 using (var aes = System.Security.Cryptography.Aes.Create())
                 {
