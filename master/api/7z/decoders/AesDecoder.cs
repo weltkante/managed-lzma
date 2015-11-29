@@ -12,21 +12,6 @@ namespace ManagedLzma.SevenZip
 {
     internal sealed class AesArchiveDecoder : DecoderNode
     {
-        private sealed class PasswordProvider : master._7zip.Legacy.IPasswordProvider
-        {
-            private readonly PasswordStorage mPassword;
-
-            public PasswordProvider(PasswordStorage password)
-            {
-                mPassword = password;
-            }
-
-            string master._7zip.Legacy.IPasswordProvider.CryptoGetTextPassword()
-            {
-                return new string(mPassword.GetPassword());
-            }
-        }
-
         private sealed class InputStream : Stream
         {
             private ReaderNode mInput;
@@ -120,7 +105,7 @@ namespace ManagedLzma.SevenZip
             mOutput = new OutputStream(this);
             mLength = length;
 
-            Initialize(mInput, settings.ToArray(), new PasswordProvider(password), length);
+            Initialize(mInput, settings.ToArray(), password, length);
         }
 
         public override void Dispose()
@@ -162,8 +147,9 @@ namespace ManagedLzma.SevenZip
             return result;
         }
 
-        private void Initialize(Stream input, byte[] info, master._7zip.Legacy.IPasswordProvider pass, long limit)
+        private void Initialize(Stream input, byte[] info, PasswordStorage password, long limit)
         {
+            mBuffer = new byte[4 << 10];
             mStream = input;
             mLimit = limit;
 
@@ -176,17 +162,27 @@ namespace ManagedLzma.SevenZip
             byte[] salt, seed;
             Init(info, out numCyclesPower, out salt, out seed);
 
-            byte[] password = Encoding.Unicode.GetBytes(pass.CryptoGetTextPassword());
-            byte[] key = InitKey(numCyclesPower, salt, password);
-
-            using (var aes = Aes.Create())
+            byte[] pass = null;
+            byte[] key = null;
+            try
             {
-                aes.Mode = CipherMode.CBC;
-                aes.Padding = PaddingMode.None;
-                mDecoder = aes.CreateDecryptor(key, seed);
-            }
+                using (var accessor = password.GetPassword())
+                    pass = Encoding.Unicode.GetBytes(accessor);
 
-            mBuffer = new byte[4 << 10];
+                key = InitKey(numCyclesPower, salt, pass);
+
+                using (var aes = Aes.Create())
+                {
+                    aes.Mode = CipherMode.CBC;
+                    aes.Padding = PaddingMode.None;
+                    mDecoder = aes.CreateDecryptor(key, seed);
+                }
+            }
+            finally
+            {
+                Utilities.ClearBuffer(ref pass);
+                Utilities.ClearBuffer(ref key);
+            }
         }
 
         private int DecodeInto(byte[] buffer, int offset, int count)
