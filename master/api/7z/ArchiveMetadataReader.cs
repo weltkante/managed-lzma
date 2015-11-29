@@ -75,11 +75,11 @@ namespace ManagedLzma.SevenZip
             mMetadataLength = GetInt64(header, 20);
             mMetadataChecksum = new Checksum(GetInt32(header, 28));
 
-            uint crc = LZMA.Master.SevenZip.CRC.kInitCRC;
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataOffset);
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataLength);
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataChecksum.Value);
-            crc = LZMA.Master.SevenZip.CRC.Finish(crc);
+            uint crc = CRC.kInitCRC;
+            crc = CRC.Update(crc, mMetadataOffset);
+            crc = CRC.Update(crc, mMetadataLength);
+            crc = CRC.Update(crc, mMetadataChecksum.Value);
+            crc = CRC.Finish(crc);
 
             if ((int)crc != GetInt32(header, 8))
                 return new InvalidDataException("Invalid header checksum.");

@@ -20,7 +20,7 @@ namespace ManagedLzma.SevenZip
         private IStreamWriter mEncoderInput;
         private Task mTransferTask;
         private long mLength;
-        private uint mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
+        private uint mChecksum = CRC.kInitCRC;
         private int mFinalized;
         private bool mCalculateChecksum;
 
@@ -50,8 +50,8 @@ namespace ManagedLzma.SevenZip
         {
             mFinalized |= 2;
             if (!mCalculateChecksum) return null;
-            System.Diagnostics.Debug.Assert(mChecksum != LZMA.Master.SevenZip.CRC.kInitCRC || mLength == 0);
-            return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum));
+            System.Diagnostics.Debug.Assert(mChecksum != CRC.kInitCRC || mLength == 0);
+            return new Checksum((int)CRC.Finish(mChecksum));
         }
 
         public void SetInputStream(EncoderNode encoder, int index)
@@ -88,7 +88,7 @@ namespace ManagedLzma.SevenZip
                 System.Diagnostics.Debug.Assert(written == fetched);
 
                 mLength += written;
-                mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer, 0, written);
+                mChecksum = CRC.Update(mChecksum, buffer, 0, written);
             }
         }
 
@@ -102,7 +102,7 @@ namespace ManagedLzma.SevenZip
             var result = await mSession.ReadInternalAsync(buffer, offset, length, mode).ConfigureAwait(false);
 
             mLength += result;
-            mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer, offset, result);
+            mChecksum = CRC.Update(mChecksum, buffer, offset, result);
 
             return result;
         }
@@ -122,7 +122,7 @@ namespace ManagedLzma.SevenZip
         private Task mTransferTask;
         private TaskCompletionSource<object> mCompletionTask = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
         private bool mCalculateChecksum;
-        private uint mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
+        private uint mChecksum = CRC.kInitCRC;
 
         public EncoderStorage(Stream stream, bool checksum)
         {
@@ -146,7 +146,7 @@ namespace ManagedLzma.SevenZip
 
         public Checksum? GetFinalChecksum()
         {
-            return mCalculateChecksum ? new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum)) : default(Checksum?);
+            return mCalculateChecksum ? new Checksum((int)CRC.Finish(mChecksum)) : default(Checksum?);
         }
 
         public void SetOutputStream(EncoderNode encoder, int index)
@@ -179,7 +179,7 @@ namespace ManagedLzma.SevenZip
 
                 // TODO: calculate checksum asynchronously?
                 if (mCalculateChecksum)
-                    mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer, 0, fetched);
+                    mChecksum = CRC.Update(mChecksum, buffer, 0, fetched);
 
                 await mStream.WriteAsync(buffer, 0, fetched).ConfigureAwait(false);
             }
@@ -193,7 +193,7 @@ namespace ManagedLzma.SevenZip
             // TODO: calculate checksum asynchronously?
             if (mCalculateChecksum)
                 for (int i = 0; i < length; i++)
-                    mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer[offset + i]);
+                    mChecksum = CRC.Update(mChecksum, buffer[offset + i]);
 
             await mStream.WriteAsync(buffer, offset, length).ConfigureAwait(false);
             return length;
@@ -445,12 +445,12 @@ namespace ManagedLzma.SevenZip
             public ChecksumStream(Stream stream)
             {
                 mStream = stream;
-                mChecksum = LZMA.Master.SevenZip.CRC.kInitCRC;
+                mChecksum = CRC.kInitCRC;
             }
 
             public Checksum GetChecksum()
             {
-                return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(mChecksum));
+                return new Checksum((int)CRC.Finish(mChecksum));
             }
 
             public override bool CanRead => true;
@@ -461,7 +461,7 @@ namespace ManagedLzma.SevenZip
             {
                 var result = mStream.Read(buffer, offset, count);
                 for (int i = 0; i < result; i++)
-                    mChecksum = LZMA.Master.SevenZip.CRC.Update(mChecksum, buffer[offset + i]);
+                    mChecksum = CRC.Update(mChecksum, buffer[offset + i]);
                 return result;
             }
 

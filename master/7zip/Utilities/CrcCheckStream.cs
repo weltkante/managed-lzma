@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using CRC = ManagedLzma.LZMA.Master.SevenZip.CRC;
+using CRC = ManagedLzma.CRC;
 
 namespace master._7zip.Legacy
 {

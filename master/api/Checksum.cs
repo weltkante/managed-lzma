@@ -12,7 +12,7 @@ namespace ManagedLzma
     {
         public static Checksum GetEmptyStreamChecksum()
         {
-            return new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(LZMA.Master.SevenZip.CRC.kInitCRC));
+            return new Checksum((int)CRC.Finish(CRC.kInitCRC));
         }
 
         public static Checksum Parse(string text)

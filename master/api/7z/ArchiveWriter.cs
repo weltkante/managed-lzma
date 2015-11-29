@@ -249,7 +249,7 @@ namespace ManagedLzma.SevenZip
             {
                 var buffer = new byte[0x1000];
                 mArchiveStream.Position = mMetadataPosition;
-                var checksum = LZMA.Master.SevenZip.CRC.kInitCRC;
+                var checksum = CRC.kInitCRC;
                 int offset = 0;
                 while (offset < mMetadataLength)
                 {
@@ -258,9 +258,9 @@ namespace ManagedLzma.SevenZip
                         throw new InternalFailureException();
 
                     offset += fetched;
-                    checksum = LZMA.Master.SevenZip.CRC.Update(checksum, buffer, 0, fetched);
+                    checksum = CRC.Update(checksum, buffer, 0, fetched);
                 }
-                mMetadataChecksum = new Checksum((int)LZMA.Master.SevenZip.CRC.Finish(checksum));
+                mMetadataChecksum = new Checksum((int)CRC.Finish(checksum));
             }
 
             return Task.CompletedTask;
@@ -725,11 +725,11 @@ namespace ManagedLzma.SevenZip
             if (metadataOffset < 0)
                 throw new InternalFailureException();
 
-            uint crc = LZMA.Master.SevenZip.CRC.kInitCRC;
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, metadataOffset);
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataLength);
-            crc = LZMA.Master.SevenZip.CRC.Update(crc, mMetadataChecksum.Value);
-            crc = LZMA.Master.SevenZip.CRC.Finish(crc);
+            uint crc = CRC.kInitCRC;
+            crc = CRC.Update(crc, metadataOffset);
+            crc = CRC.Update(crc, mMetadataLength);
+            crc = CRC.Update(crc, mMetadataChecksum.Value);
+            crc = CRC.Finish(crc);
 
             var buffer = new byte[ArchiveMetadataFormat.kHeaderLength];
 

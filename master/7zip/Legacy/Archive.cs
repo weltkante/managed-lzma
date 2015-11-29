@@ -8,7 +8,7 @@ using ManagedLzma.LZMA;
 using ManagedLzma.LZMA.Master.SevenZip;
 using BitVector = ManagedLzma.LZMA.Master.SevenZip.BitVector;
 using BlockType = ManagedLzma.LZMA.Master.SevenZip.BlockType;
-using CRC = ManagedLzma.LZMA.Master.SevenZip.CRC;
+using CRC = ManagedLzma.CRC;
 
 namespace master._7zip.Legacy
 {
