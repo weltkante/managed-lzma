@@ -119,11 +119,11 @@ namespace ManagedLzma.LZMA
                 if (r1.Dst[i] != r2.Dst[i])
                     throw new InvalidOperationException();
 
-            if (r1.Enc.Length != r1.Enc.Length)
+            if (r1.Enc.Length != r2.Enc.Length)
                 throw new InvalidOperationException();
 
             for (int i = 0; i < r1.Enc.Length; i++)
-                if (r1.Enc[i] != r1.Enc[i])
+                if (r1.Enc[i] != r2.Enc[i])
                     throw new InvalidOperationException();
 
             settings = r1;
