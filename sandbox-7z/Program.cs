@@ -57,15 +57,15 @@ namespace sandbox_7z
                 {
                     Task.Run(async delegate {
                         using (var archiveStream = new FileStream(@"_test\test.7z", FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
-                        using (var archiveWriter = ManagedLzma.SevenZip.ArchiveWriter.Create(archiveStream, false))
+                        using (var archiveWriter = ManagedLzma.SevenZip.Writer.ArchiveWriter.Create(archiveStream, false))
                         {
-                            var encoder = new ManagedLzma.SevenZip.EncoderDefinition();
-                            ManagedLzma.SevenZip.EncoderNodeDefinition node1 = null;
-                            ManagedLzma.SevenZip.EncoderNodeDefinition node2 = null;
+                            var encoder = new ManagedLzma.SevenZip.Writer.EncoderDefinition();
+                            ManagedLzma.SevenZip.Writer.EncoderNodeDefinition node1 = null;
+                            ManagedLzma.SevenZip.Writer.EncoderNodeDefinition node2 = null;
                             //node1 = encoder.CreateEncoder(ManagedLzma.SevenZip.Encoders.CopyEncoderSettings.Instance);
                             //node1 = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.LzmaEncoderSettings(new ManagedLzma.LZMA.EncoderSettings()));
                             //node1 = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.Lzma2EncoderSettings(new ManagedLzma.LZMA2.EncoderSettings()));
-                            node2 = encoder.CreateEncoder(new ManagedLzma.SevenZip.Encoders.AesEncoderSettings(ManagedLzma.PasswordStorage.Create("test")));
+                            node2 = encoder.CreateEncoder(new ManagedLzma.SevenZip.Writer.AesEncoderSettings(ManagedLzma.PasswordStorage.Create("test")));
                             if (node1 != null && node2 != null)
                             {
                                 encoder.Connect(encoder.GetContentSource(), node1.GetInput(0));
@@ -79,7 +79,7 @@ namespace sandbox_7z
                             }
                             encoder.Complete();
 
-                            var metadata = new ManagedLzma.SevenZip.ArchiveMetadataRecorder();
+                            var metadata = new ManagedLzma.SevenZip.Writer.ArchiveMetadataRecorder();
 
                             var directory = new DirectoryInfo(Path.GetDirectoryName(typeof(Program).Assembly.Location));
 
@@ -144,7 +144,7 @@ namespace sandbox_7z
                     var file = new FileStream(@"_test\test.7z", FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
                     var mdReader = new ManagedLzma.SevenZip.FileModel.ArchiveFileModelMetadataReader();
                     var mdModel = mdReader.ReadMetadata(file);
-                    var dsReader = new ManagedLzma.SevenZip.DecodedSectionReader(file, mdModel.Metadata, 0, ManagedLzma.PasswordStorage.Create("test"));
+                    var dsReader = new ManagedLzma.SevenZip.Reader.DecodedSectionReader(file, mdModel.Metadata, 0, ManagedLzma.PasswordStorage.Create("test"));
                     int k = 0;
                     while (dsReader.CurrentStreamIndex < dsReader.StreamCount)
                     {

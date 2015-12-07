@@ -177,16 +177,16 @@ namespace ManagedLzma.SevenZip
             }
         }
 
-        public DecoderNode CreateDecoder(ImmutableArray<byte> settings, ImmutableArray<DecoderOutputMetadata> output, PasswordStorage password)
+        public Reader.DecoderNode CreateDecoder(ImmutableArray<byte> settings, ImmutableArray<Metadata.DecoderOutputMetadata> output, PasswordStorage password)
         {
             switch (~mSignature)
             {
-                case kCopy: return new CopyArchiveDecoder(settings, output.Single().Length);
-                case kLZMA: return new LzmaArchiveDecoder(settings, output.Single().Length);
-                case kLZMA2: return new Lzma2ArchiveDecoder(settings, output.Single().Length);
-                case kAES: return new AesArchiveDecoder(settings, password, output.Single().Length);
-                case kBCJ: return new BcjArchiveDecoder(settings, output.Single().Length);
-                case kBCJ2: return new Bcj2ArchiveDecoder(settings, output.Single().Length);
+                case kCopy: return new Reader.CopyArchiveDecoder(settings, output.Single().Length);
+                case kLZMA: return new Reader.LzmaArchiveDecoder(settings, output.Single().Length);
+                case kLZMA2: return new Reader.Lzma2ArchiveDecoder(settings, output.Single().Length);
+                case kAES: return new Reader.AesArchiveDecoder(settings, password, output.Single().Length);
+                case kBCJ: return new Reader.BcjArchiveDecoder(settings, output.Single().Length);
+                case kBCJ2: return new Reader.Bcj2ArchiveDecoder(settings, output.Single().Length);
 
                 case kDeflate:
                 case kDelta:

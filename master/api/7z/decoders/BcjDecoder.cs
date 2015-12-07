@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Reader
 {
     internal sealed class BcjArchiveDecoder : DecoderNode
     {

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 // This design allows the subclass to decide how to store the data, or whether to read it at all.
 // In case the subclass does not want to read the data these readers will skip over it without allocating anything.
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Reader
 {
     public sealed class MetadataStringReader
     {

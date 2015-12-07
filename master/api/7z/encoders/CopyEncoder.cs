@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ManagedLzma.SevenZip.Encoders
+namespace ManagedLzma.SevenZip.Writer
 {
     public sealed class CopyEncoderSettings : EncoderSettings
     {

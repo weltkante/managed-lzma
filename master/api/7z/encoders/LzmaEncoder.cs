@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ManagedLzma.SevenZip.Encoders
+namespace ManagedLzma.SevenZip.Writer
 {
     public sealed class LzmaEncoderSettings : EncoderSettings
     {

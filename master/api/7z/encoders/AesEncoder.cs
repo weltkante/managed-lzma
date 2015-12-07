@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 // to store highly sensitive material you probably shouldn't rely on 7z encryption alone anyways.
 //
 
-namespace ManagedLzma.SevenZip.Encoders
+namespace ManagedLzma.SevenZip.Writer
 {
     public sealed class AesEncoderSeed : IDisposable
     {
@@ -136,7 +136,7 @@ namespace ManagedLzma.SevenZip.Encoders
             {
                 passwordAccess = mPassword.GetPassword();
                 passwordBytes = Encoding.Unicode.GetBytes(passwordAccess);
-                encryptionKey = AesArchiveDecoder.InitKey(mSlowdown, mSeed.mSalt, passwordBytes);
+                encryptionKey = Reader.AesArchiveDecoder.InitKey(mSlowdown, mSeed.mSalt, passwordBytes);
 
                 using (var aes = System.Security.Cryptography.Aes.Create())
                 {

@@ -5,8 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ManagedLzma.SevenZip.Metadata;
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Reader
 {
     /// <summary>
     /// Allows subclasses to construct custom archive models from metadata.

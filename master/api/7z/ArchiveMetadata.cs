@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 // complexity and to make it easier to understand. As a side effect it also allocates less arrays.
 //
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Metadata
 {
     /// <summary>Contains the metadata required to read content from an archive.</summary>
     [System.Diagnostics.DebuggerDisplay(@"\{ArchiveMetadata #FileSections={FileSections.Length} #DecoderSections={DecoderSections.Length}\}")]

@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Reader
 {
     internal sealed class AesArchiveDecoder : DecoderNode
     {

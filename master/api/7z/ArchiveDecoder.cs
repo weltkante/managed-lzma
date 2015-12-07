@@ -5,8 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ManagedLzma.SevenZip.Metadata;
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Reader
 {
     public abstract class ReaderNode : IDisposable
     {

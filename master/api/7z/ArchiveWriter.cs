@@ -6,8 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ManagedLzma.SevenZip.Metadata;
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Writer
 {
     // TODO: it would be even better if we could separate ArchiveWriter from a "modifyable" archive further
     //       the archive writer should just have enough state (from modifyable archives) that he can write new metadata/header

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Metadata
 {
     internal static class ArchiveMetadataFormat
     {

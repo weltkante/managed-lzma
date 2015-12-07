@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ManagedLzma.SevenZip.Metadata;
+using ManagedLzma.SevenZip.Reader;
 
 namespace ManagedLzma.SevenZip.FileModel
 {
