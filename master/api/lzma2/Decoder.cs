@@ -182,22 +182,4 @@ namespace ManagedLzma.LZMA2
             return checked((int)inputField);
         }
     }
-
-    public sealed class AsyncDecoder : IDisposable
-    {
-        private LZMA.Master.LZMA.CLzma2Dec mDecoder;
-
-        public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task DecodeAsync()
-        {
-            var task = Task.Run(delegate {
-            });
-
-            return task;
-        }
-    }
 }
