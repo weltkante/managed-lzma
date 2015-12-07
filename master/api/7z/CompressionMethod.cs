@@ -177,7 +177,7 @@ namespace ManagedLzma.SevenZip.Metadata
             }
         }
 
-        public Reader.DecoderNode CreateDecoder(ImmutableArray<byte> settings, ImmutableArray<Metadata.DecoderOutputMetadata> output, PasswordStorage password)
+        internal Reader.DecoderNode CreateDecoder(ImmutableArray<byte> settings, ImmutableArray<Metadata.DecoderOutputMetadata> output, PasswordStorage password)
         {
             switch (~mSignature)
             {

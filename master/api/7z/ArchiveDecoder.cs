@@ -9,14 +9,14 @@ using ManagedLzma.SevenZip.Metadata;
 
 namespace ManagedLzma.SevenZip.Reader
 {
-    public abstract class ReaderNode : IDisposable
+    internal abstract class ReaderNode : IDisposable
     {
         public abstract void Dispose();
         public abstract void Skip(int count);
         public abstract int Read(byte[] buffer, int offset, int count);
     }
 
-    public abstract class DecoderNode : IDisposable
+    internal abstract class DecoderNode : IDisposable
     {
         public abstract void Dispose();
         public abstract void SetInputStream(int index, ReaderNode stream, long length);
