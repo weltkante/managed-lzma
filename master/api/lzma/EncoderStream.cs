@@ -6,6 +6,7 @@ using System.Text;
 
 namespace ManagedLzma.LZMA
 {
+#if NOT_IMPLEMENTED
     public sealed class EncoderStream : Stream
     {
         public override bool CanSeek => false;
@@ -70,4 +71,5 @@ namespace ManagedLzma.LZMA
 
         #endregion
     }
+#endif
 }
