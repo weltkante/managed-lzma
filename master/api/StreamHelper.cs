@@ -92,7 +92,7 @@ namespace ManagedLzma
         }
     }
 
-    public sealed class AsyncInputQueue : IStreamReader, IStreamWriter
+    internal sealed class AsyncInputQueue : IStreamReader, IStreamWriter
     {
         private sealed class Frame
         {
@@ -217,7 +217,7 @@ namespace ManagedLzma
         }
     }
 
-    public sealed class AsyncOutputQueue : IStreamReader, IStreamWriter
+    internal sealed class AsyncOutputQueue : IStreamReader, IStreamWriter
     {
         private sealed class Frame
         {
