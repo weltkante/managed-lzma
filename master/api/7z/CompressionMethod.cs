@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ManagedLzma.SevenZip
+namespace ManagedLzma.SevenZip.Metadata
 {
     /// <summary>
     /// Describes a compression method as defined in the 7z file format.

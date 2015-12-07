@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ManagedLzma.SevenZip.Metadata;
 
 // NOTE: The provided settings match the hardcoded 7z922 settings, which make some questionable choices:
 //
