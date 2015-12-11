@@ -93,68 +93,13 @@
     <Compile Include="7zip\Log.cs" />
     <Compile Include="7zip\Utilities\SyncStreamView.cs" />
     <Compile Include="7zip\Utilities\Utils.cs" />
-    <Compile Include="api\7z\ArchiveDecoder.cs" />
-    <Compile Include="api\7z\ArchiveFileModel.cs" />
-    <Compile Include="api\7z\ArchiveMetadata.cs" />
-    <Compile Include="api\7z\ArchiveMetadataDataReader.cs" />
-    <Compile Include="api\7z\ArchiveMetadataFileFormat.cs" />
-    <Compile Include="api\7z\ArchiveMetadataReader.cs" />
-    <Compile Include="api\7z\ArchiveReader.cs" />
-    <Compile Include="api\7z\ArchiveWriter.cs" />
-    <Compile Include="api\7z\BitVector.cs" />
-    <Compile Include="api\7z\CompressionMethod.cs" />
-    <Compile Include="api\7z\decoders\AesDecoder.cs" />
-    <Compile Include="api\7z\decoders\Bcj2Decoder.cs" />
-    <Compile Include="api\7z\decoders\BcjDecoder.cs" />
-    <Compile Include="api\7z\decoders\CopyDecoder.cs" />
-    <Compile Include="api\7z\decoders\Lzma2Decoder.cs" />
-    <Compile Include="api\7z\decoders\LzmaDecoder.cs" />
-    <Compile Include="api\7z\encoders\AesEncoder.cs" />
-    <Compile Include="api\7z\encoders\CopyEncoder.cs" />
-    <Compile Include="api\7z\encoders\Definition.cs" />
-    <Compile Include="api\7z\encoders\Lzma2Encoder.cs" />
-    <Compile Include="api\7z\encoders\LzmaEncoder.cs" />
-    <Compile Include="api\7z\encoders\Runtime.cs" />
-    <Compile Include="api\Checksum.cs" />
-    <Compile Include="api\ConstrainedReadStream.cs" />
-    <Compile Include="api\CRC.cs" />
-    <Compile Include="api\lzma2\Decoder.cs" />
-    <Compile Include="api\lzma2\DecoderSettings.cs" />
-    <Compile Include="api\lzma2\Encoder.cs" />
-    <Compile Include="api\lzma2\EncoderSettings.cs" />
-    <Compile Include="api\lzma\Decoder.cs" />
-    <Compile Include="api\lzma\DecoderSettings.cs" />
-    <Compile Include="api\lzma\DecoderStream.cs" />
-    <Compile Include="api\lzma\Encoder.cs" />
-    <Compile Include="api\lzma\EncoderSettings.cs" />
-    <Compile Include="api\lzma\EncoderStream.cs" />
-    <Compile Include="api\Password.cs" />
-    <Compile Include="api\StreamHelper.cs" />
-    <Compile Include="api\Utilities.cs" />
-    <Compile Include="core\Core.cs" />
-    <Compile Include="core\CRC.cs" />
-    <Compile Include="core\LzFindMt.cs" />
-    <Compile Include="core\LzFind.cs" />
-    <Compile Include="core\LzHash.cs" />
-    <Compile Include="core\Lzma2Dec.cs" />
-    <Compile Include="core\Lzma2Enc.cs" />
-    <Compile Include="core\LzmaDec.cs" />
-    <Compile Include="core\LzmaEnc.cs" />
-    <Compile Include="core\LzmaLib.cs" />
-    <Compile Include="core\MtCoder.cs" />
-    <Compile Include="core\Threads.cs" />
-    <Compile Include="core\Types.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="utils\Helper.cs" />
-    <Compile Include="utils\Shared.cs" />
-    <Compile Include="utils\Pointer.cs" />
-    <Compile Include="utils\Trace.cs" />
-    <Compile Include="utils\Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="managed-lzma.snk" />
     <None Include="packages.config" />
   </ItemGroup>
+  <Import Project="..\shared\shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>d2b79ce1-6d9a-4785-8255-10890f5ffdff</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>shared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\Core.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\CRC.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\LzFind.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\LzFindMt.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\LzHash.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\Lzma2Dec.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\Lzma2Enc.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\LzmaDec.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\LzmaEnc.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\LzmaLib.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\MtCoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\Threads.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\Types.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma2\Decoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma2\DecoderSettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma2\Encoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma2\EncoderSettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\Decoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\DecoderSettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\DecoderStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\Encoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\EncoderSettings.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\EncoderStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveDecoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveFileModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveMetadata.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveMetadataDataReader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveMetadataFileFormat.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveMetadataReader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveReader.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveWriter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\BitVector.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\CompressionMethod.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\AesDecoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\Bcj2Decoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\BcjDecoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\CopyDecoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\Lzma2Decoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\LzmaDecoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\AesEncoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\CopyEncoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\Definition.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\Lzma2Encoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\LzmaEncoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\Runtime.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Checksum.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\ConstrainedReadStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\CRC.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Helper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Password.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Pointer.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Shared.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\StreamHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Trace.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Utilities.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utilities\Utils.cs" />
+  </ItemGroup>
+</Project>

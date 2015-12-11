@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox", "sandbox\sandbox.csproj", "{6197C4D9-94CA-4B27-85F7-C2B13165FC6A}"
 EndProject
@@ -24,7 +24,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sandbox-7z", "sandbox-7z\sandbox-7z.csproj", "{D13E39CD-E54E-43AF-AC0C-1425B755024E}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "shared", "shared\shared.shproj", "{D2B79CE1-6D9A-4785-8255-10890F5FFDFF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "library", "library\library.csproj", "{136726D6-588F-446C-BC0F-77D02350FAE4}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		shared\shared.projitems*{b55693b1-3a6d-44bc-92f9-1e2f7018553f}*SharedItemsImports = 4
+		shared\shared.projitems*{d2b79ce1-6d9a-4785-8255-10890f5ffdff}*SharedItemsImports = 13
+		shared\shared.projitems*{136726d6-588f-446c-bc0f-77d02350fae4}*SharedItemsImports = 4
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -150,6 +159,30 @@ Global
 		{D13E39CD-E54E-43AF-AC0C-1425B755024E}.ReleaseTest|Any CPU.Build.0 = Release|Any CPU
 		{D13E39CD-E54E-43AF-AC0C-1425B755024E}.ReleaseTest|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{D13E39CD-E54E-43AF-AC0C-1425B755024E}.ReleaseTest|Win32.ActiveCfg = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Debug|Win32.ActiveCfg = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Debug|Win32.Build.0 = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.DebugTest|Any CPU.ActiveCfg = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.DebugTest|Any CPU.Build.0 = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.DebugTest|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.DebugTest|Mixed Platforms.Build.0 = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.DebugTest|Win32.ActiveCfg = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.DebugTest|Win32.Build.0 = Debug|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Release|Win32.ActiveCfg = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.Release|Win32.Build.0 = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.ReleaseTest|Any CPU.ActiveCfg = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.ReleaseTest|Any CPU.Build.0 = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.ReleaseTest|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.ReleaseTest|Mixed Platforms.Build.0 = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.ReleaseTest|Win32.ActiveCfg = Release|Any CPU
+		{136726D6-588F-446C-BC0F-77D02350FAE4}.ReleaseTest|Win32.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
