@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
-using System.IO.Pipes;
 using System.Threading;
 using System.Globalization;
 using D = System.Diagnostics;
@@ -799,32 +798,26 @@ namespace ManagedLzma.LZMA
 #endif
         }
 
+#if !DISABLE_TRACE
         public static Thread MatchThreadStart(Action fun)
         {
-#if DISABLE_TRACE
-            throw new NotSupportedException();
-#else
             return mContext.MatchThreadStart(fun);
-#endif
         }
+#endif
 
+#if !DISABLE_TRACE
         public static void MatchThreadWait(Thread thread)
         {
-#if DISABLE_TRACE
-            throw new NotSupportedException();
-#else
             mContext.MatchThreadWait(thread);
-#endif
         }
+#endif
 
+#if !DISABLE_TRACE
         public static void MatchThreadClose(Thread thread)
         {
-#if DISABLE_TRACE
-            throw new NotSupportedException();
-#else
             mContext.MatchThreadClose(thread);
-#endif
         }
+#endif
 
         public static void MatchObjectCreate(object obj, string arg)
         {

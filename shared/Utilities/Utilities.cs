@@ -13,7 +13,9 @@ namespace ManagedLzma
     /// This exception is only thrown from "impossible" situations.
     /// If it is ever observed this indicates a bug in the library.
     /// </summary>
+#if !BUILD_PORTABLE
     [Serializable]
+#endif
     internal sealed class InternalFailureException : InvalidOperationException
     {
         public InternalFailureException()
@@ -24,10 +26,12 @@ namespace ManagedLzma
 #endif
         }
 
+#if !BUILD_PORTABLE
         private InternalFailureException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
         }
+#endif
     }
 
     /// <summary>

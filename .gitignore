@@ -17,6 +17,7 @@ build/
 bld/
 [Bb]in/
 [Oo]bj/
+project.lock.json
 
 # Roslyn cache directories
 *.ide/

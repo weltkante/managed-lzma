@@ -11,7 +11,11 @@ namespace ManagedLzma.LZMA.Master
 
         internal sealed class CThread
         {
+#if BUILD_PORTABLE
+            internal System.Threading.Tasks.Task _task;
+#else
             internal System.Threading.Thread _thread;
+#endif
         }
 
         internal static void Thread_Construct(out CThread p)
@@ -30,6 +34,8 @@ namespace ManagedLzma.LZMA.Master
             {
 #if !DISABLE_TRACE
                 Trace.MatchThreadClose(p._thread);
+#elif BUILD_PORTABLE
+                p._task.GetAwaiter().GetResult();
 #else
                 p._thread.Join();
 #endif
@@ -40,10 +46,16 @@ namespace ManagedLzma.LZMA.Master
 
         internal static SRes Thread_Wait(CThread p)
         {
+#if BUILD_PORTABLE
+            p._task.GetAwaiter().GetResult();
+#else
             p._thread.Join();
+#endif
+
 #if !DISABLE_TRACE
             Trace.MatchThreadWait(p._thread);
 #endif
+
             return TSZ("Thread_Wait");
         }
 
@@ -52,6 +64,8 @@ namespace ManagedLzma.LZMA.Master
             p = new CThread();
 #if !DISABLE_TRACE
             p._thread = Trace.MatchThreadStart(func);
+#elif BUILD_PORTABLE
+            p._task = System.Threading.Tasks.Task.Run(func);
 #else
             p._thread = new System.Threading.Thread(delegate () { func(); });
             p._thread.Name = threadName;
@@ -89,6 +103,8 @@ namespace ManagedLzma.LZMA.Master
             {
 #if !DISABLE_TRACE
                 Trace.MatchObjectDestroy(p, "Event_Close");
+#elif BUILD_PORTABLE
+                p.Event.Dispose();
 #else
                 p.Event.Close();
 #endif
@@ -159,6 +175,8 @@ namespace ManagedLzma.LZMA.Master
             {
 #if !DISABLE_TRACE
                 Trace.MatchObjectDestroy(p, "Semaphore_Close");
+#elif BUILD_PORTABLE
+                p.Semaphore.Dispose();
 #else
                 p.Semaphore.Close();
 #endif

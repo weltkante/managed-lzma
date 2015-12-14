@@ -12,6 +12,138 @@ namespace ManagedLzma.SevenZip.Reader
 {
     internal sealed class AesArchiveDecoder : DecoderNode
     {
+#if BUILD_PORTABLE
+        private sealed class KeyDataStream : Stream
+        {
+            private byte[] mBuffer;
+            private int mOffset;
+            private int mEnding;
+            private bool mProcessed;
+            private bool mComplete;
+
+            public void ProvideData(byte[] buffer, int offset, int count)
+            {
+                if (buffer == null)
+                    throw new ArgumentNullException(nameof(buffer));
+
+                if (offset < 0 || offset > buffer.Length)
+                    throw new ArgumentOutOfRangeException(nameof(offset));
+
+                if (count < 0 || count > buffer.Length - offset)
+                    throw new ArgumentOutOfRangeException(nameof(count));
+
+                if (count == 0)
+                    return;
+
+                lock (this)
+                {
+                    while (mBuffer != null)
+                        Monitor.Wait(this);
+
+                    mBuffer = buffer;
+                    mOffset = offset;
+                    mEnding = offset + count;
+                    mProcessed = false;
+
+                    while (!mProcessed)
+                        Monitor.Wait(this);
+                }
+            }
+
+            public void Complete()
+            {
+                lock (this)
+                {
+                    mComplete = true;
+                    Monitor.PulseAll(this);
+                }
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                if (buffer == null)
+                    throw new ArgumentNullException(nameof(buffer));
+
+                if (offset < 0 || offset > buffer.Length)
+                    throw new ArgumentOutOfRangeException(nameof(offset));
+
+                if (count < 0 || count > buffer.Length - offset)
+                    throw new ArgumentOutOfRangeException(nameof(count));
+
+                if (count == 0)
+                    return 0;
+
+                lock (this)
+                {
+                    while (mBuffer == null || mOffset == mEnding)
+                    {
+                        if (mComplete)
+                            return 0;
+
+                        Monitor.Wait(this);
+                    }
+
+                    if (count > mEnding - mOffset)
+                        count = mEnding - mOffset;
+
+                    Buffer.BlockCopy(mBuffer, mOffset, buffer, offset, count);
+
+                    mOffset += count;
+
+                    if (mOffset == mEnding)
+                    {
+                        mBuffer = null;
+                        mOffset = 0;
+                        mEnding = 0;
+                        mProcessed = true;
+                        Monitor.Pulse(this);
+                    }
+
+                    return count;
+                }
+            }
+
+            #region Unnused Stream Overrides
+
+            public override bool CanSeek => false;
+            public override bool CanRead => true;
+            public override bool CanWrite => false;
+
+            public override long Length
+            {
+                get { throw new InvalidOperationException(); }
+            }
+
+            public override long Position
+            {
+                get { throw new InvalidOperationException(); }
+                set { throw new InvalidOperationException(); }
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public override void SetLength(long value)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public override void Flush()
+            {
+                throw new InvalidOperationException();
+            }
+
+            #endregion
+        }
+#endif
+
         private sealed class InputStream : Stream
         {
             private ReaderNode mInput;
@@ -287,6 +419,32 @@ namespace ManagedLzma.SevenZip.Reader
             }
             else
             {
+#if BUILD_PORTABLE
+                var stream = new KeyDataStream();
+
+                var task = Task.Run(delegate {
+                    using (var sha = System.Security.Cryptography.SHA256.Create())
+                        return sha.ComputeHash(stream);
+                });
+
+                byte[] counter = new byte[8];
+                long numRounds = 1L << mNumCyclesPower;
+                for (long round = 0; round < numRounds; round++)
+                {
+                    stream.ProvideData(salt, 0, salt.Length);
+                    stream.ProvideData(pass, 0, pass.Length);
+                    stream.ProvideData(counter, 0, 8);
+
+                    // This mirrors the counter so we don't have to convert long to byte[] each round.
+                    // (It also ensures the counter is little endian, which BitConverter does not.)
+                    for (int i = 0; i < 8; i++)
+                        if (++counter[i] != 0)
+                            break;
+                }
+
+                stream.Complete();
+                return task.GetAwaiter().GetResult();
+#else
                 using (var sha = System.Security.Cryptography.SHA256.Create())
                 {
                     byte[] counter = new byte[8];
@@ -307,6 +465,7 @@ namespace ManagedLzma.SevenZip.Reader
                     sha.TransformFinalBlock(counter, 0, 0);
                     return sha.Hash;
                 }
+#endif
             }
         }
 

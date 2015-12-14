@@ -5,7 +5,9 @@ using System.Text;
 
 namespace ManagedLzma.Testing
 {
+#if !BUILD_PORTABLE
     [Serializable]
+#endif
     public struct PZ
     {
         public byte[] Buffer;
@@ -76,7 +78,9 @@ namespace ManagedLzma.Testing
         void LzmaUncompress(SharedSettings settings);
     }
 
+#if !BUILD_PORTABLE
     [Serializable]
+#endif
     public class SharedSettings
     {
         public int Variant;
