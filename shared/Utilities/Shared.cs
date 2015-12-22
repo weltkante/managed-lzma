@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+#if BUILD_TESTING
 namespace ManagedLzma.Testing
 {
 #if !BUILD_PORTABLE
@@ -218,3 +219,4 @@ namespace ManagedLzma.Testing
         #endregion
     }
 }
+#endif

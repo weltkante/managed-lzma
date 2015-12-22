@@ -32,6 +32,12 @@
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>..\managed-lzma.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -90,6 +96,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\managed-lzma.snk">
+      <Link>managed-lzma.snk</Link>
+    </None>
     <None Include="UnitTestFastMode.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>UnitTestFastMode.cs</LastGenOutput>

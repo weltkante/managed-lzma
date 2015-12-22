@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace ManagedLzma
 {
+    /*
     /// <summary>
     /// This interface is used to allow decoding of password protected 7z archives.
     /// The password is only requested when an attempt is made to decode password protected content.
@@ -24,6 +25,7 @@ namespace ManagedLzma
         /// </returns>
         Task<PasswordStorage> GetPasswordAsync(CancellationToken ct);
     }
+    */
 
     /// <summary>
     /// Stores a password in a way so that memory dumps do not expose the password in plaintext.

@@ -1169,7 +1169,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private LZMA.CLzmaEncProps mEncoderProps;
             private byte[] mSettings;
 
-            public LzmaEncoder(LZMA.CLzmaEncProps encoderProps = null)
+            public LzmaEncoder() : this(null) { }
+
+            internal LzmaEncoder(LZMA.CLzmaEncProps encoderProps)
             {
                 mSyncObject = new object();
                 mOutputHelper = new LZMA.CSeqOutStream(WriteOutputHelper);
@@ -1254,7 +1256,9 @@ namespace ManagedLzma.LZMA.Master.SevenZip
             private int? mThreadCount;
             private byte mSettings;
 
-            public Lzma2Encoder(int? threadCount, LZMA.CLzma2EncProps encoderProps = null)
+            public Lzma2Encoder(int? threadCount) : this(threadCount, null) { }
+
+            internal Lzma2Encoder(int? threadCount, LZMA.CLzma2EncProps encoderProps)
             {
                 mThreadCount = threadCount;
                 mSyncObject = new object();

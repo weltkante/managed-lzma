@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ManagedLzma.LZMA
 {
-    public interface IBufferPool
+    internal interface IBufferPool
     {
         P<byte> Allocate(int size);
         void Release(P<byte> buffer);

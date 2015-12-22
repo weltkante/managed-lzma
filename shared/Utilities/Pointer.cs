@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ManagedLzma.LZMA
 {
-    public static class P
+    internal static class P
     {
         public static P<T> From<T>(T[] buffer, int offset)
         {
@@ -17,13 +17,15 @@ namespace ManagedLzma.LZMA
             return new P<T>(buffer, offset);
         }
 
+#if BUILD_TESTING
         public static P<byte> From(Testing.PZ p)
         {
             return From(p.Buffer, p.Offset);
         }
+#endif
     }
 
-    public struct P<T>
+    internal struct P<T>
     {
         public static P<T> Null
         {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 
+#if BUILD_TESTING
 namespace ManagedLzma.LZMA
 {
     using Master;
@@ -350,3 +351,4 @@ namespace ManagedLzma.LZMA
         }
     }
 }
+#endif

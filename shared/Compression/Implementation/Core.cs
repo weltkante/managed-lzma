@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ManagedLzma.LZMA.Master
 {
-    public static partial class LZMA
+    internal static partial class LZMA
     {
         /* #define SHOW_STAT */
         /* #define SHOW_STAT2 */

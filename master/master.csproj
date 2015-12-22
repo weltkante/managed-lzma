@@ -18,7 +18,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;DISABLE_TRACE;SHOW_STAT_;SHOW_STAT2_;PROTOTYPE_</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;BUILD_TESTING;DISABLE_TRACE;SHOW_STAT_;SHOW_STAT2_;PROTOTYPE_</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -29,7 +29,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE;DISABLE_TRACE</DefineConstants>
+    <DefineConstants>TRACE;BUILD_TESTING;DISABLE_TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -40,12 +40,12 @@
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>managed-lzma.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\managed-lzma.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'DebugTest|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\DebugTest\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;SHOW_STAT_;SHOW_STAT2_;PROTOTYPE_</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;BUILD_TESTING;SHOW_STAT_;SHOW_STAT2_;PROTOTYPE_</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -55,7 +55,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'ReleaseTest|AnyCPU'">
     <OutputPath>bin\ReleaseTest\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRACE;BUILD_TESTING</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -96,7 +96,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="managed-lzma.snk" />
+    <None Include="..\managed-lzma.snk">
+      <Link>managed-lzma.snk</Link>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="..\shared\shared.projitems" Label="Shared" />
