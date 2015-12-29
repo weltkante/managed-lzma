@@ -127,6 +127,84 @@ namespace ManagedLzma.SevenZip.Metadata
         }
     }
 
+    public struct DecodedStreamIndex : IEquatable<DecodedStreamIndex>
+    {
+        public static DecodedStreamIndex Undefined => default(DecodedStreamIndex);
+
+        private readonly int mSectionIndex;
+        private readonly int mStreamIndex;
+
+        public DecodedStreamIndex(int sectionIndex, int streamIndex)
+        {
+            if (sectionIndex < 0)
+                throw new ArgumentOutOfRangeException(nameof(sectionIndex));
+
+            if (streamIndex < 0)
+                throw new ArgumentOutOfRangeException(nameof(streamIndex));
+
+            mSectionIndex = ~sectionIndex;
+            mStreamIndex = streamIndex;
+        }
+
+        public bool IsUndefined => mSectionIndex == 0;
+
+        public int SectionIndex
+        {
+            get
+            {
+                if (IsUndefined)
+                    throw new InvalidOperationException();
+
+                return ~mSectionIndex;
+            }
+        }
+
+        public int StreamIndex
+        {
+            get
+            {
+                if (IsUndefined)
+                    throw new InvalidOperationException();
+
+                return mStreamIndex;
+            }
+        }
+
+        public override string ToString()
+        {
+            if (IsUndefined)
+                return "{DecodedStreamIndex Undefined}";
+
+            return FormattableString.Invariant($"{{DecodedStreamIndex Section={SectionIndex} Stream={StreamIndex}}}");
+        }
+
+        public override int GetHashCode()
+        {
+            return (mSectionIndex << 16) + mStreamIndex;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is DecodedStreamIndex && Equals((DecodedStreamIndex)obj);
+        }
+
+        public bool Equals(DecodedStreamIndex other)
+        {
+            return mSectionIndex == other.mSectionIndex
+                && mStreamIndex == other.mStreamIndex;
+        }
+
+        public static bool operator ==(DecodedStreamIndex left, DecodedStreamIndex right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(DecodedStreamIndex left, DecodedStreamIndex right)
+        {
+            return !left.Equals(right);
+        }
+    }
+
     /// <summary>Describes how to configure a decoder and how to connect it to other decoders.</summary>
     [System.Diagnostics.DebuggerDisplay(@"\{DecoderMetadata {DecoderType,nq}\}")]
     public sealed class DecoderMetadata
