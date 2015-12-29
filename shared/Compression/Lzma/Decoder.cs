@@ -197,7 +197,7 @@ namespace ManagedLzma.LZMA
             public int mOrigin;
             public int mOffset;
             public int mEnding;
-            public TaskCompletionSource<object> mCompletion = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public AsyncTaskCompletionSource<object> mCompletion = AsyncTaskCompletionSource<object>.Create();
         }
 
         private sealed class OutputFrame
@@ -206,7 +206,7 @@ namespace ManagedLzma.LZMA
             public int mOrigin;
             public int mOffset;
             public int mEnding;
-            public TaskCompletionSource<int> mCompletion = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public AsyncTaskCompletionSource<int> mCompletion = AsyncTaskCompletionSource<int>.Create();
             public StreamMode mMode;
         }
 
@@ -261,7 +261,7 @@ namespace ManagedLzma.LZMA
                     else
                     {
                         DisposeInternal();
-                        mDisposeTask = Task.CompletedTask;
+                        mDisposeTask = Utilities.CompletedTask;
                     }
                 }
 

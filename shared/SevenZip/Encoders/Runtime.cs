@@ -121,7 +121,7 @@ namespace ManagedLzma.SevenZip.Writer
         private Stream mStream;
         private IStreamReader mEncoderOutput;
         private Task mTransferTask;
-        private TaskCompletionSource<object> mCompletionTask = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private AsyncTaskCompletionSource<object> mCompletionTask = AsyncTaskCompletionSource<object>.Create();
         private bool mCalculateChecksum;
         private uint mChecksum = CRC.kInitCRC;
 
@@ -205,7 +205,7 @@ namespace ManagedLzma.SevenZip.Writer
             System.Diagnostics.Debug.Assert(mEncoderOutput == null);
             System.Diagnostics.Debug.Assert(!mCompletionTask.Task.IsCompleted);
             mCompletionTask.SetResult(null);
-            return Task.CompletedTask;
+            return Utilities.CompletedTask;
         }
 
         public Task GetCompletionTask()
@@ -226,7 +226,7 @@ namespace ManagedLzma.SevenZip.Writer
         private IStreamReader mEncoderOutputToConnectionInput;
         private IStreamWriter mConnectionOutputToEncoderInput;
         private Task mTransferTask;
-        private TaskCompletionSource<int> mResult;
+        private AsyncTaskCompletionSource<int> mResult;
         private byte[] mBuffer;
         private int mOffset;
         private int mEnding;
@@ -343,7 +343,7 @@ namespace ManagedLzma.SevenZip.Writer
                 mEnding = offset + count;
                 // CompletionSource must be async so we can complete it from within the lock.
                 // If we move the completion outside the lock we may be able to do inline completion?
-                mResult = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+                mResult = AsyncTaskCompletionSource<int>.Create();
                 Monitor.PulseAll(this);
                 return mResult.Task;
             }
@@ -408,7 +408,7 @@ namespace ManagedLzma.SevenZip.Writer
                 }
             }
 
-            return Task.CompletedTask;
+            return Utilities.CompletedTask;
         }
 
         #endregion

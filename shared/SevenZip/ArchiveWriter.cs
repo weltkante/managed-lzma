@@ -264,7 +264,7 @@ namespace ManagedLzma.SevenZip.Writer
                 mMetadataChecksum = new Checksum((int)CRC.Finish(checksum));
             }
 
-            return Task.CompletedTask;
+            return Utilities.CompletedTask;
         }
 
         #region Writer - Structured Data

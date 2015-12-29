@@ -65,7 +65,7 @@ namespace ManagedLzma.LZMA
                     else
                     {
                         DisposeInternal();
-                        mDisposeTask = Task.CompletedTask;
+                        mDisposeTask = Utilities.CompletedTask;
                     }
                 }
 
