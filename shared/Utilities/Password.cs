@@ -122,7 +122,7 @@ namespace ManagedLzma
                     // Make a copy of the password so asynchronous disposal does not interfere with the caller processing the password.
                     result = new PasswordAccessor((char[])password.Clone());
 
-                    // Must do a second check becauseif a dispose happened while the array was cloned it may have been partially zeroed out.
+                    // Must do a second check because if a dispose happened while the array was cloned it may have been partially zeroed out.
                     // However, if at this point the stored password is not null later disposal will not have any effect on the copy.
                     if (Volatile.Read(ref mPassword) != null)
                     {

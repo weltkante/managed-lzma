@@ -148,7 +148,7 @@ namespace sandbox_7z
                     for (int sectionIndex = 0; sectionIndex < mdModel.Metadata.DecoderSections.Length; sectionIndex++)
                     {
                         var dsReader = new ManagedLzma.SevenZip.Reader.DecodedSectionReader(file, mdModel.Metadata, sectionIndex, password);
-                        var mdFiles = mdModel.GetFilesInSection(0);
+                        var mdFiles = mdModel.GetFilesInSection(sectionIndex);
                         System.Diagnostics.Debug.Assert(mdFiles.Count == dsReader.StreamCount);
                         int k = 0;
                         while (dsReader.CurrentStreamIndex < dsReader.StreamCount)
