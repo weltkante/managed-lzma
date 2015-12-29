@@ -144,14 +144,31 @@ namespace sandbox_7z
                     var file = new FileStream(@"_test\test.7z", FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
                     var mdReader = new ManagedLzma.SevenZip.FileModel.ArchiveFileModelMetadataReader();
                     var mdModel = mdReader.ReadMetadata(file);
-                    var dsReader = new ManagedLzma.SevenZip.Reader.DecodedSectionReader(file, mdModel.Metadata, 0, ManagedLzma.PasswordStorage.Create("test"));
-                    int k = 0;
-                    while (dsReader.CurrentStreamIndex < dsReader.StreamCount)
+                    var password = ManagedLzma.PasswordStorage.Create("test");
+                    for (int sectionIndex = 0; sectionIndex < mdModel.Metadata.DecoderSections.Length; sectionIndex++)
                     {
-                        var substream = dsReader.OpenStream();
-                        using (var outstream = new FileStream(@"_test\output" + (++k), FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
-                            substream.CopyTo(outstream);
-                        dsReader.NextStream();
+                        var dsReader = new ManagedLzma.SevenZip.Reader.DecodedSectionReader(file, mdModel.Metadata, sectionIndex, password);
+                        var mdFiles = mdModel.GetFilesInSection(0);
+                        System.Diagnostics.Debug.Assert(mdFiles.Count == dsReader.StreamCount);
+                        int k = 0;
+                        while (dsReader.CurrentStreamIndex < dsReader.StreamCount)
+                        {
+                            var mdFile = mdFiles[dsReader.CurrentStreamIndex];
+                            if (mdFile != null)
+                            {
+                                System.Diagnostics.Debug.Assert(mdFile.StreamIndex.SectionIndex == sectionIndex);
+                                System.Diagnostics.Debug.Assert(mdFile.StreamIndex.StreamIndex == dsReader.CurrentStreamIndex);
+                                var substream = dsReader.OpenStream();
+                                using (var outstream = new FileStream(@"_test\output_" + (++k) + "_" + mdFile.Name, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
+                                {
+                                    outstream.SetLength(0);
+                                    if (mdFile.Offset != 0)
+                                        throw new NotImplementedException();
+                                    substream.CopyTo(outstream);
+                                }
+                            }
+                            dsReader.NextStream();
+                        }
                     }
                 }
             }
