@@ -100,7 +100,7 @@ namespace ManagedLzma
             public int mOrigin;
             public int mOffset;
             public int mEnding;
-            public TaskCompletionSource<int> mCompletion = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public AsyncTaskCompletionSource<int> mCompletion = AsyncTaskCompletionSource<int>.Create();
         }
 
         private object mSyncObject;
@@ -225,7 +225,7 @@ namespace ManagedLzma
             public int mOrigin;
             public int mOffset;
             public int mEnding;
-            public TaskCompletionSource<int> mCompletion = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public AsyncTaskCompletionSource<int> mCompletion = AsyncTaskCompletionSource<int>.Create();
             public StreamMode mMode;
         }
 

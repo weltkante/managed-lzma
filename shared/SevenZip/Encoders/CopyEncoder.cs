@@ -161,7 +161,7 @@ namespace ManagedLzma.SevenZip.Writer
                     Monitor.Wait(this);
             }
 
-            return Task.CompletedTask;
+            return Utilities.CompletedTask;
         }
     }
 }

@@ -116,11 +116,11 @@ namespace ManagedLzma.SevenZip.Writer
 
                     for (int j = 0; j < encoder.InputCount; j++)
                         if (!encoder.GetInput(j).IsConnected)
-                            throw new InvalidOperationException(FormattableString.Invariant($"Missing input connection #{j} for encoder #{i}."));
+                            throw new InvalidOperationException(String.Format("Missing input connection #{0} for encoder #{1}.", j, i));
 
                     for (int j = 0; j < encoder.OutputCount; j++)
                         if (!encoder.GetOutput(j).IsConnected)
-                            throw new InvalidOperationException(FormattableString.Invariant($"Missing output connection #{j} for encoder #{i}."));
+                            throw new InvalidOperationException(String.Format("Missing output connection #{0} for encoder #{1}.", j, i));
                 }
 
                 mComplete = true;

@@ -281,9 +281,9 @@ namespace ManagedLzma.SevenZip.Metadata
         public override string ToString()
         {
             if (DecoderIndex == null)
-                return FormattableString.Invariant($"{{{nameof(DecoderInputMetadata)} File Section #{StreamIndex}}}");
+                return String.Format("{{DecoderInputMetadata File Section #{0}}}", StreamIndex);
             else
-                return FormattableString.Invariant($"{{{nameof(DecoderInputMetadata)} Decoder #{DecoderIndex} Output #{StreamIndex}}}");
+                return String.Format("{{DecoderInputMetadata Decoder #{0} Output #{1}}}", DecoderIndex, StreamIndex);
         }
 
         public override int GetHashCode()
