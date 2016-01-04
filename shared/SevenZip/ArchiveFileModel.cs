@@ -59,12 +59,14 @@ namespace ManagedLzma.SevenZip.FileModel
     {
         public abstract class Builder
         {
+            public string FullName { get; set; }
             public string Name { get; set; }
 
             internal Builder() { }
 
             internal Builder(ArchivedItem original)
             {
+                this.FullName = original.FullName;
                 this.Name = original.Name;
             }
 
@@ -72,10 +74,19 @@ namespace ManagedLzma.SevenZip.FileModel
             public ArchivedItem ToImmutable() => ToImmutableCore();
         }
 
+        /// <summary>
+        /// The full name of the item, including the names of the parent folders within the archive.
+        /// </summary>
+        public string FullName { get; }
+
+        /// <summary>
+        /// The name of the item.
+        /// </summary>
         public string Name { get; }
 
-        internal ArchivedItem(string Name)
+        internal ArchivedItem(string FullName, string Name)
         {
+            this.FullName = FullName;
             this.Name = Name;
         }
     }
@@ -84,7 +95,7 @@ namespace ManagedLzma.SevenZip.FileModel
     {
         public new sealed class Builder : ArchivedItem.Builder
         {
-            public DecodedStreamIndex StreamIndex { get; set; }
+            public DecodedStreamIndex Stream { get; set; }
             public long Offset { get; set; }
             public long Length { get; set; }
             public Checksum? Checksum { get; set; }
@@ -98,7 +109,7 @@ namespace ManagedLzma.SevenZip.FileModel
             public Builder(ArchivedFile original)
                 : base(original)
             {
-                StreamIndex = original.StreamIndex;
+                Stream = original.Stream;
                 Offset = original.Offset;
                 Length = original.Length;
                 Checksum = original.Checksum;
@@ -109,10 +120,10 @@ namespace ManagedLzma.SevenZip.FileModel
             }
 
             internal override ArchivedItem ToImmutableCore() => ToImmutable();
-            public new ArchivedFile ToImmutable() => new ArchivedFile(Name, StreamIndex, Offset, Length, Checksum, Attributes, Creation, LastWrite, LastAccess);
+            public new ArchivedFile ToImmutable() => new ArchivedFile(FullName, Name, Stream, Offset, Length, Checksum, Attributes, Creation, LastWrite, LastAccess);
         }
 
-        public DecodedStreamIndex StreamIndex { get; }
+        public DecodedStreamIndex Stream { get; }
         public long Offset { get; }
         public long Length { get; }
         public Checksum? Checksum { get; }
@@ -121,10 +132,10 @@ namespace ManagedLzma.SevenZip.FileModel
         public DateTime? LastWrite { get; }
         public DateTime? LastAccess { get; }
 
-        public ArchivedFile(string Name, DecodedStreamIndex StreamIndex, long Offset, long Length, Checksum? Checksum, FileAttributes? Attributes, DateTime? Creation, DateTime? LastWrite, DateTime? LastAccess)
-            : base(Name)
+        public ArchivedFile(string FullName, string Name, DecodedStreamIndex Stream, long Offset, long Length, Checksum? Checksum, FileAttributes? Attributes, DateTime? Creation, DateTime? LastWrite, DateTime? LastAccess)
+            : base(FullName, Name)
         {
-            this.StreamIndex = StreamIndex;
+            this.Stream = Stream;
             this.Offset = Offset;
             this.Length = Length;
             this.Checksum = Checksum;
@@ -172,13 +183,13 @@ namespace ManagedLzma.SevenZip.FileModel
             }
 
             internal override ArchivedItem ToImmutableCore() => ToImmutable();
-            public new ArchivedFolder ToImmutable() => new ArchivedFolder(Name, GetImmutableItems());
+            public new ArchivedFolder ToImmutable() => new ArchivedFolder(FullName, Name, GetImmutableItems());
         }
 
         public ImmutableList<ArchivedItem> Items { get; }
 
-        public ArchivedFolder(string Name, ImmutableList<ArchivedItem> Items)
-            : base(Name)
+        public ArchivedFolder(string FullName, string Name, ImmutableList<ArchivedItem> Items)
+            : base(FullName, Name)
         {
             this.Items = Items;
         }
@@ -305,7 +316,7 @@ namespace ManagedLzma.SevenZip.FileModel
                                 mSectionMap.Add(mStreamMap.Count);
                             }
 
-                            file.StreamIndex = new DecodedStreamIndex(currentSectionIndex, currentStreamIndex);
+                            file.Stream = new DecodedStreamIndex(currentSectionIndex, currentStreamIndex);
 
                             var streamMetadata = currentDecoder.Streams[currentStreamIndex++];
                             file.Length = streamMetadata.Length;
@@ -343,7 +354,7 @@ namespace ManagedLzma.SevenZip.FileModel
             {
                 itemName = fullName.Substring(offset);
                 if (isFile)
-                    return AddFile(items, itemName);
+                    return AddFile(items, fullName, itemName);
             }
             else
             {
@@ -364,6 +375,7 @@ namespace ManagedLzma.SevenZip.FileModel
             {
                 RemoveItem(items, itemName);
                 folder = new ArchivedFolder.Builder();
+                folder.FullName = fullName;
                 folder.Name = itemName;
                 items.Add(folder);
                 mItemMap.Add(folder, new List<ArchivedItem.Builder>());
@@ -378,10 +390,11 @@ namespace ManagedLzma.SevenZip.FileModel
             return AddItem(mItemMap[folder], fullName, ending + 1, isFile);
         }
 
-        private ArchivedFile.Builder AddFile(List<ArchivedItem.Builder> items, string name)
+        private ArchivedFile.Builder AddFile(List<ArchivedItem.Builder> items, string fullName, string name)
         {
             RemoveItem(items, name);
             var file = new ArchivedFile.Builder();
+            file.FullName = fullName;
             file.Name = name;
             items.Add(file);
             mFiles.Add(file);

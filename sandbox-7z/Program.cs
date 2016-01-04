@@ -156,8 +156,8 @@ namespace sandbox_7z
                             var mdFile = mdFiles[dsReader.CurrentStreamIndex];
                             if (mdFile != null)
                             {
-                                System.Diagnostics.Debug.Assert(mdFile.StreamIndex.SectionIndex == sectionIndex);
-                                System.Diagnostics.Debug.Assert(mdFile.StreamIndex.StreamIndex == dsReader.CurrentStreamIndex);
+                                System.Diagnostics.Debug.Assert(mdFile.Stream.SectionIndex == sectionIndex);
+                                System.Diagnostics.Debug.Assert(mdFile.Stream.StreamIndex == dsReader.CurrentStreamIndex);
                                 var substream = dsReader.OpenStream();
                                 using (var outstream = new FileStream(@"_test\output_" + (++k) + "_" + mdFile.Name, FileMode.Create, FileAccess.ReadWrite, FileShare.Delete))
                                 {
@@ -193,10 +193,6 @@ namespace sandbox_7z
                 var archiveFileModel = archiveMetadataReader.ReadMetadata(archiveStream, password);
                 var archiveMetadata = archiveFileModel.Metadata;
 
-                // Workaround: the current file metadata does not provide the relative path of the files, so we need to reconstruct it from the metadata
-                var nameMap = new Dictionary<ManagedLzma.SevenZip.Metadata.DecodedStreamIndex, string>();
-                InitializeNameMap(nameMap, archiveFileModel.RootFolder, string.Empty);
-
                 for (int sectionIndex = 0; sectionIndex < archiveMetadata.DecoderSections.Length; sectionIndex++)
                 {
                     var sectionReader = new ManagedLzma.SevenZip.Reader.DecodedSectionReader(archiveStream, archiveMetadata, sectionIndex, password);
@@ -218,11 +214,11 @@ namespace sandbox_7z
                             continue;
 
                         // These asserts need to hold, otherwise there's a bug in the mapping the metadata reader produced.
-                        System.Diagnostics.Debug.Assert(fileMetadata.StreamIndex.SectionIndex == sectionIndex);
-                        System.Diagnostics.Debug.Assert(fileMetadata.StreamIndex.StreamIndex == sectionReader.CurrentStreamIndex);
+                        System.Diagnostics.Debug.Assert(fileMetadata.Stream.SectionIndex == sectionIndex);
+                        System.Diagnostics.Debug.Assert(fileMetadata.Stream.StreamIndex == sectionReader.CurrentStreamIndex);
 
                         // Ensure that the target directory is created.
-                        var filename = Path.Combine(targetDirectory, nameMap[fileMetadata.StreamIndex]);
+                        var filename = Path.Combine(targetDirectory, fileMetadata.FullName);
                         Directory.CreateDirectory(Path.GetDirectoryName(filename));
 
                         // NOTE: you can have two using-statements here if you want to be explicit about it, but disposing the
@@ -237,21 +233,6 @@ namespace sandbox_7z
 
                 // Create empty files and empty directories.
                 UnpackArchiveStructure(archiveFileModel.RootFolder, targetDirectory);
-            }
-        }
-
-        // Workaround: the current file metadata does not provide the relative path of the files, so we need to reconstruct it from the metadata
-        private static void InitializeNameMap(Dictionary<ManagedLzma.SevenZip.Metadata.DecodedStreamIndex, string> nameMap, ManagedLzma.SevenZip.FileModel.ArchivedFolder folder, string path)
-        {
-            foreach (var item in folder.Items)
-            {
-                var file = item as ManagedLzma.SevenZip.FileModel.ArchivedFile;
-                if (file != null && !file.StreamIndex.IsUndefined)
-                    nameMap[file.StreamIndex] = Path.Combine(path, file.Name);
-
-                var subfolder = item as ManagedLzma.SevenZip.FileModel.ArchivedFolder;
-                if (subfolder != null)
-                    InitializeNameMap(nameMap, subfolder, Path.Combine(path, subfolder.Name));
             }
         }
 
@@ -270,7 +251,7 @@ namespace sandbox_7z
                     if (file != null)
                     {
                         // Files without content are not iterated during normal unpacking so we need to create them manually.
-                        if (file.StreamIndex.IsUndefined)
+                        if (file.Stream.IsUndefined)
                         {
                             System.Diagnostics.Debug.Assert(file.Length == 0); // If the file has no content then its length should be zero, otherwise something is wrong.
 
