@@ -175,7 +175,7 @@ namespace ManagedLzma.SevenZip.Metadata
             if (IsUndefined)
                 return "{DecodedStreamIndex Undefined}";
 
-            return FormattableString.Invariant($"{{DecodedStreamIndex Section={SectionIndex} Stream={StreamIndex}}}");
+            return String.Format("{{DecodedStreamIndex Section={0} Stream={1}}}", SectionIndex, StreamIndex);
         }
 
         public override int GetHashCode()
