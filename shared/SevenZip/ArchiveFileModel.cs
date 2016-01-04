@@ -15,10 +15,10 @@ namespace ManagedLzma.SevenZip.FileModel
         /// <summary>The metadata of the archive.</summary>
         public ArchiveMetadata Metadata { get; }
 
+        /// <summary>The hierarchic structure of files and folders within the archive.</summary>
         public ArchivedFolder RootFolder { get; }
 
-        public ImmutableList<ArchivedFile> Files { get; }
-
+        private readonly ImmutableList<ArchivedFile> mSectionFiles;
         private readonly ImmutableArray<int> mSections;
 
         internal ArchiveFileModel(ArchiveMetadata metadata, ArchivedFolder rootFolder, ImmutableArray<int> sections, ImmutableList<ArchivedFile> files)
@@ -40,10 +40,15 @@ namespace ManagedLzma.SevenZip.FileModel
 
             this.Metadata = metadata;
             this.RootFolder = rootFolder;
-            this.Files = files;
+            this.mSectionFiles = files;
             this.mSections = sections;
         }
 
+        /// <summary>
+        /// Returns file metadata for the given decoder section.
+        /// The returned list may contain null entries when the corresponding stream should not be written to a file.
+        /// </summary>
+        /// <param name="sectionIndex">The decoder section for which files should be returned.</param>
         public ImmutableList<ArchivedFile> GetFilesInSection(int sectionIndex)
         {
             if (sectionIndex < 0 || sectionIndex >= Metadata.DecoderSections.Length)
@@ -51,7 +56,7 @@ namespace ManagedLzma.SevenZip.FileModel
 
             var offset = mSections[sectionIndex];
             var length = mSections[sectionIndex + 1] - offset;
-            return Files.GetRange(offset, length);
+            return mSectionFiles.GetRange(offset, length);
         }
     }
 
