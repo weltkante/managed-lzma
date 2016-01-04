@@ -2,15 +2,14 @@
 
 This project provides a translation of the LZMA SDK, including both the LZMA and LZMA2 algorithms as well as the 7zip container format in fully managed C#
 
-The current state is working but the semi-automatic translation is still showing in a lot of places. Long term goals are clean up and optimization of the codebase and better integration into the managed world.
+In the current state the project hides the translated code behind a prototype public API, cleanup of the actual implementation will follow at a later stage.
 
-The current API and implementation is not stable and subject to change during the cleanup process.
+A [nuget package](https://www.nuget.org/packages/ManagedLzma) for the desktop framework exists and is currently in finalization phase. A portable library is theoretically possible but currently does not build properly for all targets, for details see issue #8
 
 ### Roadmap:
-- Design a proper API for 7z archives, the current API is a placeholder
+- Complete missing functionality for the nuget package
+- Writing documentation for the nuget package
 - Implement an Universal Windows library (Windows 10) to achieve native C++ performance
-- Publish nuget packages
-- Update to the latest version of the reference implementation
 - Implement the projection onto unsafe pointers for performance
 
 [![Discussion of Implementation and Features at https://gitter.im/weltkante/managed-lzma](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/weltkante/managed-lzma?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) for discussions that don't warrant a github issue.
