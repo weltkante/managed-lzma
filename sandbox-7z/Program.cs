@@ -230,6 +230,8 @@ namespace sandbox_7z
                         //       and will be auto-closed when moving to the next stream or when disposing the section reader.
                         using (var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.Delete))
                             sectionReader.OpenStream().CopyTo(stream);
+
+                        SetFileAttributes(filename, fileMetadata);
                     }
                 }
 
@@ -270,12 +272,15 @@ namespace sandbox_7z
                         // Files without content are not iterated during normal unpacking so we need to create them manually.
                         if (file.StreamIndex.IsUndefined)
                         {
-                            System.Diagnostics.Debug.Assert(file.Length == 0); // If the file has no content then it length should be zero, otherwise something is wrong.
+                            System.Diagnostics.Debug.Assert(file.Length == 0); // If the file has no content then its length should be zero, otherwise something is wrong.
 
-                            using (var stream = new FileStream(Path.Combine(targetDirectory, file.Name), FileMode.Create, FileAccess.Write, FileShare.Delete))
+                            var filename = Path.Combine(targetDirectory, file.Name);
+                            using (var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.Delete))
                             {
                                 // Nothing to do, FileMode.Create already truncates the file on opening.
                             }
+
+                            SetFileAttributes(filename, file);
                         }
                     }
 
