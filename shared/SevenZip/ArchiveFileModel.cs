@@ -192,6 +192,7 @@ namespace ManagedLzma.SevenZip.FileModel
         private static readonly char[] kFolderSeparators = { '\\', '/' };
 
         private bool mIsRunning;
+        private int mItemCount;
         private int mItemsWithoutStream;
 
         private List<string> mFileNames;
@@ -221,6 +222,19 @@ namespace ManagedLzma.SevenZip.FileModel
             {
                 mIsRunning = true;
 
+                // reset fields to detect bugs
+                mFileNames = null;
+                mItemsWithoutStreamMarkers = null;
+                mEmptyFileMarkers = null;
+                mDeletionMarkers = null;
+                mOffsets = null;
+                mAttributes = null;
+                mCDates = null;
+                mMDates = null;
+                mADates = null;
+                mItemCount = -1;
+                mItemsWithoutStream = -1;
+
                 var metadata = ReadMetadataCore(stream, password);
 
                 mRootFolder = new ArchivedFolder.Builder();
@@ -228,7 +242,7 @@ namespace ManagedLzma.SevenZip.FileModel
                 mItemMap.Add(mRootFolder, new List<ArchivedItem.Builder>());
                 mFiles = new HashSet<ArchivedFile.Builder>();
                 mStreamMap = new List<ArchivedFile.Builder>();
-                mSectionMap = ImmutableArray.CreateBuilder<int>(metadata.DecoderSections.Length);
+                mSectionMap = ImmutableArray.CreateBuilder<int>(metadata.DecoderSections.Length + 1);
 
                 ArchiveDecoderSection currentDecoder = null;
                 int currentSectionIndex = -1;
@@ -288,7 +302,7 @@ namespace ManagedLzma.SevenZip.FileModel
                                 currentStreamCount = currentDecoder.Streams.Length;
                                 currentStreamIndex = 0;
 
-                                mSectionMap.Add(currentFileIndex);
+                                mSectionMap.Add(mStreamMap.Count);
                             }
 
                             file.StreamIndex = new DecodedStreamIndex(currentSectionIndex, currentStreamIndex);
@@ -310,7 +324,7 @@ namespace ManagedLzma.SevenZip.FileModel
                 if (currentStreamIndex != currentStreamCount || currentSectionIndex != metadata.DecoderSections.Length - 1)
                     throw new InvalidDataException();
 
-                mSectionMap.Add(mFileNames.Count);
+                mSectionMap.Add(finalStreamMap.Count);
 
                 return new ArchiveFileModel(metadata, BuildFolder(mRootFolder), mSectionMap.MoveToImmutable(), finalStreamMap.ToImmutable());
             }
@@ -449,9 +463,16 @@ namespace ManagedLzma.SevenZip.FileModel
             return builder.ToImmutable();
         }
 
+        protected override void Initialize(int count)
+        {
+            System.Diagnostics.Debug.Assert(count >= 0);
+            mItemCount = count;
+        }
+
         protected override void ReadNames(MetadataStringReader data)
         {
             System.Diagnostics.Debug.Assert(mFileNames == null);
+            System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
             mFileNames = new List<string>(data.Count);
             for (int i = 0; i < data.Count; i++)
@@ -461,9 +482,9 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadEmptyStreamMarkers(MetadataBitReader data)
         {
             System.Diagnostics.Debug.Assert(mItemsWithoutStreamMarkers == null);
-            System.Diagnostics.Debug.Assert(mFileNames != null);
-            System.Diagnostics.Debug.Assert(data.Count == mFileNames.Count);
+            System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
+            mItemsWithoutStream = 0;
             mItemsWithoutStreamMarkers = new List<bool>(data.Count);
             for (int i = 0; i < data.Count; i++)
             {
@@ -477,8 +498,6 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadEmptyFileMarkers(MetadataBitReader data)
         {
             System.Diagnostics.Debug.Assert(mEmptyFileMarkers == null);
-            System.Diagnostics.Debug.Assert(mItemsWithoutStreamMarkers != null);
-            System.Diagnostics.Debug.Assert(mFileNames != null);
             System.Diagnostics.Debug.Assert(data.Count == mItemsWithoutStream);
 
             mEmptyFileMarkers = new List<bool>(data.Count);
@@ -489,8 +508,6 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadRemovedFileMarkers(MetadataBitReader data)
         {
             System.Diagnostics.Debug.Assert(mDeletionMarkers == null);
-            System.Diagnostics.Debug.Assert(mItemsWithoutStreamMarkers != null);
-            System.Diagnostics.Debug.Assert(mFileNames != null);
             System.Diagnostics.Debug.Assert(data.Count == mItemsWithoutStream);
 
             mDeletionMarkers = new List<bool>(data.Count);
@@ -501,7 +518,7 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadOffsets(MetadataNumberReader data)
         {
             System.Diagnostics.Debug.Assert(mOffsets == null);
-            System.Diagnostics.Debug.Assert(data.Count == mFileNames.Count);
+            System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
             mOffsets = new List<long?>(data.Count);
             for (int i = 0; i < data.Count; i++)
@@ -511,7 +528,7 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadAttributes(MetadataAttributeReader data)
         {
             System.Diagnostics.Debug.Assert(mAttributes == null);
-            System.Diagnostics.Debug.Assert(data.Count == mFileNames.Count);
+            System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
             mAttributes = new List<FileAttributes?>(data.Count);
             for (int i = 0; i < data.Count; i++)
@@ -521,7 +538,7 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadCTime(MetadataDateReader data)
         {
             System.Diagnostics.Debug.Assert(mCDates == null);
-            System.Diagnostics.Debug.Assert(data.Count == mFileNames.Count);
+            System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
             mCDates = new List<DateTime?>(data.Count);
             for (int i = 0; i < data.Count; i++)
@@ -531,7 +548,7 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadMTime(MetadataDateReader data)
         {
             System.Diagnostics.Debug.Assert(mMDates == null);
-            System.Diagnostics.Debug.Assert(data.Count == mFileNames.Count);
+            System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
             mMDates = new List<DateTime?>(data.Count);
             for (int i = 0; i < data.Count; i++)
@@ -541,7 +558,7 @@ namespace ManagedLzma.SevenZip.FileModel
         protected override void ReadATime(MetadataDateReader data)
         {
             System.Diagnostics.Debug.Assert(mADates == null);
-            System.Diagnostics.Debug.Assert(data.Count == mFileNames.Count);
+            System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
             mADates = new List<DateTime?>(data.Count);
             for (int i = 0; i < data.Count; i++)

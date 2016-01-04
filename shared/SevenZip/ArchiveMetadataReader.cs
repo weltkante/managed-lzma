@@ -185,6 +185,7 @@ namespace ManagedLzma.SevenZip.Reader
             }
         }
 
+        protected virtual void Initialize(int count) { }
         protected virtual void ReadNames(MetadataStringReader data) { }
         protected virtual void ReadAttributes(MetadataAttributeReader data) { }
         protected virtual void ReadOffsets(MetadataNumberReader data) { }
@@ -266,6 +267,7 @@ namespace ManagedLzma.SevenZip.Reader
                     throw new InvalidDataException();
 
                 var fileCount = ReadNumberAsInt32();
+                Initialize(fileCount);
 
                 for (;;)
                 {
