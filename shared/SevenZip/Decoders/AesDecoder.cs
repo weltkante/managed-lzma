@@ -242,10 +242,12 @@ namespace ManagedLzma.SevenZip.Reader
 
         public override void Dispose()
         {
+            Utilities.NeedsReview();
+
             mStream.Dispose();
             mDecoder.Dispose();
-
-            throw new NotImplementedException();
+            mOutput.Dispose();
+            mInput?.Dispose();
         }
 
         public override void SetInputStream(int index, ReaderNode stream, long length)
@@ -269,7 +271,17 @@ namespace ManagedLzma.SevenZip.Reader
 
         private void Skip(int count)
         {
-            throw new NotImplementedException();
+            Utilities.NeedsBetterImplementation();
+
+            var buffer = new byte[Math.Min(0x4000, count)];
+            while (count > 0)
+            {
+                var skipped = Read(buffer, 0, Math.Min(buffer.Length, count));
+                if (skipped == 0)
+                    throw new InvalidOperationException(ErrorStrings.SkipBeyondEndOfStream);
+
+                count -= skipped;
+            }
         }
 
         private int Read(byte[] buffer, int offset, int count)

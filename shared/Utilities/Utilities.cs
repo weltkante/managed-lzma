@@ -67,8 +67,29 @@ namespace ManagedLzma
         Task CompleteAsync();
     }
 
+    internal static class ErrorStrings
+    {
+        internal const string SkipBeyondEndOfStream = "Skipping beyond end of stream.";
+    }
+
     internal static class Utilities
     {
+        internal static void NeedsReview()
+        {
+#if DEBUG
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debugger.Break();
+#endif
+        }
+
+        internal static void NeedsBetterImplementation()
+        {
+#if DEBUG
+            if (System.Diagnostics.Debugger.IsAttached)
+                System.Diagnostics.Debugger.Break();
+#endif
+        }
+
 #if NET_45
         internal static Task CompletedTask => Task.FromResult<object>(null);
 #else

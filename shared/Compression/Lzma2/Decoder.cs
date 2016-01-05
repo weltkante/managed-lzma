@@ -126,7 +126,10 @@ namespace ManagedLzma.LZMA2
 
         public int SkipOutputData(int length)
         {
-            throw new NotImplementedException();
+            Utilities.NeedsBetterImplementation();
+
+            var buffer = new byte[Math.Min(0x4000, length)];
+            return ReadOutputData(buffer, 0, buffer.Length);
         }
 
         /// <summary>

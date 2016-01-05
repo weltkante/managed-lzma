@@ -77,6 +77,8 @@ namespace ManagedLzma.SevenZip.Reader
 
         public override void Dispose()
         {
+            Utilities.NeedsReview();
+
             mOutput.Dispose();
             mInput?.Dispose();
             PPMD.Ppmd7_Free(mState, mAlloc);
@@ -106,13 +108,17 @@ namespace ManagedLzma.SevenZip.Reader
 
         private void Skip(int count)
         {
-#if DEBUG
-            throw new NotImplementedException();
-#else
-            var buffer = new byte[count];
+            Utilities.NeedsBetterImplementation();
+
+            var buffer = new byte[Math.Min(0x4000, count)];
             while (count > 0)
-                count -= Read(buffer, 0, count);
-#endif
+            {
+                var skipped = Read(buffer, 0, Math.Min(buffer.Length, count));
+                if (skipped == 0)
+                    throw new InvalidOperationException(ErrorStrings.SkipBeyondEndOfStream);
+
+                count -= skipped;
+            }
         }
 
         private unsafe int Read(byte[] buffer, int offset, int length)
