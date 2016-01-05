@@ -831,6 +831,73 @@ namespace ManagedLzma.SevenZip.Writer
             }
         }
 
+        private void CheckName(ref string name)
+        {
+            if (String.IsNullOrEmpty(name))
+                throw new InvalidOperationException("Name cannot be empty.");
+
+            name = name.Replace('\\', '/');
+
+            Utilities.NeedsReview(); // TODO: we need to hardcode this so you can't write invalid filenames on non-windows platforms
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var offset = 0;
+            for (;;)
+            {
+                var ending = name.IndexOf('/', offset);
+                var part = ending < 0 ? name.Substring(offset) : name.Substring(offset, ending - offset);
+
+                if (String.IsNullOrEmpty(part))
+                    throw new InvalidOperationException("Name contains empty path component.");
+
+                if (part == ".")
+                    throw new InvalidOperationException("Relative path component '.' is not allowed.");
+
+                if (part == "..")
+                    throw new InvalidOperationException("Relative path component '..' is not allowed.");
+
+                if (part.IndexOfAny(invalid) >= 0)
+                    throw new InvalidOperationException("Name contains invalid characters.");
+
+                if (ending < 0)
+                    break;
+
+                offset = ending + 1;
+            }
+        }
+
+        private void CheckAttributes(ref FileAttributes? attr, bool isFile)
+        {
+            Utilities.NeedsBetterImplementation();
+
+            if (attr.HasValue)
+            {
+                if (isFile)
+                {
+                    if ((attr.Value & FileAttributes.Directory) != 0)
+                        throw new InvalidOperationException("Directory attribute cannot be set on a file.");
+                }
+                else
+                {
+                    // TODO: should we auto-add the directory attribute here?
+                    attr = attr.Value | FileAttributes.Directory;
+                }
+
+                const FileAttributes kSupported = default(FileAttributes)
+                    | FileAttributes.Directory
+                    | FileAttributes.Archive
+                    | FileAttributes.ReadOnly
+                    | FileAttributes.Hidden
+                    //| FileAttributes.System
+                    //| FileAttributes.Compressed
+                    | FileAttributes.NotContentIndexed
+                    ;
+
+                if ((attr.Value & ~kSupported) != 0)
+                    throw new NotImplementedException("Some file attributes you passed are not handled. You can work around this exception by filtering them out manually.");
+            }
+        }
+
         private void CheckDate(ref DateTime? date)
         {
             if (date.HasValue)
@@ -855,12 +922,16 @@ namespace ManagedLzma.SevenZip.Writer
 
         public void AppendFile(string name, long length, Checksum? checksum, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
         {
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length));
+
+            CheckName(ref name);
+            CheckAttributes(ref attributes, true);
             CheckDate(ref creationDate);
             CheckDate(ref lastWriteDate);
             CheckDate(ref lastAccessDate);
 
-            // TODO: check arguments and replicate the checks when the metadata is queried from the provider
-            //       (in particular don't forget to check that timestamps are UTC)
+            // TODO: replicate the checks when the metadata is queried from the provider (in particular don't forget to check that timestamps are UTC)
 
             mEntries.Add(new Entry {
                 Name = name,
@@ -878,11 +949,15 @@ namespace ManagedLzma.SevenZip.Writer
 
         public void AppendDirectory(string name, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
         {
+            CheckName(ref name);
+            CheckAttributes(ref attributes, false);
             CheckDate(ref creationDate);
             CheckDate(ref lastWriteDate);
             CheckDate(ref lastAccessDate);
 
             // TODO: check attributes and reject invalid ones (replicate the check when writing the attributes so other metadata providers get the check too)
+
+            Utilities.NeedsReview(); // TODO: which dates are recorded for a directory?
 
             mEntries.Add(new Entry {
                 Name = name,
@@ -893,7 +968,7 @@ namespace ManagedLzma.SevenZip.Writer
 
         public void AppendFileDeletion(string name)
         {
-            // TODO: check name
+            CheckName(ref name);
 
             mEntries.Add(new Entry {
                 Name = name,
@@ -903,7 +978,7 @@ namespace ManagedLzma.SevenZip.Writer
 
         public void AppendDirectoryDeletion(string name)
         {
-            // TODO: check name
+            CheckName(ref name);
 
             mEntries.Add(new Entry {
                 Name = name,
