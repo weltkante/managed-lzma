@@ -6,7 +6,7 @@
     <SharedGUID>d2b79ce1-6d9a-4785-8255-10890f5ffdff</SharedGUID>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
-    <Import_RootNamespace>shared</Import_RootNamespace>
+    <Import_RootNamespace>ManagedLzma</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Compression\Implementation\Core.cs" />
@@ -48,6 +48,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\CopyDecoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\Lzma2Decoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\LzmaDecoder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Decoders\PpmdDecoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\AesEncoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\CopyEncoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\Encoders\Definition.cs" />
