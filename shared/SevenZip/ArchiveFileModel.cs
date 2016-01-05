@@ -380,7 +380,7 @@ namespace ManagedLzma.SevenZip.FileModel
             {
                 RemoveItem(items, itemName);
                 folder = new ArchivedFolder.Builder();
-                folder.FullName = fullName;
+                folder.FullName = ending < 0 ? fullName : fullName.Substring(0, ending);
                 folder.Name = itemName;
                 items.Add(folder);
                 mItemMap.Add(folder, new List<ArchivedItem.Builder>());
