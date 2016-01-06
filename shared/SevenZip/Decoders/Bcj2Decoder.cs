@@ -139,6 +139,7 @@ namespace ManagedLzma.SevenZip.Reader
             mMainStream?.Dispose();
             mCallStream?.Dispose();
             mJumpStream?.Dispose();
+            mRangeDecoder?.Dispose();
         }
 
         public override void SetInputStream(int index, ReaderNode stream, long length)
