@@ -182,7 +182,7 @@ namespace ManagedLzma.SevenZip.Reader
             {
                 var rem = mLength - mPosition;
                 if (size > rem)
-                    size = (UInt32)rem;
+                    size = (uint)rem;
             }
 
             uint i;
@@ -244,9 +244,9 @@ namespace ManagedLzma.SevenZip.Reader
         /* SEE-contexts for PPM-contexts with masked symbols */
         public struct CPpmd_See
         {
-            public UInt16 Summ; /* Freq */
-            public Byte Shift;  /* Speed of Freq change; low Shift is for fast change */
-            public Byte Count;  /* Count to next change of Shift */
+            public ushort Summ; /* Freq */
+            public byte Shift;  /* Speed of Freq change; low Shift is for fast change */
+            public byte Count;  /* Count to next change of Shift */
         }
 
         public static void Ppmd_See_Update(ref CPpmd_See p)
@@ -254,21 +254,21 @@ namespace ManagedLzma.SevenZip.Reader
             if (p.Shift < PPMD_PERIOD_BITS && --p.Count == 0)
             {
                 p.Summ <<= 1;
-                p.Count = (Byte)(3 << p.Shift++);
+                p.Count = (byte)(3 << p.Shift++);
             }
         }
 
         public struct CPpmd_State
         {
-            public Byte Symbol;
-            public Byte Freq;
-            public UInt16 SuccessorLow;
-            public UInt16 SuccessorHigh;
+            public byte Symbol;
+            public byte Freq;
+            public ushort SuccessorLow;
+            public ushort SuccessorHigh;
         }
 
         public struct CPpmd_State_Ref
         {
-            public UInt32 Value;
+            public uint Value;
 
             public CPpmd_State_Ref(uint value)
             {
@@ -288,7 +288,7 @@ namespace ManagedLzma.SevenZip.Reader
 
         public struct CPpmd_Void_Ref
         {
-            public UInt32 Value;
+            public uint Value;
 
             public CPpmd_Void_Ref(uint value)
             {
@@ -301,7 +301,7 @@ namespace ManagedLzma.SevenZip.Reader
 
         public struct CPpmd_Byte_Ref
         {
-            public UInt32 Value;
+            public uint Value;
 
             public CPpmd_Byte_Ref(uint value)
             {
@@ -333,7 +333,7 @@ namespace ManagedLzma.SevenZip.Reader
 
         public struct CPpmd7_Context_Ref
         {
-            public UInt32 Value;
+            public uint Value;
 
             public CPpmd7_Context_Ref(uint value)
             {
@@ -353,8 +353,8 @@ namespace ManagedLzma.SevenZip.Reader
 
         public struct CPpmd7_Context
         {
-            public UInt16 NumStats;
-            public UInt16 SummFreq;
+            public ushort NumStats;
+            public ushort SummFreq;
             public CPpmd_State_Ref Stats;
             public CPpmd7_Context_Ref Suffix;
         }
@@ -374,25 +374,25 @@ namespace ManagedLzma.SevenZip.Reader
             public int RunLength;
             public int InitRL; /* must be 32-bit at least */
 
-            public UInt32 Size;
-            public UInt32 GlueCount;
-            public Byte* Base;
-            public Byte* LoUnit;
-            public Byte* HiUnit;
-            public Byte* Text;
-            public Byte* UnitsStart;
-            public UInt32 AlignOffset;
+            public uint Size;
+            public uint GlueCount;
+            public byte* Base;
+            public byte* LoUnit;
+            public byte* HiUnit;
+            public byte* Text;
+            public byte* UnitsStart;
+            public uint AlignOffset;
 
-            public Byte[] Indx2Units = new byte[PPMD_NUM_INDEXES];
-            public Byte[] Units2Indx = new byte[128];
+            public byte[] Indx2Units = new byte[PPMD_NUM_INDEXES];
+            public byte[] Units2Indx = new byte[128];
             public CPpmd_Void_Ref[] FreeList = new CPpmd_Void_Ref[PPMD_NUM_INDEXES];
-            public Byte[] NS2Indx = new byte[256];
-            public Byte[] NS2BSIndx = new byte[256];
-            public Byte[] HB2Flag = new byte[256];
+            public byte[] NS2Indx = new byte[256];
+            public byte[] NS2BSIndx = new byte[256];
+            public byte[] HB2Flag = new byte[256];
             public CPpmd_See* DummySee;
             //public CPpmd_See[,] See = new CPpmd_See[25, 16];
             public CPpmd_See*[] See = new CPpmd_See*[25];
-            //public UInt16[,] BinSumm = new ushort[128, 64];
+            //public ushort[,] BinSumm = new ushort[128, 64];
             public ushort*[] BinSumm = new ushort*[128];
 
             private IntPtr mBackingSee;
@@ -426,7 +426,7 @@ namespace ManagedLzma.SevenZip.Reader
         }
 
         //void Ppmd7_Construct(CPpmd7 *p);
-        //Bool Ppmd7_Alloc(CPpmd7 *p, UInt32 size, ISzAlloc *alloc);
+        //Bool Ppmd7_Alloc(CPpmd7 *p, uint size, ISzAlloc *alloc);
         //void Ppmd7_Free(CPpmd7 *p, ISzAlloc *alloc);
         //void Ppmd7_Init(CPpmd7 *p, unsigned maxOrder);
         public static bool Ppmd7_WasAllocated(CPpmd7 p) => (p.Base != null);
@@ -434,7 +434,7 @@ namespace ManagedLzma.SevenZip.Reader
 
         /* ---------- Internal Functions ---------- */
 
-        //extern const Byte PPMD7_kExpEscape[16];
+        //extern const byte PPMD7_kExpEscape[16];
 
         public static void* Ppmd7_GetPtr(CPpmd7 p, CPpmd_Void_Ref offs) => ((void*)(p.Base + offs.Value));
         public static CPpmd7_Context* Ppmd7_GetContext(CPpmd7 p, CPpmd7_Context_Ref offs) => (CPpmd7_Context*)Ppmd7_GetPtr(p, offs);
@@ -455,18 +455,10 @@ namespace ManagedLzma.SevenZip.Reader
                          + ((p.RunLength >> 26) & 0x20)];
         }
 
-        //CPpmd_See *Ppmd7_MakeEscFreq(CPpmd7 *p, unsigned numMasked, UInt32 *scale);
+        //CPpmd_See *Ppmd7_MakeEscFreq(CPpmd7 *p, unsigned numMasked, uint *scale);
 
 
         /* ---------- Decode ---------- */
-
-        //        struct
-        //        {
-        //  UInt32(*GetThreshold)(void* p, UInt32 total);
-        //  void (*Decode)(void* p, UInt32 start, UInt32 size);
-        //  UInt32(*DecodeBit)(void* p, UInt32 size0);
-        //}
-        //    IPpmd7_RangeDec;
 
         public abstract class IPpmd7_RangeDec
         {
@@ -477,8 +469,8 @@ namespace ManagedLzma.SevenZip.Reader
 
         public sealed class CPpmd7z_RangeDec : IPpmd7_RangeDec
         {
-            public UInt32 Range;
-            public UInt32 Code;
+            public uint Range;
+            public uint Code;
             public IByteIn Stream;
         }
 
@@ -516,7 +508,7 @@ namespace ManagedLzma.SevenZip.Reader
 
         public struct CPpmd7_Node_Ref
         {
-            public UInt32 Value;
+            public uint Value;
 
             public CPpmd7_Node_Ref(uint value)
             {
@@ -531,8 +523,8 @@ namespace ManagedLzma.SevenZip.Reader
 
         struct CPpmd7_Node
         {
-            public UInt16 Stamp; /* must be at offset 0 as CPpmd7_Context::NumStats. Stamp=0 means free */
-            public UInt16 NU;
+            public ushort Stamp; /* must be at offset 0 as CPpmd7_Context::NumStats. Stamp=0 means free */
+            public ushort NU;
             public CPpmd7_Node_Ref Next; /* must be at offset >= 4 */
             public CPpmd7_Node_Ref Prev;
         }
@@ -548,8 +540,8 @@ namespace ManagedLzma.SevenZip.Reader
             for (i = 0, k = 0; i < PPMD_NUM_INDEXES; i++)
             {
                 uint step = (i >= 12 ? 4 : (i >> 2) + 1);
-                do { p.Units2Indx[k++] = (Byte)i; } while (--step != 0);
-                p.Indx2Units[i] = (Byte)k;
+                do { p.Units2Indx[k++] = (byte)i; } while (--step != 0);
+                p.Indx2Units[i] = (byte)k;
             }
 
             p.NS2BSIndx[0] = (0 << 1);
@@ -590,7 +582,7 @@ namespace ManagedLzma.SevenZip.Reader
             p.Base = null;
         }
 
-        public static bool Ppmd7_Alloc(CPpmd7 p, UInt32 size, ISzAlloc alloc)
+        public static bool Ppmd7_Alloc(CPpmd7 p, uint size, ISzAlloc alloc)
         {
             if (p.Base == null || p.Size != size)
             {
@@ -620,11 +612,11 @@ namespace ManagedLzma.SevenZip.Reader
         {
             uint i;
             uint nu = (uint)I2U(p, oldIndx) - (uint)I2U(p, newIndx);
-            ptr = (Byte*)ptr + U2B(I2U(p, newIndx));
+            ptr = (byte*)ptr + U2B(I2U(p, newIndx));
             if (I2U(p, i = U2I(p, nu)) != nu)
             {
                 uint k = I2U(p, --i);
-                InsertNode(p, ((Byte*)ptr) + U2B(k), nu - k - 1);
+                InsertNode(p, ((byte*)ptr) + U2B(k), nu - k - 1);
             }
             InsertNode(p, ptr, i);
         }
@@ -640,7 +632,7 @@ namespace ManagedLzma.SevenZip.Reader
             /* create doubly-linked list of free blocks */
             for (i = 0; i < PPMD_NUM_INDEXES; i++)
             {
-                UInt16 nu = I2U(p, i);
+                ushort nu = I2U(p, i);
                 CPpmd7_Node_Ref next = (CPpmd7_Node_Ref)p.FreeList[i];
                 p.FreeList[i] = default(CPpmd_Void_Ref);
                 while (next.Value != 0)
@@ -650,7 +642,7 @@ namespace ManagedLzma.SevenZip.Reader
                     n = NODE(p, n)->Prev = next;
                     next = *(CPpmd7_Node_Ref*)node;
                     node->Stamp = 0;
-                    node->NU = (UInt16)nu;
+                    node->NU = (ushort)nu;
                 }
             }
             NODE(p, head)->Stamp = 1;
@@ -663,7 +655,7 @@ namespace ManagedLzma.SevenZip.Reader
             while (n != head)
             {
                 CPpmd7_Node* node = NODE(p, n);
-                UInt32 nu = (UInt32)node->NU;
+                uint nu = (uint)node->NU;
                 for (;;)
                 {
                     CPpmd7_Node* node2 = NODE(p, n) + nu;
@@ -672,7 +664,7 @@ namespace ManagedLzma.SevenZip.Reader
                         break;
                     NODE(p, node2->Prev)->Next = node2->Next;
                     NODE(p, node2->Next)->Prev = node2->Prev;
-                    node->NU = (UInt16)nu;
+                    node->NU = (ushort)nu;
                 }
                 n = node->Next;
             }
@@ -712,9 +704,9 @@ namespace ManagedLzma.SevenZip.Reader
             {
                 if (++i == PPMD_NUM_INDEXES)
                 {
-                    UInt32 numBytes = U2B(I2U(p, indx));
+                    uint numBytes = U2B(I2U(p, indx));
                     p.GlueCount--;
-                    return ((UInt32)(p.UnitsStart - p.Text) > numBytes) ? (p.UnitsStart -= numBytes) : null;
+                    return ((uint)(p.UnitsStart - p.Text) > numBytes) ? (p.UnitsStart -= numBytes) : null;
                 }
             }
             while (p.FreeList[i].Value == 0);
@@ -726,11 +718,11 @@ namespace ManagedLzma.SevenZip.Reader
 
         private static void* AllocUnits(CPpmd7 p, uint indx)
         {
-            UInt32 numBytes;
+            uint numBytes;
             if (p.FreeList[indx].Value != 0)
                 return RemoveNode(p, indx);
             numBytes = U2B(I2U(p, indx));
-            if (numBytes <= (UInt32)(p.HiUnit - p.LoUnit))
+            if (numBytes <= (uint)(p.HiUnit - p.LoUnit))
             {
                 void* retVal = p.LoUnit;
                 p.LoUnit += numBytes;
@@ -743,9 +735,9 @@ namespace ManagedLzma.SevenZip.Reader
 
         private static void MyMem12Cpy(uint* dest, uint* src, uint num)
         {
-            UInt32* d = dest;
-            UInt32* s = src;
-            UInt32 n = num;
+            uint* d = dest;
+            uint* s = src;
+            uint n = num;
             do
             {
                 d[0] = s[0];
@@ -812,7 +804,7 @@ namespace ManagedLzma.SevenZip.Reader
             for (i = 0; i < 256; i++)
             {
                 CPpmd_State* s = &p.FoundState[i];
-                s->Symbol = (Byte)i;
+                s->Symbol = (byte)i;
                 s->Freq = 1;
                 SetSuccessor(s, default(CPpmd_Void_Ref));
             }
@@ -820,8 +812,8 @@ namespace ManagedLzma.SevenZip.Reader
             for (i = 0; i < 128; i++)
                 for (k = 0; k < 8; k++)
                 {
-                    UInt16* dest = p.BinSumm[i] + k;
-                    UInt16 val = (UInt16)(PPMD_BIN_SCALE - kInitBinEsc[k] / (i + 2));
+                    ushort* dest = p.BinSumm[i] + k;
+                    ushort val = (ushort)(PPMD_BIN_SCALE - kInitBinEsc[k] / (i + 2));
                     for (m = 0; m < 64; m += 8)
                         dest[m] = val;
                 }
@@ -830,7 +822,7 @@ namespace ManagedLzma.SevenZip.Reader
                 for (k = 0; k < 16; k++)
                 {
                     CPpmd_See* s = &p.See[i][k];
-                    s->Summ = (UInt16)((5 * i + 10) << (s->Shift = PPMD_PERIOD_BITS - 4));
+                    s->Summ = (ushort)((5 * i + 10) << (s->Shift = PPMD_PERIOD_BITS - 4));
                     s->Count = 4;
                 }
         }
@@ -881,19 +873,19 @@ namespace ManagedLzma.SevenZip.Reader
                 ps[numPs++] = s;
             }
 
-            upState.Symbol = *(Byte*)Ppmd7_GetPtr(p, upBranch);
+            upState.Symbol = *(byte*)Ppmd7_GetPtr(p, upBranch);
             SetSuccessor(&upState, new CPpmd_Byte_Ref(upBranch.Value + 1));
 
             if (c->NumStats == 1)
                 upState.Freq = ONE_STATE(c)->Freq;
             else
             {
-                UInt32 cf, s0;
+                uint cf, s0;
                 CPpmd_State* s;
                 for (s = STATS(p, c); s->Symbol != upState.Symbol; s++) ;
                 cf = s->Freq - 1u;
                 s0 = (uint)c->SummFreq - (uint)c->NumStats - cf;
-                upState.Freq = (Byte)(1 + ((2 * cf <= s0)
+                upState.Freq = (byte)(1 + ((2 * cf <= s0)
                     ? (5 * cf > s0 ? 1u : 0u)
                     : ((2 * cf + 3 * s0 - 1) / (2 * s0))));
             }
@@ -1015,7 +1007,7 @@ namespace ManagedLzma.SevenZip.Reader
             for (c = p.MaxContext; c != p.MinContext; c = SUFFIX(p, c))
             {
                 uint ns1;
-                UInt32 cf, sf;
+                uint cf, sf;
                 if ((ns1 = c->NumStats) != 1)
                 {
                     if ((ns1 & 1) == 0)
@@ -1038,7 +1030,7 @@ namespace ManagedLzma.SevenZip.Reader
                             c->Stats = STATS_REF(p, ptr);
                         }
                     }
-                    c->SummFreq = (UInt16)(c->SummFreq + (2 * ns1 < ns ? 1u : 0u) + 2 * ((4 * ns1 <= ns ? 1u : 0u) & (c->SummFreq <= 8 * ns1 ? 1u : 0u)));
+                    c->SummFreq = (ushort)(c->SummFreq + (2 * ns1 < ns ? 1u : 0u) + 2 * ((4 * ns1 <= ns ? 1u : 0u) & (c->SummFreq <= 8 * ns1 ? 1u : 0u)));
                 }
                 else
                 {
@@ -1054,10 +1046,10 @@ namespace ManagedLzma.SevenZip.Reader
                         s->Freq <<= 1;
                     else
                         s->Freq = MAX_FREQ - 4;
-                    c->SummFreq = (UInt16)(s->Freq + p.InitEsc + (ns > 3 ? 1u : 0u));
+                    c->SummFreq = (ushort)(s->Freq + p.InitEsc + (ns > 3 ? 1u : 0u));
                 }
-                cf = 2 * (UInt32)p.FoundState->Freq * (c->SummFreq + 6u);
-                sf = (UInt32)s0 + c->SummFreq;
+                cf = 2 * (uint)p.FoundState->Freq * (c->SummFreq + 6u);
+                sf = (uint)s0 + c->SummFreq;
                 if (cf < 6 * sf)
                 {
                     cf = 1 + (cf > sf ? 1u : 0u) + (cf >= 4 * sf ? 1u : 0u);
@@ -1066,14 +1058,14 @@ namespace ManagedLzma.SevenZip.Reader
                 else
                 {
                     cf = 4 + (cf >= 9 * sf ? 1u : 0u) + (cf >= 12 * sf ? 1u : 0u) + (cf >= 15 * sf ? 1u : 0u);
-                    c->SummFreq = (UInt16)(c->SummFreq + cf);
+                    c->SummFreq = (ushort)(c->SummFreq + cf);
                 }
                 {
                     CPpmd_State* s = STATS(p, c) + ns1;
                     SetSuccessor(s, successor);
                     s->Symbol = p.FoundState->Symbol;
-                    s->Freq = (Byte)cf;
-                    c->NumStats = (UInt16)(ns1 + 1);
+                    s->Freq = (byte)cf;
+                    c->NumStats = (ushort)(ns1 + 1);
                 }
             }
             p.MaxContext = p.MinContext = CTX(p, fSuccessor);
@@ -1093,14 +1085,14 @@ namespace ManagedLzma.SevenZip.Reader
             escFreq = (uint)p.MinContext->SummFreq - s->Freq;
             s->Freq += 4;
             adder = (p.OrderFall != 0) ? 1u : 0u;
-            s->Freq = (Byte)((s->Freq + adder) >> 1);
+            s->Freq = (byte)((s->Freq + adder) >> 1);
             sumFreq = s->Freq;
 
             i = (uint)p.MinContext->NumStats - 1;
             do
             {
                 escFreq -= (++s)->Freq;
-                s->Freq = (Byte)((s->Freq + adder) >> 1);
+                s->Freq = (byte)((s->Freq + adder) >> 1);
                 sumFreq += s->Freq;
                 if (s[0].Freq > s[-1].Freq)
                 {
@@ -1120,13 +1112,13 @@ namespace ManagedLzma.SevenZip.Reader
                 uint n0, n1;
                 do { i++; } while ((--s)->Freq == 0);
                 escFreq += i;
-                p.MinContext->NumStats = (UInt16)(p.MinContext->NumStats - i);
+                p.MinContext->NumStats = (ushort)(p.MinContext->NumStats - i);
                 if (p.MinContext->NumStats == 1)
                 {
                     CPpmd_State tmp = *stats;
                     do
                     {
-                        tmp.Freq = (Byte)(tmp.Freq - (tmp.Freq >> 1));
+                        tmp.Freq = (byte)(tmp.Freq - (tmp.Freq >> 1));
                         escFreq >>= 1;
                     }
                     while (escFreq > 1);
@@ -1139,11 +1131,11 @@ namespace ManagedLzma.SevenZip.Reader
                 if (n0 != n1)
                     p.MinContext->Stats = STATS_REF(p, ShrinkUnits(p, stats, n0, n1));
             }
-            p.MinContext->SummFreq = (UInt16)(sumFreq + escFreq - (escFreq >> 1));
+            p.MinContext->SummFreq = (ushort)(sumFreq + escFreq - (escFreq >> 1));
             p.FoundState = STATS(p, p.MinContext);
         }
 
-        public static CPpmd_See* Ppmd7_MakeEscFreq(CPpmd7 p, uint numMasked, UInt32* escFreq)
+        public static CPpmd_See* Ppmd7_MakeEscFreq(CPpmd7 p, uint numMasked, uint* escFreq)
         {
             CPpmd_See* see;
             uint nonMasked = p.MinContext->NumStats - numMasked;
@@ -1156,7 +1148,7 @@ namespace ManagedLzma.SevenZip.Reader
                     p.HiBitsFlag;
                 {
                     uint r = ((uint)see->Summ >> see->Shift);
-                    see->Summ = (UInt16)(see->Summ - r);
+                    see->Summ = (ushort)(see->Summ - r);
                     *escFreq = r + ((r == 0) ? 1u : 0u);
                 }
             }
@@ -1171,7 +1163,7 @@ namespace ManagedLzma.SevenZip.Reader
         private static void NextContext(CPpmd7 p)
         {
             CPpmd7_Context* c = CTX(p, SUCCESSOR(p.FoundState));
-            if (p.OrderFall == 0 && (Byte*)c > p.Text)
+            if (p.OrderFall == 0 && (byte*)c > p.Text)
                 p.MinContext = p.MaxContext = c;
             else
                 UpdateModel(p);
@@ -1205,7 +1197,7 @@ namespace ManagedLzma.SevenZip.Reader
 
         public static void Ppmd7_UpdateBin(CPpmd7 p)
         {
-            p.FoundState->Freq = (Byte)(p.FoundState->Freq + (p.FoundState->Freq < 128 ? 1 : 0));
+            p.FoundState->Freq = (byte)(p.FoundState->Freq + (p.FoundState->Freq < 128 ? 1 : 0));
             p.PrevSuccess = 1;
             p.RunLength++;
             NextContext(p);
@@ -1237,7 +1229,7 @@ namespace ManagedLzma.SevenZip.Reader
             return (p.Code < 0xFFFFFFFF);
         }
 
-        private static UInt32 Range_GetThreshold(object pp, UInt32 total)
+        private static uint Range_GetThreshold(object pp, uint total)
         {
             CPpmd7z_RangeDec p = (CPpmd7z_RangeDec)pp;
             return (p.Code) / (p.Range /= total);
@@ -1257,7 +1249,7 @@ namespace ManagedLzma.SevenZip.Reader
             }
         }
 
-        private static void Range_Decode(object pp, UInt32 start, UInt32 size)
+        private static void Range_Decode(object pp, uint start, uint size)
         {
             CPpmd7z_RangeDec p = (CPpmd7z_RangeDec)pp;
             p.Code -= start * p.Range;
@@ -1265,11 +1257,11 @@ namespace ManagedLzma.SevenZip.Reader
             Range_Normalize(p);
         }
 
-        private static UInt32 Range_DecodeBit(object pp, UInt32 size0)
+        private static uint Range_DecodeBit(object pp, uint size0)
         {
             CPpmd7z_RangeDec p = (CPpmd7z_RangeDec)pp;
-            UInt32 newBound = (p.Range >> 14) * size0;
-            UInt32 symbol;
+            uint newBound = (p.Range >> 14) * size0;
+            uint symbol;
             if (p.Code < newBound)
             {
                 symbol = 0;
@@ -1302,10 +1294,10 @@ namespace ManagedLzma.SevenZip.Reader
             {
                 CPpmd_State* s = Ppmd7_GetStats(p, p.MinContext);
                 uint i;
-                UInt32 count, hiCnt;
+                uint count, hiCnt;
                 if ((count = rc.GetThreshold(rc, p.MinContext->SummFreq)) < (hiCnt = s->Freq))
                 {
-                    Byte symbol;
+                    byte symbol;
                     rc.Decode(rc, 0, s->Freq);
                     p.FoundState = s;
                     symbol = s->Symbol;
@@ -1318,7 +1310,7 @@ namespace ManagedLzma.SevenZip.Reader
                 {
                     if ((hiCnt += (++s)->Freq) > count)
                     {
-                        Byte symbol;
+                        byte symbol;
                         rc.Decode(rc, hiCnt - s->Freq, s->Freq);
                         p.FoundState = s;
                         symbol = s->Symbol;
@@ -1338,16 +1330,16 @@ namespace ManagedLzma.SevenZip.Reader
             }
             else
             {
-                UInt16* prob = Ppmd7_GetBinSumm(p);
+                ushort* prob = Ppmd7_GetBinSumm(p);
                 if (rc.DecodeBit(rc, *prob) == 0)
                 {
-                    Byte symbol;
-                    *prob = (UInt16)PPMD_UPDATE_PROB_0(*prob);
+                    byte symbol;
+                    *prob = (ushort)PPMD_UPDATE_PROB_0(*prob);
                     symbol = (p.FoundState = Ppmd7Context_OneState(p.MinContext))->Symbol;
                     Ppmd7_UpdateBin(p);
                     return symbol;
                 }
-                *prob = (UInt16)PPMD_UPDATE_PROB_1(*prob);
+                *prob = (ushort)PPMD_UPDATE_PROB_1(*prob);
                 p.InitEsc = PPMD7_kExpEscape[*prob >> 10];
                 PPMD_SetAllBitsIn256Bytes(charMask);
                 MASK_SET(charMask, Ppmd7Context_OneState(p.MinContext)->Symbol, 0);
@@ -1357,7 +1349,7 @@ namespace ManagedLzma.SevenZip.Reader
             {
                 CPpmd_State** ps = stackalloc CPpmd_State*[256];
                 CPpmd_State* s;
-                UInt32 freqSum, count, hiCnt;
+                uint freqSum, count, hiCnt;
                 CPpmd_See* see;
                 uint i, num, numMasked = p.MinContext->NumStats;
                 do
@@ -1387,7 +1379,7 @@ namespace ManagedLzma.SevenZip.Reader
 
                 if (count < hiCnt)
                 {
-                    Byte symbol;
+                    byte symbol;
                     CPpmd_State** pps = ps;
                     for (hiCnt = 0; (hiCnt += (*pps)->Freq) <= count; pps++) ;
                     s = *pps;
@@ -1401,7 +1393,7 @@ namespace ManagedLzma.SevenZip.Reader
                 if (count >= freqSum)
                     return -2;
                 rc.Decode(rc, hiCnt, freqSum - hiCnt);
-                see->Summ = (UInt16)(see->Summ + freqSum);
+                see->Summ = (ushort)(see->Summ + freqSum);
                 do { MASK_SET(charMask, ps[--i]->Symbol, 0); } while (i != 0);
             }
         }
