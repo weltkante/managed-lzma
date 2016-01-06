@@ -35,6 +35,9 @@ namespace ManagedLzma.SevenZip.Reader
         private kStatus mDecoderStatus = kStatus.NeedInit;
         private enum HRESULT { S_OK, S_FALSE, E_FAIL }
         private long mPosition;
+        private byte[] mInputBuffer = new byte[0x4000];
+        private int mInputOffset;
+        private int mInputEnding;
 
         public PpmdArchiveDecoder(ImmutableArray<byte> settings, long length)
         {
@@ -60,15 +63,7 @@ namespace ManagedLzma.SevenZip.Reader
 
             mRangeDecoder = new PPMD.CPpmd7z_RangeDec();
             PPMD.Ppmd7z_RangeDec_CreateVTable(mRangeDecoder);
-            mRangeDecoder.Stream = new PPMD.IByteIn {
-                Read = x => {
-                    var buffer = new byte[1];
-                    if (mInput.Read(buffer, 0, 1) == 1)
-                        return buffer[0];
-                    mExceededInput = true;
-                    return 0;
-                },
-            };
+            mRangeDecoder.Stream = new PPMD.IByteIn { Read = x => ReadByte() };
 
             PPMD.Ppmd7_Construct(mState);
             if (!PPMD.Ppmd7_Alloc(mState, mSettingMemory, mAlloc))
@@ -104,6 +99,27 @@ namespace ManagedLzma.SevenZip.Reader
                 throw new ArgumentOutOfRangeException(nameof(index));
 
             return mOutput;
+        }
+
+        private byte ReadByte()
+        {
+            return mInputOffset < mInputEnding ? mInputBuffer[mInputOffset++] : ReadByteSlow();
+        }
+
+        private byte ReadByteSlow()
+        {
+            if (!mExceededInput)
+            {
+                mInputOffset = 0;
+                mInputEnding = mInput.Read(mInputBuffer, 0, mInputBuffer.Length);
+
+                if (mInputEnding != 0)
+                    return mInputBuffer[mInputOffset++];
+
+                mExceededInput = true;
+            }
+
+            return 0;
         }
 
         private void Skip(int count)
