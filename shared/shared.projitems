@@ -32,6 +32,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\Encoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\EncoderSettings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Compression\Lzma\EncoderStream.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchivedAttributes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveDecoder.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveFileModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)SevenZip\ArchiveMetadata.cs" />

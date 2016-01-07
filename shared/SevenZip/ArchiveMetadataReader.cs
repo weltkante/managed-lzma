@@ -23,6 +23,13 @@ namespace ManagedLzma.SevenZip.Reader
     {
         #region Static Methods
 
+#if DEBUG
+        static ArchiveMetadataReader()
+        {
+            ArchivedAttributesExtensions.CheckArchivedAttributesConsistency();
+        }
+#endif
+
         /// <summary>Checks if the stream looks like a 7z archive.</summary>
         public static bool CheckFileHeader(Stream stream)
         {

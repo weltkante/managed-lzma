@@ -167,7 +167,7 @@ namespace ManagedLzma.SevenZip.Reader
         public int Count => mCount;
         public int Index => mIndex;
 
-        public System.IO.FileAttributes? ReadAttributes()
+        public ArchivedAttributes? ReadAttributes()
         {
             if (mReader == null)
                 throw new ObjectDisposedException(null);
@@ -177,9 +177,15 @@ namespace ManagedLzma.SevenZip.Reader
 
             if (mVector[mIndex])
             {
-                var number = mReader.ReadInt32Internal();
+                var attr = (ArchivedAttributes)mReader.ReadInt32Internal();
                 mIndex += 1;
-                return (System.IO.FileAttributes)number;
+
+                if ((attr & ArchivedAttributesExtensions.InvalidAttributes) != 0)
+                    throw new System.IO.InvalidDataException();
+
+                attr &= ~(ArchivedAttributesExtensions.ForbiddenAttributes | ArchivedAttributesExtensions.StrippedAttributes);
+
+                return attr;
             }
             else
             {

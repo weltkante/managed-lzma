@@ -15,6 +15,13 @@ namespace ManagedLzma.SevenZip.Writer
 
     public sealed class ArchiveWriter : IDisposable
     {
+#if DEBUG
+        static ArchiveWriter()
+        {
+            ArchivedAttributesExtensions.CheckArchivedAttributesConsistency();
+        }
+#endif
+
         private static void PutInt32(byte[] buffer, int offset, int value)
         {
             buffer[offset] = (byte)value;
@@ -789,7 +796,7 @@ namespace ManagedLzma.SevenZip.Writer
         public abstract bool IsDeleted(int index);
         public abstract long GetLength(int index);
         public abstract Checksum? GetChecksum(int index);
-        public abstract FileAttributes? GetAttributes(int index);
+        public abstract ArchivedAttributes? GetAttributes(int index);
         public abstract DateTime? GetCreationDate(int index);
         public abstract DateTime? GetLastWriteDate(int index);
         public abstract DateTime? GetLastAccessDate(int index);
@@ -805,7 +812,7 @@ namespace ManagedLzma.SevenZip.Writer
             public bool IsDeleted;
             public long Length;
             public Checksum? Checksum;
-            public FileAttributes? Attributes;
+            public ArchivedAttributes? Attributes;
             public DateTime? CreationDate;
             public DateTime? LastWriteDate;
             public DateTime? LastAccessDate;
@@ -866,35 +873,28 @@ namespace ManagedLzma.SevenZip.Writer
             }
         }
 
-        private void CheckAttributes(ref FileAttributes? attr, bool isFile)
+        private void CheckAttributes(ref ArchivedAttributes? attr, bool isFile)
         {
-            Utilities.NeedsBetterImplementation();
-
             if (attr.HasValue)
             {
                 if (isFile)
                 {
-                    if ((attr.Value & FileAttributes.Directory) != 0)
+                    if ((attr.Value & ArchivedAttributesExtensions.DirectoryAttribute) != 0)
                         throw new InvalidOperationException("Directory attribute cannot be set on a file.");
                 }
                 else
                 {
-                    // TODO: should we auto-add the directory attribute here?
-                    attr = attr.Value | FileAttributes.Directory;
+                    // Automatically add the directory attribute for directories.
+                    attr = attr.Value | ArchivedAttributesExtensions.DirectoryAttribute;
                 }
 
-                const FileAttributes kSupported = default(FileAttributes)
-                    | FileAttributes.Directory
-                    | FileAttributes.Archive
-                    | FileAttributes.ReadOnly
-                    | FileAttributes.Hidden
-                    //| FileAttributes.System
-                    //| FileAttributes.Compressed
-                    | FileAttributes.NotContentIndexed
-                    ;
+                if ((attr & ArchivedAttributesExtensions.InvalidAttributes) != 0)
+                    throw new InvalidOperationException("Invalid attributes have been set.");
 
-                if ((attr.Value & ~kSupported) != 0)
-                    throw new NotImplementedException("Some file attributes you passed are not handled. You can work around this exception by filtering them out manually.");
+                if ((attr & ArchivedAttributesExtensions.ForbiddenAttributes) != 0)
+                    throw new InvalidOperationException("Some attributes are set which should not be present in a 7z archive.");
+
+                attr = attr.Value & ~ArchivedAttributesExtensions.StrippedAttributes;
             }
         }
 
@@ -920,7 +920,18 @@ namespace ManagedLzma.SevenZip.Writer
             }
         }
 
+#if !(BUILD_PORTABLE && NET_45)
         public void AppendFile(string name, long length, Checksum? checksum, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
+        {
+            var translatedAttributes = default(ArchivedAttributes?);
+            if (attributes.HasValue)
+                translatedAttributes = (ArchivedAttributes)(int)attributes.Value;
+
+            AppendFile(name, length, checksum, translatedAttributes, creationDate, lastWriteDate, lastAccessDate);
+        }
+#endif
+
+        public void AppendFile(string name, long length, Checksum? checksum, ArchivedAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
         {
             if (length < 0)
                 throw new ArgumentOutOfRangeException(nameof(length));
@@ -947,7 +958,18 @@ namespace ManagedLzma.SevenZip.Writer
             });
         }
 
+#if !(BUILD_PORTABLE && NET_45)
         public void AppendDirectory(string name, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
+        {
+            var translatedAttributes = default(ArchivedAttributes?);
+            if (attributes.HasValue)
+                translatedAttributes = (ArchivedAttributes)(int)attributes.Value;
+
+            AppendDirectory(name, translatedAttributes, creationDate, lastWriteDate, lastAccessDate);
+        }
+#endif
+
+        public void AppendDirectory(string name, ArchivedAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
         {
             CheckName(ref name);
             CheckAttributes(ref attributes, false);
@@ -994,7 +1016,7 @@ namespace ManagedLzma.SevenZip.Writer
         public override bool IsDeleted(int index) => mEntries[index].IsDeleted;
         public override long GetLength(int index) => mEntries[index].Length;
         public override Checksum? GetChecksum(int index) => mEntries[index].Checksum;
-        public override FileAttributes? GetAttributes(int index) => mEntries[index].Attributes;
+        public override ArchivedAttributes? GetAttributes(int index) => mEntries[index].Attributes;
         public override DateTime? GetCreationDate(int index) => mEntries[index].CreationDate;
         public override DateTime? GetLastWriteDate(int index) => mEntries[index].LastWriteDate;
         public override DateTime? GetLastAccessDate(int index) => mEntries[index].LastAccessDate;
