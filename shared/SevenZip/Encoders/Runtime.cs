@@ -612,10 +612,14 @@ namespace ManagedLzma.SevenZip.Writer
             mInput.Dispose();
         }
 
+#if DEBUG
+        // This method is currently not implemented so we don't include it in the nuget release build.
+
         public void Discard()
         {
             throw new NotImplementedException();
         }
+#endif
 
         public async Task Complete()
         {

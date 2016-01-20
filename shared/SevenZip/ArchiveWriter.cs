@@ -717,6 +717,9 @@ namespace ManagedLzma.SevenZip.Writer
             }
         }
 
+#if DEBUG
+        // This method is currently not implemented so we don't include it in the nuget release build.
+
         /// <summary>
         /// Allows to copy partial sections from an existing archive, reencoding selected entries on the fly.
         /// </summary>
@@ -724,6 +727,7 @@ namespace ManagedLzma.SevenZip.Writer
         {
             throw new NotImplementedException();
         }
+#endif
 
         #region Internal Methods - Encoder Session
 
