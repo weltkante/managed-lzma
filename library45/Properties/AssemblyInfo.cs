@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("ManagedLzma (Desktop46 v0.2-alpha-4)")]
+[assembly: AssemblyTitle("ManagedLzma (Desktop45 v0.2-alpha-4)")]
 [assembly: AssemblyDescription("Managed LZMA and SevenZip library.")]
 //[assembly: AssemblyConfiguration("")]
 //[assembly: AssemblyCompany("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-//[assembly: Guid("136726d6-588f-446c-bc0f-77d02350fae4")]
+//[assembly: Guid("fb259827-a163-4d79-aa7d-e9497c67450d")]
 
 // Version information for an assembly consists of the following four values:
 //
