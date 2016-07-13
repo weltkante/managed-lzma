@@ -128,7 +128,10 @@ namespace ManagedLzma.LZMA
 
         public int SkipOutputData(int length)
         {
-            throw new NotImplementedException();
+            Utilities.NeedsBetterImplementation();
+
+            var buffer = new byte[Math.Min(0x4000, length)];
+            return ReadOutputData(buffer, 0, buffer.Length);
         }
 
         /// <summary>
@@ -217,6 +220,7 @@ namespace ManagedLzma.LZMA
         // multithreaded access (under lock)
         private Task mDecoderTask;
         private Task mDisposeTask;
+        private AsyncTaskCompletionSource<object> mFlushControl = AsyncTaskCompletionSource<object>.Create();
         private Queue<InputFrame> mInputQueue;
         private Queue<OutputFrame> mOutputQueue;
         private int mTotalOutputCapacity;
@@ -288,6 +292,9 @@ namespace ManagedLzma.LZMA
                 frame.mCompletion.SetCanceled();
 
             mOutputQueue.Clear();
+
+            if (!mFlushControl.Task.IsCompleted)
+                mFlushControl.SetCanceled();
         }
 
         /// <summary>
@@ -297,7 +304,12 @@ namespace ManagedLzma.LZMA
         /// <returns>A task which completes when all output data has been read.</returns>
         public Task CompleteInputAsync()
         {
-            throw new NotImplementedException();
+            lock (mSyncObject)
+            {
+                mFlushed = true;
+                TryStartDecoding();
+                return mFlushControl.Task;
+            }
         }
 
         /// <summary>
@@ -362,9 +374,25 @@ namespace ManagedLzma.LZMA
             return frame.mCompletion.Task;
         }
 
-        public Task SkipOutputAsync(int length)
+        public async Task SkipOutputAsync(int length)
         {
-            throw new NotImplementedException();
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length));
+
+            if (length == 0)
+                return;
+
+            Utilities.NeedsBetterImplementation();
+
+            var buffer = new byte[Math.Min(0x4000, length)];
+            while (length > 0)
+            {
+                var skipped = await ReadOutputAsync(buffer, 0, Math.Min(buffer.Length, length), StreamMode.Partial);
+                if (skipped == 0)
+                    throw new InvalidOperationException(ErrorStrings.SkipBeyondEndOfStream);
+
+                length -= skipped;
+            }
         }
 
         private void PushInputFrame(InputFrame frame)
@@ -445,6 +473,9 @@ namespace ManagedLzma.LZMA
                     }
                 }
             }
+
+            if (mDecoder.IsOutputComplete && !mFlushControl.Task.IsCompleted)
+                mFlushControl.SetResult(null);
         }
 
         private bool DecodeInput()

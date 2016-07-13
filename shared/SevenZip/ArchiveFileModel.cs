@@ -104,7 +104,7 @@ namespace ManagedLzma.SevenZip.FileModel
             public long Offset { get; set; }
             public long Length { get; set; }
             public Checksum? Checksum { get; set; }
-            public FileAttributes? Attributes { get; set; }
+            public ArchivedAttributes? Attributes { get; set; }
             public DateTime? Creation { get; set; }
             public DateTime? LastWrite { get; set; }
             public DateTime? LastAccess { get; set; }
@@ -132,12 +132,12 @@ namespace ManagedLzma.SevenZip.FileModel
         public long Offset { get; }
         public long Length { get; }
         public Checksum? Checksum { get; }
-        public FileAttributes? Attributes { get; }
+        public ArchivedAttributes? Attributes { get; }
         public DateTime? Creation { get; }
         public DateTime? LastWrite { get; }
         public DateTime? LastAccess { get; }
 
-        public ArchivedFile(string FullName, string Name, DecodedStreamIndex Stream, long Offset, long Length, Checksum? Checksum, FileAttributes? Attributes, DateTime? Creation, DateTime? LastWrite, DateTime? LastAccess)
+        public ArchivedFile(string FullName, string Name, DecodedStreamIndex Stream, long Offset, long Length, Checksum? Checksum, ArchivedAttributes? Attributes, DateTime? Creation, DateTime? LastWrite, DateTime? LastAccess)
             : base(FullName, Name)
         {
             this.Stream = Stream;
@@ -216,7 +216,7 @@ namespace ManagedLzma.SevenZip.FileModel
         private List<bool> mEmptyFileMarkers;
         private List<bool> mDeletionMarkers;
         private List<long?> mOffsets;
-        private List<FileAttributes?> mAttributes;
+        private List<ArchivedAttributes?> mAttributes;
         private List<DateTime?> mCDates;
         private List<DateTime?> mMDates;
         private List<DateTime?> mADates;
@@ -296,7 +296,14 @@ namespace ManagedLzma.SevenZip.FileModel
                             file.Offset = mOffsets[currentFileIndex] ?? 0;
 
                         if (mAttributes != null)
-                            file.Attributes = mAttributes[currentFileIndex];
+                        {
+                            var attr = mAttributes[currentFileIndex];
+
+                            if (attr.HasValue && (attr.Value & ArchivedAttributesExtensions.DirectoryAttribute) != 0)
+                                throw new InvalidDataException();
+
+                            file.Attributes = attr;
+                        }
 
                         if (mCDates != null)
                             file.Creation = mCDates[currentFileIndex];
@@ -380,7 +387,7 @@ namespace ManagedLzma.SevenZip.FileModel
             {
                 RemoveItem(items, itemName);
                 folder = new ArchivedFolder.Builder();
-                folder.FullName = fullName;
+                folder.FullName = ending < 0 ? fullName : fullName.Substring(0, ending);
                 folder.Name = itemName;
                 items.Add(folder);
                 mItemMap.Add(folder, new List<ArchivedItem.Builder>());
@@ -548,7 +555,7 @@ namespace ManagedLzma.SevenZip.FileModel
             System.Diagnostics.Debug.Assert(mAttributes == null);
             System.Diagnostics.Debug.Assert(data.Count == mItemCount);
 
-            mAttributes = new List<FileAttributes?>(data.Count);
+            mAttributes = new List<ArchivedAttributes?>(data.Count);
             for (int i = 0; i < data.Count; i++)
                 mAttributes.Add(data.ReadAttributes());
         }

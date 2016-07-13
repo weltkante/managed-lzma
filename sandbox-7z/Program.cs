@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ManagedLzma.LZMA.Master.SevenZip;
+using ManagedLzma.SevenZip;
+using ManagedLzma.SevenZip.FileModel;
 
 namespace sandbox_7z
 {
@@ -276,31 +278,11 @@ namespace sandbox_7z
         {
             if (file.Attributes.HasValue)
             {
-                // Not all attributes make sense to restore.
-                // - 'Directory' attribute - can't be changed by setting the attribute (and should already be correct anyways)
-                // - 'Device' attribute - not supported by 7z archives, we don't have enough data to restore this attribute
-                // - 'Normal' attribute - that attribute has special meaning for file creation and shouldn't appear in an archive
-                // - 'Temporary' attribute - while this attribute may happen to be set it makes no sense to restore it; your opinion may differ, so include it if you think that its needed, but make sure you know how Windows handles the attribute and test it properly!
-                // - 'SparseFile' attribute - sparse files require additional handling, just setting the attribute makes no sense
-                // - 'ReparsePoint' attribute - not supported by 7z archives, we don't have enough data to restore this attribute
-                // - 'Offline' attribute - I don't know how exactly this attribute works, but I think it is set by the OS and not supposed to be set by applications
-                // - 'IntegrityStream' attribute - not supported by 7z archives, we don't have enough data to restore this attribute
-                // - 'NoScrubData' attribute - no idea what that means, better not mess with it
-
-                // TODO: follow up with an actual list of attributes supported by the reference implementation
-                //       maybe we should make our own enum (providing conversions to/from FileAttributes enum)
-
-                const FileAttributes kAttrMask = default(FileAttributes)
-                    | FileAttributes.Archive
-                    | FileAttributes.ReadOnly
-                    | FileAttributes.Hidden
-                    //| FileAttributes.System -- not tested but probably would work
-                    //| FileAttributes.Compressed -- not tested if it is enough to just set the attribute
-                    //| FileAttributes.NotContentIndexed -- not tested but from the description it may make sense to restore it
-                    ;
+                // When calling File.SetAttributes we need to preserve existing attributes which are not part of the archive
 
                 var attr = File.GetAttributes(path);
-                attr = (attr & ~kAttrMask) | (file.Attributes.Value & kAttrMask);
+                const FileAttributes kAttrMask = ArchivedAttributesExtensions.FileAttributeMask;
+                attr = (attr & ~kAttrMask) | (file.Attributes.Value.ToFileAttributes() & kAttrMask);
                 File.SetAttributes(path, attr);
             }
         }

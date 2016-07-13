@@ -15,6 +15,13 @@ namespace ManagedLzma.SevenZip.Writer
 
     public sealed class ArchiveWriter : IDisposable
     {
+#if DEBUG
+        static ArchiveWriter()
+        {
+            ArchivedAttributesExtensions.CheckArchivedAttributesConsistency();
+        }
+#endif
+
         private static void PutInt32(byte[] buffer, int offset, int value)
         {
             buffer[offset] = (byte)value;
@@ -710,6 +717,9 @@ namespace ManagedLzma.SevenZip.Writer
             }
         }
 
+#if DEBUG
+        // This method is currently not implemented so we don't include it in the nuget release build.
+
         /// <summary>
         /// Allows to copy partial sections from an existing archive, reencoding selected entries on the fly.
         /// </summary>
@@ -717,6 +727,7 @@ namespace ManagedLzma.SevenZip.Writer
         {
             throw new NotImplementedException();
         }
+#endif
 
         #region Internal Methods - Encoder Session
 
@@ -789,7 +800,7 @@ namespace ManagedLzma.SevenZip.Writer
         public abstract bool IsDeleted(int index);
         public abstract long GetLength(int index);
         public abstract Checksum? GetChecksum(int index);
-        public abstract FileAttributes? GetAttributes(int index);
+        public abstract ArchivedAttributes? GetAttributes(int index);
         public abstract DateTime? GetCreationDate(int index);
         public abstract DateTime? GetLastWriteDate(int index);
         public abstract DateTime? GetLastAccessDate(int index);
@@ -805,7 +816,7 @@ namespace ManagedLzma.SevenZip.Writer
             public bool IsDeleted;
             public long Length;
             public Checksum? Checksum;
-            public FileAttributes? Attributes;
+            public ArchivedAttributes? Attributes;
             public DateTime? CreationDate;
             public DateTime? LastWriteDate;
             public DateTime? LastAccessDate;
@@ -831,6 +842,66 @@ namespace ManagedLzma.SevenZip.Writer
             }
         }
 
+        private void CheckName(ref string name)
+        {
+            if (String.IsNullOrEmpty(name))
+                throw new InvalidOperationException("Name cannot be empty.");
+
+            name = name.Replace('\\', '/');
+
+            Utilities.NeedsReview(); // TODO: we need to hardcode this so you can't write invalid filenames on non-windows platforms
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var offset = 0;
+            for (;;)
+            {
+                var ending = name.IndexOf('/', offset);
+                var part = ending < 0 ? name.Substring(offset) : name.Substring(offset, ending - offset);
+
+                if (String.IsNullOrEmpty(part))
+                    throw new InvalidOperationException("Name contains empty path component.");
+
+                if (part == ".")
+                    throw new InvalidOperationException("Relative path component '.' is not allowed.");
+
+                if (part == "..")
+                    throw new InvalidOperationException("Relative path component '..' is not allowed.");
+
+                if (part.IndexOfAny(invalid) >= 0)
+                    throw new InvalidOperationException("Name contains invalid characters.");
+
+                if (ending < 0)
+                    break;
+
+                offset = ending + 1;
+            }
+        }
+
+        private void CheckAttributes(ref ArchivedAttributes? attr, bool isFile)
+        {
+            if (attr.HasValue)
+            {
+                if (isFile)
+                {
+                    if ((attr.Value & ArchivedAttributesExtensions.DirectoryAttribute) != 0)
+                        throw new InvalidOperationException("Directory attribute cannot be set on a file.");
+                }
+                else
+                {
+                    // Automatically add the directory attribute for directories.
+                    attr = attr.Value | ArchivedAttributesExtensions.DirectoryAttribute;
+                }
+
+                if ((attr & ArchivedAttributesExtensions.InvalidAttributes) != 0)
+                    throw new InvalidOperationException("Invalid attributes have been set.");
+
+                if ((attr & ArchivedAttributesExtensions.ForbiddenAttributes) != 0)
+                    throw new InvalidOperationException("Some attributes are set which should not be present in a 7z archive.");
+
+                attr = attr.Value & ~ArchivedAttributesExtensions.StrippedAttributes;
+            }
+        }
+
         private void CheckDate(ref DateTime? date)
         {
             if (date.HasValue)
@@ -853,14 +924,29 @@ namespace ManagedLzma.SevenZip.Writer
             }
         }
 
+#if !(BUILD_PORTABLE && NET_45)
         public void AppendFile(string name, long length, Checksum? checksum, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
         {
+            var translatedAttributes = default(ArchivedAttributes?);
+            if (attributes.HasValue)
+                translatedAttributes = (ArchivedAttributes)(int)attributes.Value;
+
+            AppendFile(name, length, checksum, translatedAttributes, creationDate, lastWriteDate, lastAccessDate);
+        }
+#endif
+
+        public void AppendFile(string name, long length, Checksum? checksum, ArchivedAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
+        {
+            if (length < 0)
+                throw new ArgumentOutOfRangeException(nameof(length));
+
+            CheckName(ref name);
+            CheckAttributes(ref attributes, true);
             CheckDate(ref creationDate);
             CheckDate(ref lastWriteDate);
             CheckDate(ref lastAccessDate);
 
-            // TODO: check arguments and replicate the checks when the metadata is queried from the provider
-            //       (in particular don't forget to check that timestamps are UTC)
+            // TODO: replicate the checks when the metadata is queried from the provider (in particular don't forget to check that timestamps are UTC)
 
             mEntries.Add(new Entry {
                 Name = name,
@@ -876,13 +962,28 @@ namespace ManagedLzma.SevenZip.Writer
             });
         }
 
+#if !(BUILD_PORTABLE && NET_45)
         public void AppendDirectory(string name, FileAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
         {
+            var translatedAttributes = default(ArchivedAttributes?);
+            if (attributes.HasValue)
+                translatedAttributes = (ArchivedAttributes)(int)attributes.Value;
+
+            AppendDirectory(name, translatedAttributes, creationDate, lastWriteDate, lastAccessDate);
+        }
+#endif
+
+        public void AppendDirectory(string name, ArchivedAttributes? attributes, DateTime? creationDate, DateTime? lastWriteDate, DateTime? lastAccessDate)
+        {
+            CheckName(ref name);
+            CheckAttributes(ref attributes, false);
             CheckDate(ref creationDate);
             CheckDate(ref lastWriteDate);
             CheckDate(ref lastAccessDate);
 
             // TODO: check attributes and reject invalid ones (replicate the check when writing the attributes so other metadata providers get the check too)
+
+            Utilities.NeedsReview(); // TODO: which dates are recorded for a directory?
 
             mEntries.Add(new Entry {
                 Name = name,
@@ -893,7 +994,7 @@ namespace ManagedLzma.SevenZip.Writer
 
         public void AppendFileDeletion(string name)
         {
-            // TODO: check name
+            CheckName(ref name);
 
             mEntries.Add(new Entry {
                 Name = name,
@@ -903,7 +1004,7 @@ namespace ManagedLzma.SevenZip.Writer
 
         public void AppendDirectoryDeletion(string name)
         {
-            // TODO: check name
+            CheckName(ref name);
 
             mEntries.Add(new Entry {
                 Name = name,
@@ -919,7 +1020,7 @@ namespace ManagedLzma.SevenZip.Writer
         public override bool IsDeleted(int index) => mEntries[index].IsDeleted;
         public override long GetLength(int index) => mEntries[index].Length;
         public override Checksum? GetChecksum(int index) => mEntries[index].Checksum;
-        public override FileAttributes? GetAttributes(int index) => mEntries[index].Attributes;
+        public override ArchivedAttributes? GetAttributes(int index) => mEntries[index].Attributes;
         public override DateTime? GetCreationDate(int index) => mEntries[index].CreationDate;
         public override DateTime? GetLastWriteDate(int index) => mEntries[index].LastWriteDate;
         public override DateTime? GetLastAccessDate(int index) => mEntries[index].LastAccessDate;

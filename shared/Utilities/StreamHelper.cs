@@ -92,6 +92,10 @@ namespace ManagedLzma
         }
     }
 
+#if DEBUG
+
+    // These classes are currently not used so we don't include them in nuget release builds.
+
     internal sealed class AsyncInputQueue : IStreamReader, IStreamWriter
     {
         private sealed class Frame
@@ -313,4 +317,5 @@ namespace ManagedLzma
             throw new NotImplementedException();
         }
     }
+#endif
 }

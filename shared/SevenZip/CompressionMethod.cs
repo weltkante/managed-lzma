@@ -102,6 +102,7 @@ namespace ManagedLzma.SevenZip.Metadata
                 case kLZMA2:
                 case kAES:
                 case kBCJ:
+                case kPPMD:
                     if (inputCount != 1)
                         throw new InvalidDataException();
 
@@ -120,7 +121,6 @@ namespace ManagedLzma.SevenZip.Metadata
                     break;
 
                 case kDelta:
-                case kPPMD:
                 case kBZip2:
                     throw new NotImplementedException();
 
@@ -139,13 +139,13 @@ namespace ManagedLzma.SevenZip.Metadata
                 case kLZMA2:
                 case kAES:
                 case kBCJ:
+                case kPPMD:
                     return 1;
 
                 case kBCJ2:
                     return 4;
 
                 case kDelta:
-                case kPPMD:
                 case kBZip2:
                     throw new NotImplementedException();
 
@@ -165,10 +165,10 @@ namespace ManagedLzma.SevenZip.Metadata
                 case kAES:
                 case kBCJ:
                 case kBCJ2:
+                case kPPMD:
                     return 1;
 
                 case kDelta:
-                case kPPMD:
                 case kBZip2:
                     throw new NotImplementedException();
 
@@ -187,10 +187,10 @@ namespace ManagedLzma.SevenZip.Metadata
                 case kAES: return new Reader.AesArchiveDecoder(settings, password, output.Single().Length);
                 case kBCJ: return new Reader.BcjArchiveDecoder(settings, output.Single().Length);
                 case kBCJ2: return new Reader.Bcj2ArchiveDecoder(settings, output.Single().Length);
+                case kPPMD: return new Reader.PpmdArchiveDecoder(settings, output.Single().Length);
 
                 case kDeflate:
                 case kDelta:
-                case kPPMD:
                 case kBZip2:
                     throw new NotImplementedException();
 

@@ -183,11 +183,27 @@ namespace ManagedLzma.SevenZip.Reader
 
         public void Skip(int offset)
         {
-            mOutputStream.Skip(offset);
+            if (offset < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            if (offset > 0)
+                mOutputStream.Skip(offset);
         }
 
         public int Read(byte[] buffer, int offset, int count)
         {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+
+            if (offset < 0 || offset > buffer.Length)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+
+            if (count < 0 || count > buffer.Length - offset)
+                throw new ArgumentOutOfRangeException(nameof(count));
+
+            if (count == 0)
+                return 0;
+
             return mOutputStream.Read(buffer, offset, count);
         }
     }
