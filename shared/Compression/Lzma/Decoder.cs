@@ -170,7 +170,10 @@ namespace ManagedLzma.LZMA
             var mode = eof ? Master.LZMA.ELzmaFinishMode.LZMA_FINISH_END : Master.LZMA.ELzmaFinishMode.LZMA_FINISH_ANY;
 
             if (mDecoderPosition == mDecoder.mDicBufSize)
+            {
                 mDecoder.mDicPos = 0;
+                mDecoderPosition = 0;
+            }
 
             long outputLimit = mDecoder.mDicBufSize;
             if (limit.HasValue)
