@@ -141,6 +141,18 @@ namespace ManagedLzma.SevenZip.Reader
 
         #region Protected API
 
+        /// <summary>
+        /// There exists an unofficial extension which stores posix file attributes in
+        /// metadata bits which are usually zero. Enabling this extension allows to read
+        /// those non-standard archives.
+        /// </summary>
+        /// <remarks>
+        /// This defaults to false because it is possible that someone creates a different
+        /// but incompatible extension using the same bits. It should be safe for callers
+        /// to always set it to true because currently it is the only known extension.
+        /// </remarks>
+        public bool EnablePosixFileAttributeExtension { get; set; }
+
         protected ArchiveMetadata ReadMetadataCore(Stream stream, PasswordStorage password)
         {
             if (stream == null)
@@ -306,7 +318,7 @@ namespace ManagedLzma.SevenZip.Reader
                                 var vector = ReadOptionalBitVector(fileCount);
                                 using (SelectStream(streams))
                                 {
-                                    var reader = new MetadataAttributeReader(this, fileCount, vector);
+                                    var reader = new MetadataAttributeReader(this, fileCount, vector, EnablePosixFileAttributeExtension);
                                     ReadAttributes(reader);
                                     reader.Complete();
                                 }

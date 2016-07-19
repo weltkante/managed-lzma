@@ -145,6 +145,7 @@ namespace sandbox_7z
                 {
                     var file = new FileStream(@"_test\test.7z", FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
                     var mdReader = new ManagedLzma.SevenZip.FileModel.ArchiveFileModelMetadataReader();
+                    mdReader.EnablePosixFileAttributeExtension = true; // enables an unofficial extension; should be safe to always set to true if you need to deal with those kind of files
                     var mdModel = mdReader.ReadMetadata(file);
                     var password = ManagedLzma.PasswordStorage.Create("test");
                     for (int sectionIndex = 0; sectionIndex < mdModel.Metadata.DecoderSections.Length; sectionIndex++)

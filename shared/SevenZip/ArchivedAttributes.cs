@@ -116,6 +116,21 @@ namespace ManagedLzma.SevenZip
 #endif
 
         /// <summary>
+        /// Unofficial extension using the high bits to store posix file attributes in a 7z archive.
+        /// </summary>
+        /// <remarks>
+        /// Some third party implementations store posix file attributes in the high 16 bits.
+        /// Some implementations also set bit 15 to indicate that the high bits are used,
+        /// but since only some do this the bit can't be trusted and must be ignored.
+        ///
+        /// Note that this is an unofficial extension making use of the fact that the official
+        /// implementation was lazy in its error checking. In newer implementations the 7z UI
+        /// acknowledges the extension and tries to parse it. The extension however has not
+        /// become part of the 7z archive codebase, it is only handled in the UI layer.
+        /// </remarks>
+        internal const ArchivedAttributes PosixAttributeMask = (ArchivedAttributes)~0x7FFF;
+
+        /// <summary>
         /// These flags do not exist and are invalid.
         /// </summary>
         internal const ArchivedAttributes InvalidAttributes = (ArchivedAttributes)~196599;

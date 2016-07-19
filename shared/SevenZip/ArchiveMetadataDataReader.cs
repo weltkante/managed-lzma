@@ -148,12 +148,14 @@ namespace ManagedLzma.SevenZip.Reader
         private BitVector mVector;
         private int mCount;
         private int mIndex;
+        private bool mEnablePosixFileAttributeExtension;
 
-        internal MetadataAttributeReader(ArchiveMetadataReader reader, int count, BitVector defined)
+        internal MetadataAttributeReader(ArchiveMetadataReader reader, int count, BitVector defined, bool enablePosixFileAttributeExtension)
         {
             mReader = reader;
             mVector = defined;
             mCount = count;
+            mEnablePosixFileAttributeExtension = enablePosixFileAttributeExtension;
         }
 
         internal void Complete()
@@ -179,6 +181,32 @@ namespace ManagedLzma.SevenZip.Reader
             {
                 var attr = (ArchivedAttributes)mReader.ReadInt32Internal();
                 mIndex += 1;
+
+                if (mEnablePosixFileAttributeExtension)
+                {
+                    // Posix file attributes are an unofficial extension abusing the fact that the
+                    // official implementation only checks the lower 16 bits when reading archives.
+                    // Newer versions of the UI client acknowledge this and try to parse the upper
+                    // 16 bits as posix file attributes if they are nonzero. Note that this is done
+                    // in the UI layer and not part of the official 7z archive implementation.
+                    //
+                    // Bit 15 is used by some implementations to indicate that the high 16 bits are
+                    // storing posix file attributes, but since there are other implementations which
+                    // don't set this bit we can't trust it and must discard it.
+                    //
+                    // For now we ignore posix attributes if we enabled this unofficial extension.
+                    //
+                    // Note that this is ok to do because the extension is designed to be compatible
+                    // with readers which don't understand (but ignore) the posix attributes, like
+                    // the official codebase does. The lower bits may contain windows-compatible
+                    // file attributes even if the file has posix attributes, so we still need to
+                    // read the lower bits regardless of whether we have posix attributes or not.
+                    //
+                    // Later we may want to provide an API to retrieve both kinds of attributes.
+                    //
+                    if ((attr & ArchivedAttributesExtensions.PosixAttributeMask) != 0)
+                        attr &= ~ArchivedAttributesExtensions.PosixAttributeMask;
+                }
 
                 if ((attr & ArchivedAttributesExtensions.InvalidAttributes) != 0)
                     throw new System.IO.InvalidDataException();
