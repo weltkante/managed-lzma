@@ -1,0 +1,7 @@
+﻿{
+  "runtimes": { "win": {} },
+  "frameworks": { "net46": {} },
+  "dependencies": {
+    "System.Collections.Immutable": "1.1.36"
+  }
+}
