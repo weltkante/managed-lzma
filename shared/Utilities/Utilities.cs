@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+#if !BUILD_PORTABLE
+using System.Runtime.Serialization;
+#endif
 
 namespace ManagedLzma
 {
