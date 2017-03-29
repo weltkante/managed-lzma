@@ -426,7 +426,7 @@ namespace ManagedLzma.SevenZip.Writer
         public abstract IStreamWriter GetInputSink(int index);
         public abstract void SetInputSource(int index, IStreamReader stream);
 
-        // The encode can decide between providing an output source or accepting an output sink.
+        // The encoder can decide between providing an output source or accepting an output sink.
         // It is preferable if the encoder can accept an output sink so he can push data directly to the connected encoder.
         public abstract IStreamReader GetOutputSource(int index);
         public abstract void SetOutputSink(int index, IStreamWriter stream);
