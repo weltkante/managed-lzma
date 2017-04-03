@@ -252,6 +252,8 @@ namespace ManagedLzma.LZMA
             mSyncObject = new object();
             mDecodeAction = new Action(Decode);
             mDecoder = new Decoder(settings);
+            mInputQueue = new Queue<InputFrame>();
+            mOutputQueue = new Queue<OutputFrame>();
         }
 
         public void Dispose()
