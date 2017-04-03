@@ -232,8 +232,8 @@ namespace ManagedLzma.SevenZip.Reader
 
         public static int PPMD_GET_MEAN_SPEC(int summ, int shift, int round) => (((summ) + (1 << ((shift) - (round)))) >> (shift));
         public static int PPMD_GET_MEAN(int summ) => PPMD_GET_MEAN_SPEC((summ), PPMD_PERIOD_BITS, 2);
-        public static int PPMD_UPDATE_PROB_0(int prob) => ((prob) + (1 << PPMD_INT_BITS) - PPMD_GET_MEAN(prob));
-        public static int PPMD_UPDATE_PROB_1(int prob) => ((prob) - PPMD_GET_MEAN(prob));
+        public static void PPMD_UPDATE_PROB_0(ref ushort prob) => prob = (ushort)((prob) + (1 << PPMD_INT_BITS) - PPMD_GET_MEAN(prob));
+        public static void PPMD_UPDATE_PROB_1(ref ushort prob) => prob = (ushort)((prob) - PPMD_GET_MEAN(prob));
 
         public const int PPMD_N1 = 4;
         public const int PPMD_N2 = 4;
@@ -445,9 +445,9 @@ namespace ManagedLzma.SevenZip.Reader
         //void Ppmd7_Update2(CPpmd7 *p);
         //void Ppmd7_UpdateBin(CPpmd7 *p);
 
-        public static ushort* Ppmd7_GetBinSumm(CPpmd7 p)
+        public static ref ushort Ppmd7_GetBinSumm(CPpmd7 p)
         {
-            return &p.BinSumm[Ppmd7Context_OneState(p.MinContext)->Freq - 1]
+            return ref p.BinSumm[Ppmd7Context_OneState(p.MinContext)->Freq - 1]
                      [p.PrevSuccess
                          + p.NS2BSIndx[Ppmd7_GetContext(p, p.MinContext->Suffix)->NumStats - 1]
                          + (p.HiBitsFlag = p.HB2Flag[p.FoundState->Symbol])
@@ -1330,17 +1330,17 @@ namespace ManagedLzma.SevenZip.Reader
             }
             else
             {
-                ushort* prob = Ppmd7_GetBinSumm(p);
-                if (rc.DecodeBit(rc, *prob) == 0)
+                ref ushort prob = ref Ppmd7_GetBinSumm(p);
+                if (rc.DecodeBit(rc, prob) == 0)
                 {
                     byte symbol;
-                    *prob = (ushort)PPMD_UPDATE_PROB_0(*prob);
+                    PPMD_UPDATE_PROB_0(ref prob);
                     symbol = (p.FoundState = Ppmd7Context_OneState(p.MinContext))->Symbol;
                     Ppmd7_UpdateBin(p);
                     return symbol;
                 }
-                *prob = (ushort)PPMD_UPDATE_PROB_1(*prob);
-                p.InitEsc = PPMD7_kExpEscape[*prob >> 10];
+                PPMD_UPDATE_PROB_1(ref prob);
+                p.InitEsc = PPMD7_kExpEscape[prob >> 10];
                 PPMD_SetAllBitsIn256Bytes(charMask);
                 MASK_SET(charMask, Ppmd7Context_OneState(p.MinContext)->Symbol, 0);
                 p.PrevSuccess = 0;
