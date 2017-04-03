@@ -88,6 +88,7 @@ namespace ManagedLzma
             return crc;
         }
 
+#if BUILD_UNSAFE
         public static unsafe uint Update(uint crc, byte* buffer, int length)
         {
             while (length > 0 && ((int)buffer & 3) != 0)
@@ -112,5 +113,6 @@ namespace ManagedLzma
 
             return crc;
         }
+#endif
     }
 }
