@@ -187,7 +187,18 @@ namespace ManagedLzma.LZMA
                 throw new InvalidDataException();
             }
 
-            return checked((int)inputField);
+            var processed = checked((int)inputField);
+            System.Diagnostics.Debug.Assert(0 <= processed && processed <= length);
+
+            if (processed == length && eof)
+                mInputComplete = true;
+
+            if (mStatus == LZMA.Master.LZMA.ELzmaStatus.LZMA_STATUS_FINISHED_WITH_MARK)
+                mOutputComplete = true;
+            else if (mStatus == LZMA.Master.LZMA.ELzmaStatus.LZMA_STATUS_MAYBE_FINISHED_WITHOUT_MARK && mInputComplete)
+                mOutputComplete = true;
+
+            return processed;
         }
     }
 
