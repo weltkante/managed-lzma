@@ -264,9 +264,6 @@ namespace ManagedLzma.SevenZip.Reader
                 token = ReadToken();
             }
 
-            List<long> unpackSizes;
-            List<Checksum?> checksums;
-
             ArchiveMetadata metadata;
             if (token == ArchiveMetadataToken.MainStreams)
             {
