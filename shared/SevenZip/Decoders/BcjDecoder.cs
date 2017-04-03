@@ -127,20 +127,16 @@ namespace ManagedLzma.SevenZip.Reader
                     mEnding += delta;
             }
 
-            unsafe
             {
-                fixed (byte* pBuffer = mBuffer)
-                {
-                    int delta = x86_Convert(pBuffer + mOffset, Math.Min(mEnding - mOffset, count), (uint)mBufferPos);
-                    if (delta == 0)
-                        throw new NotSupportedException();
+                int delta = x86_Convert(LZMA.P.From(mBuffer, mOffset), Math.Min(mEnding - mOffset, count), (uint)mBufferPos);
+                if (delta == 0)
+                    throw new NotSupportedException();
 
-                    Buffer.BlockCopy(mBuffer, mOffset, buffer, offset, delta);
-                    mOffset += delta;
+                Buffer.BlockCopy(mBuffer, mOffset, buffer, offset, delta);
+                mOffset += delta;
 
-                    mBufferPos += delta;
-                    return delta;
-                }
+                mBufferPos += delta;
+                return delta;
             }
         }
 
@@ -149,7 +145,7 @@ namespace ManagedLzma.SevenZip.Reader
             return value == 0x00 || value == 0xFF;
         }
 
-        private unsafe int x86_Convert(byte* data, int size, uint ip)
+        private int x86_Convert(LZMA.P<byte> data, int size, uint ip)
         {
             int bufferPos = 0;
             uint prevMask = mState & 0x7;
@@ -162,10 +158,10 @@ namespace ManagedLzma.SevenZip.Reader
 
             for (;;)
             {
-                byte* p = data + bufferPos;
-                byte* limit = data + size - 4;
+                var p = data + bufferPos;
+                var limit = data + size - 4;
 
-                while (p < limit && (*p & 0xFE) != 0xE8)
+                while (p < limit && (p[0] & 0xFE) != 0xE8)
                     p++;
 
                 bufferPos = (int)(p - data);
