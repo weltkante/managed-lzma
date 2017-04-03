@@ -400,7 +400,11 @@ namespace ManagedLzma.SevenZip.Reader
 
             public CPpmd7()
             {
+#if NET_45
                 var kSeeSize = Marshal.SizeOf(typeof(CPpmd_See));
+#else
+                var kSeeSize = Marshal.SizeOf<CPpmd_See>();
+#endif
                 mBackingSee = Marshal.AllocCoTaskMem(kSeeSize * (25 * 16 + 1));
                 DummySee = (CPpmd_See*)mBackingSee;
                 for (int i = 0; i < 25; i++)
