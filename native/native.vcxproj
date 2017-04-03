@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <Keyword>ManagedCProj</Keyword>
     <RootNamespace>native</RootNamespace>
     <ProjectGuid>{96F98DA9-3345-E4BC-4B8E-9C6225A45447}</ProjectGuid>
