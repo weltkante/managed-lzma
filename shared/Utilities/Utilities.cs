@@ -53,6 +53,12 @@ namespace ManagedLzma
         Partial,
     }
 
+    /// <remarks>
+    /// This API is not designed for cancellation because in the context it is used
+    /// there is no sane way to resume work once a sub-task has been canceled.
+    /// Note that the caller can still abort the whole operation (instead of a single call)
+    /// by disposing the proper controlling object.
+    /// </remarks>
     public interface IStreamReader
     {
         /// <summary>Requests to read data into the provided buffer.</summary>
@@ -64,9 +70,21 @@ namespace ManagedLzma
         Task<int> ReadAsync(byte[] buffer, int offset, int length, StreamMode mode);
     }
 
+    /// <remarks>
+    /// This API is not designed for cancellation because in the context it is used
+    /// there is no sane way to resume work once a sub-task has been canceled.
+    /// Note that the caller can still abort the whole operation (instead of a single call)
+    /// by disposing the proper controlling object.
+    /// </remarks>
     public interface IStreamWriter
     {
         Task<int> WriteAsync(byte[] buffer, int offset, int length, StreamMode mode);
+
+        /// <returns>
+        /// A task which completes once all outstanding writes have been completed
+        /// and any remaining data has been forwarded to the underlying receiver.
+        /// In other words, once the returned task completes it is safe to dispose.
+        /// </returns>
         Task CompleteAsync();
     }
 
