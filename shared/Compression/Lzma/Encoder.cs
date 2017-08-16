@@ -5,11 +5,58 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ManagedLzma.LZMA.Master;
 
 namespace ManagedLzma.LZMA
 {
     public sealed class AsyncEncoder : IDisposable
     {
+        private sealed class InputGate : LZMA.Master.LZMA.ISeqInStream
+        {
+            private AsyncEncoder mContext;
+            private AsyncInputProvider mInput;
+
+            public InputGate(AsyncEncoder context, IStreamReader stream)
+            {
+                mContext = context;
+                mInput = new AsyncInputProvider(stream);
+            }
+
+            Master.LZMA.SRes LZMA.Master.LZMA.ISeqInStream.Read(P<byte> buf, ref long size)
+            {
+                mContext.UpdateInputEstimate(0);
+
+                long temp = size;
+                var result = ((Master.LZMA.ISeqInStream)mInput).Read(buf, ref temp);
+
+                if (result == Master.LZMA.SZ_OK)
+                    mContext.UpdateInputEstimate(temp);
+
+                size = temp;
+                return result;
+            }
+        }
+
+        private sealed class OutputGate : LZMA.Master.LZMA.ISeqOutStream
+        {
+            private AsyncEncoder mContext;
+            private AsyncOutputProvider mOutput;
+
+            public OutputGate(AsyncEncoder context, IStreamWriter stream)
+            {
+                mContext = context;
+                mOutput = new AsyncOutputProvider(stream);
+            }
+
+            long Master.LZMA.ISeqOutStream.Write(P<byte> buf, long size)
+            {
+                mContext.UpdateOutputEstimate(0);
+                var result = ((Master.LZMA.ISeqOutStream)mOutput).Write(buf, size);
+                mContext.UpdateOutputEstimate(checked((int)result));
+                return result;
+            }
+        }
+
         #region Variables
 
         // immutable
@@ -104,7 +151,7 @@ namespace ManagedLzma.LZMA
             }
 
             var task = Task.Run(async delegate {
-                var res = mEncoder.LzmaEnc_Encode(new AsyncOutputProvider(output), new AsyncInputProvider(input), null, Master.LZMA.ISzAlloc.SmallAlloc, Master.LZMA.ISzAlloc.BigAlloc);
+                var res = mEncoder.LzmaEnc_Encode(new OutputGate(this, output), new InputGate(this, input), null, Master.LZMA.ISzAlloc.SmallAlloc, Master.LZMA.ISzAlloc.BigAlloc);
                 if (res != Master.LZMA.SZ_OK)
                     throw new InvalidOperationException();
 
@@ -121,6 +168,42 @@ namespace ManagedLzma.LZMA
             }, CancellationToken.None, TaskContinuationOptions.DenyChildAttach, TaskScheduler.Default);
 
             return task;
+        }
+
+        public event Action OnUpdateInternalLength;
+        public int InternalInputLength { get; private set; }
+        public int InternalOutputLength { get; private set; }
+
+        private void UpdateInputEstimate(long fetched)
+        {
+            // the number of (unprocessed) input bytes in the LZMA encoder
+            var pMatchFinder = mEncoder.mMatchFinderBase;
+            var pMatchFinderCachedBytes = pMatchFinder.mStreamPos - pMatchFinder.mPos + fetched;
+
+            // the number of (unflushed) output bytes in the LZMA encoder
+            var pRangeCoder = mEncoder.mRC;
+            var pRangeCoderCachedBytes = pRangeCoder.mBuf - pRangeCoder.mBufBase;
+
+            InternalInputLength = checked((int)pMatchFinderCachedBytes);
+            InternalOutputLength = checked((int)pRangeCoderCachedBytes);
+
+            OnUpdateInternalLength?.Invoke();
+        }
+
+        private void UpdateOutputEstimate(int written)
+        {
+            // the number of (unprocessed) input bytes in the LZMA encoder
+            var pMatchFinder = mEncoder.mMatchFinderBase;
+            var pMatchFinderCachedBytes = pMatchFinder.mStreamPos - pMatchFinder.mPos;
+
+            // the number of (unflushed) output bytes in the LZMA encoder
+            var pRangeCoder = mEncoder.mRC;
+            var pRangeCoderCachedBytes = pRangeCoder.mBuf - pRangeCoder.mBufBase - written;
+
+            InternalInputLength = checked((int)pMatchFinderCachedBytes);
+            InternalOutputLength = checked((int)pRangeCoderCachedBytes);
+
+            OnUpdateInternalLength?.Invoke();
         }
 
         #endregion

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ManagedLzma;
 using ManagedLzma.LZMA.Master.SevenZip;
 using ManagedLzma.SevenZip;
 using ManagedLzma.SevenZip.FileModel;
@@ -27,10 +28,104 @@ namespace sandbox_7z
             }
         }
 
+        private static int _totalOutputLength;
+        private static int _totalInputLength;
+        private static int _readInputLength;
+        private static int _remainingInputLength;
+        private static int _unprocessedInputLength;
+        private static int _unprocessedOutputLength;
+
+        static void UpdateInternalLength(ManagedLzma.LZMA.AsyncEncoder encoder)
+        {
+            _unprocessedInputLength = encoder.InternalInputLength;
+            _unprocessedOutputLength = encoder.InternalOutputLength;
+            WriteReportAndEstimate();
+        }
+
+        static void WriteReportAndEstimate()
+        {
+            //System.Diagnostics.Debug.WriteLine($"STATE: total input={_readInputLength} unread input={_remainingInputLength} internal input={_unprocessedInputLength} internal output={_unprocessedOutputLength} flushed ouput={_totalOutputLength}");
+            var min = _totalOutputLength + _unprocessedOutputLength;
+            var max = _totalOutputLength + _unprocessedOutputLength + _unprocessedInputLength + _remainingInputLength;
+            var ratio = (double)(_totalOutputLength + _unprocessedOutputLength)
+                / (double)(_totalInputLength - _unprocessedInputLength - _remainingInputLength);
+            var est = _totalOutputLength + _unprocessedOutputLength + (_unprocessedInputLength + _remainingInputLength) * ratio;
+            System.Diagnostics.Debug.WriteLine($"ESTIMATE: min={min} max={max} est={est} ratio={ratio}");
+        }
+
+        private sealed class InputThing : ManagedLzma.IStreamReader
+        {
+            private ManagedLzma.LZMA.AsyncEncoder _encoder;
+            private Stream _stream;
+
+            public InputThing(ManagedLzma.LZMA.AsyncEncoder encoder, Stream stream)
+            {
+                _encoder = encoder;
+                _stream = stream;
+                _remainingInputLength = _totalInputLength = checked((int)stream.Length);
+            }
+
+            public Task<int> ReadAsync(byte[] buffer, int offset, int length, StreamMode mode)
+            {
+                //if (length > 64 << 10)
+                //    length = 64 << 10;
+
+                System.Diagnostics.Debug.Assert(mode == StreamMode.Partial);
+                var result = _stream.Read(buffer, offset, length);
+                System.Diagnostics.Debug.WriteLine($"READ delta={result}");
+                if (result == 0) System.Diagnostics.Debugger.Break();
+                _readInputLength += result;
+                _remainingInputLength -= result;
+                return Task.FromResult(result);
+            }
+        }
+
+        private sealed class OutputThing : ManagedLzma.IStreamWriter
+        {
+            private ManagedLzma.LZMA.AsyncEncoder _encoder;
+
+            public OutputThing(ManagedLzma.LZMA.AsyncEncoder encoder)
+            {
+                _encoder = encoder;
+            }
+
+            public Task<int> WriteAsync(byte[] buffer, int offset, int length, StreamMode mode)
+            {
+                System.Diagnostics.Debug.WriteLine($"WRITE delta={length}");
+                _totalOutputLength += length;
+                return Task.FromResult(length);
+            }
+
+            public Task CompleteAsync()
+            {
+                System.Diagnostics.Debug.WriteLine($"DONE");
+                WriteReportAndEstimate();
+                return Task.CompletedTask;
+            }
+        }
+
+        private static async Task RunLzmaTest()
+        {
+            using (var encoder = new ManagedLzma.LZMA.AsyncEncoder(new ManagedLzma.LZMA.EncoderSettings()))
+            using (var stream = new FileStream("_test_file.dat", FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+            {
+                encoder.OnUpdateInternalLength += () => UpdateInternalLength(encoder);
+                await encoder.EncodeAsync(new InputThing(encoder, stream), new OutputThing(encoder));
+                await encoder.DisposeAsync();
+            }
+
+            Environment.Exit(0);
+        }
+
         [STAThread]
         static void Main()
         {
             Directory.CreateDirectory("_test");
+
+            var task = RunLzmaTest();
+            task.GetAwaiter().OnCompleted(() => Application.Exit());
+            Application.Run();
+            task.GetAwaiter().GetResult();
 
             bool writeArchive = true;
             bool useOldWriter = false;
