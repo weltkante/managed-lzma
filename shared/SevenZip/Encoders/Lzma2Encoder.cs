@@ -24,7 +24,7 @@ namespace ManagedLzma.SevenZip.Writer
             return (uint)(2 | (p & 1)) << (p / 2 + 11);
         }
 
-        public static byte Lzma2Enc_WriteProperties(LZMA2.EncoderSettings mProps)
+        private static byte Lzma2Enc_WriteProperties(LZMA2.EncoderSettings mProps)
         {
             uint dicSize = mProps.GetInternalSettings().mLzmaProps.LzmaEncProps_GetDictSize();
 
