@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>C:\projects\weltkante\lzma\managed-lzma.snk</AssemblyOriginatorKeyFile>
+    <AssemblyName>ManagedLzma</AssemblyName>
+    <RootNamespace>ManagedLzma</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;DEBUG;DISABLE_TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>TRACE;RELEASE;DISABLE_TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <Import Project="..\shared\shared.projitems" Label="Shared" />
+
+  <ItemGroup>
+    <None Include="..\managed-lzma.snk" Link="managed-lzma.snk" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
+  </ItemGroup>
+
+</Project>
