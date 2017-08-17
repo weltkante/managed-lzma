@@ -10,12 +10,12 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <DefineConstants>TRACE;DEBUG;NETSTANDARD1_4;BUILD_PORTABLE;DISABLE_TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;BUILD_PORTABLE;DISABLE_TRACE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <DefineConstants>TRACE;RELEASE;NETSTANDARD1_4;BUILD_PORTABLE;DISABLE_TRACE</DefineConstants>
+    <DefineConstants>TRACE;RELEASE;BUILD_PORTABLE;DISABLE_TRACE</DefineConstants>
   </PropertyGroup>
 
   <Import Project="..\shared\shared.projitems" Label="Shared" />
@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Collections.Immutable" Version="1.3.1" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.2.0" />
   </ItemGroup>
 
 </Project>
