@@ -6,6 +6,7 @@
     <AssemblyOriginatorKeyFile>C:\projects\weltkante\lzma\managed-lzma.snk</AssemblyOriginatorKeyFile>
     <AssemblyName>ManagedLzma</AssemblyName>
     <RootNamespace>ManagedLzma</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
