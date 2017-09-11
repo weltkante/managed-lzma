@@ -16,7 +16,7 @@ Managed LZMA and 7z implementation
 - Included support for .NET Standard
 - Removed a static helper method which was not supposed to be public
 </releaseNotes>
-<copyright>Copyright 2011-2016</copyright>
+<copyright>Copyright 2011-2017</copyright>
 <tags>ManagedLzma SevenZip lzma lzma2 7z managed</tags>
 <dependencies>
 <group targetFramework="net45">
