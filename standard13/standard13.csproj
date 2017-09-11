@@ -11,11 +11,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <DefineConstants>TRACE;DEBUG;BUILD_PORTABLE;DISABLE_TRACE</DefineConstants>
+    <DocumentationFile>bin\Debug\netstandard1.3\ManagedLzma.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <DefineConstants>TRACE;RELEASE;BUILD_PORTABLE;DISABLE_TRACE</DefineConstants>
+    <DocumentationFile>bin\Release\netstandard1.3\ManagedLzma.xml</DocumentationFile>
   </PropertyGroup>
 
   <Import Project="..\shared\shared.projitems" Label="Shared" />
