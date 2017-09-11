@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+<metadata>
+<id>ManagedLzma</id>
+<version>0.2.0-alpha-7</version>
+<title>Managed Lzma</title>
+<authors>https://github.com/weltkante</authors>
+<owners>https://github.com/weltkante</owners>
+<licenseUrl>https://github.com/weltkante/managed-lzma/blob/v0.2-alpha-7/license.txt</licenseUrl>
+<projectUrl>https://github.com/weltkante/managed-lzma/tree/v0.2-alpha-7</projectUrl>
+<requireLicenseAcceptance>false</requireLicenseAcceptance>
+<description>
+Managed LZMA and 7z implementation
+</description>
+<releaseNotes>
+- Included support for .NET Standard
+- Removed a static helper method which was not supposed to be public
+</releaseNotes>
+<copyright>Copyright 2011-2016</copyright>
+<tags>ManagedLzma SevenZip lzma lzma2 7z managed</tags>
+<dependencies>
+<group targetFramework="net45">
+<dependency id="System.Collections.Immutable" version="[1.1.36,2)" exclude="Build,Analyzers" />
+</group>
+<group targetFramework="net46">
+<dependency id="System.Collections.Immutable" version="[1.1.36,2)" exclude="Build,Analyzers" />
+</group>
+<group targetFramework=".NETStandard1.3">
+<dependency id="System.Collections.Immutable" version="[1.2,2)" exclude="Build,Analyzers" />
+</group>
+<group targetFramework=".NETStandard2.0">
+<dependency id="System.Collections.Immutable" version="[1.4,2)" exclude="Build,Analyzers" />
+</group>
+</dependencies>
+</metadata>
+<files>
+<file src="library/bin/Release/ManagedLzma.dll" target="lib\net46\ManagedLzma.dll"/>
+<file src="library/bin/Release/ManagedLzma.xml" target="lib\net46\ManagedLzma.xml"/>
+<file src="library45/bin/Release/ManagedLzma.dll" target="lib\net45\ManagedLzma.dll"/>
+<file src="library45/bin/Release/ManagedLzma.xml" target="lib\net45\ManagedLzma.xml"/>
+<file src="standard13/bin/Release/netstandard1.3/ManagedLzma.dll" target="lib\netstandard1.3\ManagedLzma.dll"/>
+<file src="standard13/bin/Release/netstandard1.3/ManagedLzma.xml" target="lib\netstandard1.3\ManagedLzma.xml"/>
+<file src="standard20/bin/Release/netstandard2.0/ManagedLzma.dll" target="lib\netstandard2.0\ManagedLzma.dll"/>
+<file src="standard20/bin/Release/netstandard2.0/ManagedLzma.xml" target="lib\netstandard2.0\ManagedLzma.xml"/>
+</files>
+</package>
