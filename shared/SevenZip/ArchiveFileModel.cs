@@ -300,7 +300,7 @@ namespace ManagedLzma.SevenZip.FileModel
                             var attr = mAttributes[currentFileIndex];
 
                             if (attr.HasValue && (attr.Value & ArchivedAttributesExtensions.DirectoryAttribute) != 0)
-                                throw new InvalidDataException();
+                                continue;
 
                             file.Attributes = attr;
                         }
