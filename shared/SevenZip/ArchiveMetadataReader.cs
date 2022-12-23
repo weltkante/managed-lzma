@@ -906,7 +906,7 @@ namespace ManagedLzma.SevenZip.Reader
                                 throw new InvalidDataException();
 
                             connected = true;
-                            decoder.InputInfo[i] = new DecoderInputMetadata(null, 0);
+                            decoder.InputInfo[i] = new DecoderInputMetadata(null, rawInputStreamIndex);
                         }
                     }
                 }

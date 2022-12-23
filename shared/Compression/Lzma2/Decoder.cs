@@ -175,7 +175,7 @@ namespace ManagedLzma.LZMA2
 
             long outputLimit = mDecoder.mDecoder.mDicBufSize;
             if (limit.HasValue)
-                outputLimit = Math.Min(outputLimit, mDecoderPosition + limit.Value);
+                outputLimit = Math.Min(outputLimit, (long)mDecoderPosition + limit.Value);
 
             long inputField = length;
             var res = mDecoder.Lzma2Dec_DecodeToDic(outputLimit, LZMA.P.From(buffer, offset), ref inputField, mode, out mStatus);
